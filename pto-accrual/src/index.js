@@ -398,6 +398,27 @@ const WORKFLOW_STEPS = [
     }
 ];
 
+// Step → Sheet mapping (clicking step card activates this sheet)
+const STEP_SHEET_MAP = {
+    0: "PTO_Homepage",        // Configuration → PTO_Homepage
+    1: "PTO_Data",            // Import → PTO_Data
+    2: "PTO_Data",            // Headcount Review → PTO_Data
+    3: "PTO_Analysis",        // Data Quality → PTO_Analysis
+    4: "PTO_Analysis",        // Accrual Review → PTO_Analysis
+    5: "PTO_JE_Draft"         // Journal Entry → PTO_JE_Draft
+};
+
+// Reverse map: sheet name → step ID (for tab-to-panel sync)
+const SHEET_TO_STEP_MAP = {
+    "PTO_Homepage": 0,         // Homepage → Configuration
+    "PTO_Data": 1,             // PTO_Data → Import
+    "PTO_Analysis": 4,         // PTO_Analysis → Accrual Review
+    "PTO_JE_Draft": 5,         // PTO_JE_Draft → Journal Entry
+    "PTO_Archive_Summary": 6,  // Archive → Archive step
+    "SS_PF_Config": 0,         // Config sheet → Configuration
+    "SS_Employee_Roster": 2    // Roster → Headcount Review
+};
+
 const WORKBOOK_SHEETS = [
     {
         name: "PTO_Instructions",
@@ -585,12 +606,71 @@ async function init() {
         const homepageConfig = getHomepageConfig(MODULE_KEY);
         await activateHomepageSheet(homepageConfig.sheetName, homepageConfig.title, homepageConfig.subtitle);
         
+        // Set up worksheet change listener for bi-directional sync
+        await setupWorksheetChangeListener();
+        
         if (loadingEl) loadingEl.remove();
         if (rootEl) rootEl.hidden = false;
         renderApp();
     } catch (error) {
         console.error("[PTO] Module initialization failed:", error);
         throw error;
+    }
+}
+
+/**
+ * Set up listener for worksheet activation changes
+ * Syncs the side panel when user manually switches Excel tabs
+ */
+async function setupWorksheetChangeListener() {
+    if (!hasExcel()) return;
+    
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            
+            // Listen for worksheet activation
+            worksheets.onActivated.add(handleWorksheetActivated);
+            
+            await context.sync();
+            console.log("[PTO] Worksheet change listener registered");
+        });
+    } catch (error) {
+        console.warn("[PTO] Could not set up worksheet listener:", error);
+    }
+}
+
+/**
+ * Handle worksheet activation - sync side panel to match
+ */
+async function handleWorksheetActivated(event) {
+    try {
+        await Excel.run(async (context) => {
+            const sheet = context.workbook.worksheets.getItem(event.worksheetId);
+            sheet.load("name");
+            await context.sync();
+            
+            const sheetName = sheet.name;
+            const stepId = SHEET_TO_STEP_MAP[sheetName];
+            
+            console.log(`[PTO] Tab changed to: ${sheetName} → Step ${stepId}`);
+            
+            // Only sync if we have a mapped step and it's different from current
+            if (stepId !== undefined && stepId !== appState.activeStepId) {
+                // Find the index in STEPS
+                const stepIndex = STEPS.findIndex(s => s.id === stepId);
+                if (stepIndex >= 0) {
+                    // Update state without re-activating the worksheet (to avoid loop)
+                    const view = stepId === 0 ? "config" : "step";
+                    appState.activeView = view;
+                    appState.activeStepId = stepId;
+                    appState.focusedIndex = stepIndex;
+                    renderApp();
+                }
+            }
+        });
+    } catch (error) {
+        console.warn("[PTO] Error handling worksheet change:", error);
     }
 }
 
@@ -1609,19 +1689,17 @@ function focusStep(index, stepId = null) {
     const resolvedStepId = stepId ?? WORKFLOW_STEPS[index].id;
     const nextView = resolvedStepId === 0 ? "config" : "step";
     setState({ focusedIndex: index, activeView: nextView, activeStepId: resolvedStepId });
-    if (resolvedStepId === 1) {
-        openSheet("PTO_Data");
+    
+    // Activate the corresponding sheet from STEP_SHEET_MAP
+    const sheetName = STEP_SHEET_MAP[resolvedStepId];
+    if (sheetName) {
+        openSheet(sheetName);
     }
+    
+    // Step-specific initialization
     if (resolvedStepId === 2 && !headcountState.hasAnalyzed) {
         void syncPtoAnalysis();
         refreshHeadcountAnalysis();
-    }
-    if (resolvedStepId === 3) {
-        openSheet("PTO_Data");
-    }
-    // Step 4 no longer runs checks automatically - user clicks Run/Refresh
-    if (resolvedStepId === 5) {
-        openSheet("PTO_JE_Draft");
     }
 }
 
