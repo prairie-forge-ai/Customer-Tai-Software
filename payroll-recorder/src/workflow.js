@@ -1962,6 +1962,7 @@ async function unhideSystemSheets() {
 
 /**
  * Open a reference data sheet (creates if doesn't exist)
+ * Makes sheet visible first if it's hidden
  */
 async function openReferenceSheet(sheetName) {
     if (!sheetName || typeof Excel === "undefined") {
@@ -1976,7 +1977,7 @@ async function openReferenceSheet(sheetName) {
     try {
         await Excel.run(async (context) => {
             let sheet = context.workbook.worksheets.getItemOrNullObject(sheetName);
-            sheet.load("isNullObject");
+            sheet.load("isNullObject,visibility");
             await context.sync();
             
             if (sheet.isNullObject) {
@@ -1989,11 +1990,16 @@ async function openReferenceSheet(sheetName) {
                 headerRange.format.fill.color = "#f0f0f0";
                 headerRange.format.autofitColumns();
                 await context.sync();
+            } else {
+                // Make sure sheet is visible before activating (it may be hidden by tab visibility)
+                sheet.visibility = Excel.SheetVisibility.visible;
+                await context.sync();
             }
             
             sheet.activate();
             sheet.getRange("A1").select();
             await context.sync();
+            console.log(`[Quick Access] Opened sheet: ${sheetName}`);
         });
     } catch (error) {
         console.error("Error opening reference sheet:", error);
@@ -2007,7 +2013,7 @@ async function navigateToExpenseMapping() {
     try {
         await Excel.run(async (context) => {
             let sheet = context.workbook.worksheets.getItemOrNullObject("PR_Expense_Mapping");
-            sheet.load("isNullObject");
+            sheet.load("isNullObject,visibility");
             await context.sync();
             
             if (sheet.isNullObject) {
@@ -2017,11 +2023,16 @@ async function navigateToExpenseMapping() {
                 const headerRange = sheet.getRange("A1:D1");
                 headerRange.values = [headers];
                 headerRange.format.font.bold = true;
+            } else {
+                // Make sure sheet is visible before activating
+                sheet.visibility = Excel.SheetVisibility.visible;
+                await context.sync();
             }
             
             sheet.activate();
             sheet.getRange("A1").select();
             await context.sync();
+            console.log("[Quick Access] Opened PR_Expense_Mapping");
         });
     } catch (error) {
         console.error("Error navigating to PR_Expense_Mapping:", error);
