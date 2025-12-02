@@ -1209,11 +1209,18 @@ function renderHeadcountStep(detail) {
     `;
     
     // Inline mismatch tiles for roster differences (like PTO module)
+    // Count by type for better labeling
+    const missingFromPayroll = rosterMismatches.filter(m => m.type === "missing_from_payroll").length;
+    const missingFromRoster = rosterMismatches.filter(m => m.type === "missing_from_roster").length;
+    const mismatchLabel = rosterMismatches.length > 0
+        ? `Employee Mismatches (${missingFromPayroll} missing from payroll, ${missingFromRoster} not in roster)`
+        : "Employee Mismatches";
+    
     const rosterMismatchSection =
         rosterMismatches.length && !headcountState.skipAnalysis && hasRun
             ? window.PrairieForge?.renderMismatchTiles?.({
                   mismatches: rosterMismatches,
-                  label: "Employees Driving the Difference",
+                  label: mismatchLabel,
                   sourceLabel: "Roster",
                   targetLabel: "Payroll Data",
                   escapeHtml: escapeHtml
@@ -2825,13 +2832,13 @@ function normalizeFieldName(value) {
 function isNoiseName(value) {
     const normalized = String(value ?? "").trim().toLowerCase();
     if (!normalized) return true;
-    return (
-        normalized.includes("total") ||
-        normalized.includes("totals") ||
-        normalized.includes("grand total") ||
-        normalized.includes("subtotal") ||
-        normalized.includes("summary")
-    );
+    // Filter out header-like values and totals
+    const noiseTerms = [
+        "total", "totals", "grand total", "subtotal", "summary",
+        "employee", "employee name", "name", "full name",
+        "header", "column", "n/a", "none", "blank", "null", "undefined"
+    ];
+    return noiseTerms.some(term => normalized === term || normalized === term.replace(/\s+/g, ""));
 }
 
 function formatDateInput(value) {

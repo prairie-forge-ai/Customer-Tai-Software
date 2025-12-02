@@ -739,8 +739,18 @@ PrairieForge.renderMismatchTiles = function({
         // Handle object items
         else if (typeof item === 'object') {
             name = item.name || item.employee || '';
-            sourceText = item.source || item.sourceText || '';
-            isMissingFromTarget = item.isMissingFromTarget ?? true;
+            
+            // Check for type field (from headcount analysis)
+            if (item.type === 'missing_from_payroll') {
+                sourceText = `In ${sourceLabel}, not in ${targetLabel}`;
+                isMissingFromTarget = true;
+            } else if (item.type === 'missing_from_roster') {
+                sourceText = `In ${targetLabel}, not in ${sourceLabel}`;
+                isMissingFromTarget = false;
+            } else {
+                sourceText = item.source || item.sourceText || item.message || '';
+                isMissingFromTarget = item.isMissingFromTarget ?? true;
+            }
         }
         else {
             return '';
