@@ -2965,7 +2965,7 @@ When asked about readiness, be specific about what passes and what needs attenti
             inputId: signoffInputId,
             fieldName: fields.signOff,
             completeField,
-            requireNotesCheck: stepId === 2 ? isHeadcountNotesRequired : null,
+            requireNotesCheck: null, // Notes no longer required for any step
             initialActive: Boolean(initialSignOff || initialCompleteFlag),
             stepId, // Pass stepId for sequential validation
             onComplete: getStepCompleteHandler(stepId)
@@ -3172,15 +3172,7 @@ function bindSignoffToggle({
             }
         }
         
-        // Check if notes are required (differences exist and skip not checked)
-        if (requireNotesCheck && requireNotesCheck()) {
-            // Notes are required - check if they've been entered
-            const notesValue = document.getElementById("step-notes-input")?.value.trim() || "";
-            if (!notesValue) {
-                showToast("⚠️ Please document the headcount differences before signing off (or click 'Skip Analysis').", "info");
-                return;
-            }
-        }
+        // Notes check removed - only sequential validation required
         const nextActive = !button.classList.contains("is-active");
         console.log(`[Signoff] ${buttonId} clicked, toggling to: ${nextActive}`);
         updateActionToggleState(button, nextActive);
@@ -6000,27 +5992,15 @@ function closeHeadcountModal() {
 function updateHeadcountSignoffState() {
     const button = document.getElementById("headcount-signoff-toggle");
     if (!button) return;
-    const notesRequired = isHeadcountNotesRequired();
-    const notesInput = document.getElementById("step-notes-input");
-    const notesValue = notesInput?.value.trim() || "";
-    const isBlocked = notesRequired && !notesValue;
     
-    // Don't disable the button - let the click handler show the message
-    // This improves UX by letting users know WHY they can't complete
+    // Notes are optional - no blocking conditions for headcount step
+    // Only sequential validation (Step 1 complete) is required
     button.disabled = false;
-    
-    // Add visual indicator that notes are required
-    button.classList.toggle("pf-needs-attention", isBlocked);
+    button.classList.remove("pf-needs-attention");
     
     const hint = document.getElementById("headcount-notes-hint");
     if (hint) {
-        hint.textContent = notesRequired
-            ? "⚠️ Notes required — document outstanding differences or click 'Skip Analysis'"
-            : "";
-        hint.style.color = notesRequired ? "#f59e0b" : "";
-    }
-    if (headcountState.skipAnalysis) {
-        enforceHeadcountSkipNote();
+        hint.textContent = "";
     }
 }
 
