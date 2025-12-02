@@ -5860,8 +5860,8 @@ function downloadFile(blob, filename) {
 
 /**
  * Step 2: Update PR_Archive_Summary
- * - Remove oldest period (if more than 5)
- * - Add current period summary from PR_Data_Clean
+ * - Copy all rows from PR_Data_Clean to PR_Archive_Summary
+ * - Remove oldest period's rows if more than 5 distinct periods exist
  */
 async function updateArchiveSummary() {
     await Excel.run(async (context) => {
@@ -5892,37 +5892,26 @@ async function updateArchiveSummary() {
             return;
         }
         
-        // Calculate current period summary
-        const cleanHeaders = (cleanRange.values[0] || []).map(h => String(h || "").toLowerCase().trim());
+        const cleanHeaders = cleanRange.values[0];
         const cleanData = cleanRange.values.slice(1);
+        const cleanHeadersLower = cleanHeaders.map(h => String(h || "").toLowerCase().trim());
         
-        // Find amount column
-        const amountIdx = cleanHeaders.findIndex(h => h.includes("amount"));
-        // Find employee column
-        const employeeIdx = cleanHeaders.findIndex(h => h.includes("employee"));
-        // Find payroll date column
-        const dateIdx = cleanHeaders.findIndex(h => 
-            h.includes("payroll") && h.includes("date") || h.includes("pay period") || h === "date"
+        console.log(`[Archive] PR_Data_Clean has ${cleanData.length} rows to archive`);
+        
+        // Find payroll date column in clean data
+        const cleanDateIdx = cleanHeadersLower.findIndex(h => 
+            (h.includes("payroll") && h.includes("date")) || h.includes("pay period") || h === "date"
         );
         
-        // Calculate totals
-        let totalAmount = 0;
-        const uniqueEmployees = new Set();
-        let periodDate = getPayrollDateValue() || "";
+        // Get current period date
+        const currentPeriodDate = getPayrollDateValue() || 
+            (cleanDateIdx >= 0 && cleanData[0] ? String(cleanData[0][cleanDateIdx]) : "");
         
-        cleanData.forEach(row => {
-            if (amountIdx >= 0) totalAmount += Number(row[amountIdx]) || 0;
-            if (employeeIdx >= 0 && row[employeeIdx]) uniqueEmployees.add(String(row[employeeIdx]).trim());
-            if (dateIdx >= 0 && row[dateIdx] && !periodDate) periodDate = String(row[dateIdx]);
-        });
+        console.log(`[Archive] Current period date: ${currentPeriodDate}`);
         
-        const employeeCount = uniqueEmployees.size;
-        
-        console.log(`[Archive] Current period: Date=${periodDate}, Total=${totalAmount}, Employees=${employeeCount}`);
-        
-        // Get archive summary data
+        // Get existing archive data
         const archiveRange = archiveSheet.getUsedRangeOrNullObject();
-        archiveRange.load("values,rowCount");
+        archiveRange.load("values,rowCount,columnCount");
         await context.sync();
         
         let archiveHeaders = [];
@@ -5933,58 +5922,105 @@ async function updateArchiveSummary() {
             archiveData = archiveRange.values.slice(1);
         }
         
-        // If no headers, create default structure
-        if (archiveHeaders.length === 0) {
-            archiveHeaders = ["Pay Period", "Total Payroll", "Employee Count", "Archived Date"];
-            archiveSheet.getRange("A1:D1").values = [archiveHeaders];
-            await context.sync();
-        }
-        
-        // Find column indices in archive
+        // If archive is empty or headers don't match, use clean headers
         const archiveHeadersLower = archiveHeaders.map(h => String(h || "").toLowerCase().trim());
-        const archiveDateIdx = archiveHeadersLower.findIndex(h => h.includes("pay period") || h.includes("period") || h === "date");
-        const archiveTotalIdx = archiveHeadersLower.findIndex(h => h.includes("total"));
-        const archiveCountIdx = archiveHeadersLower.findIndex(h => h.includes("employee") || h.includes("count"));
-        const archiveTimestampIdx = archiveHeadersLower.findIndex(h => h.includes("archived"));
+        const headersMatch = cleanHeadersLower.length === archiveHeadersLower.length &&
+            cleanHeadersLower.every((h, i) => h === archiveHeadersLower[i]);
         
-        // Create new row for current period
-        const newRow = new Array(archiveHeaders.length).fill("");
-        if (archiveDateIdx >= 0) newRow[archiveDateIdx] = periodDate;
-        if (archiveTotalIdx >= 0) newRow[archiveTotalIdx] = totalAmount;
-        if (archiveCountIdx >= 0) newRow[archiveCountIdx] = employeeCount;
-        if (archiveTimestampIdx >= 0) newRow[archiveTimestampIdx] = new Date().toISOString().split("T")[0];
-        
-        // Keep only 4 most recent periods (we're adding 1 new = 5 total)
-        // Sort by date descending, keep newest 4
-        if (archiveData.length >= 5) {
-            // Remove oldest row(s) to make room
-            const rowsToKeep = 4;
-            archiveData = archiveData.slice(0, rowsToKeep);
-            console.log(`[Archive] Trimmed archive to ${rowsToKeep} periods, adding current`);
-        }
-        
-        // Add new period at the top (most recent first)
-        archiveData.unshift(newRow);
-        
-        // Clear existing data and rewrite
-        const dataStartRow = 2; // Row 2 (after headers)
-        const dataEndRow = dataStartRow + 5; // Max 6 rows of data
-        
-        // Clear old data range
-        const clearRange = archiveSheet.getRange(`A${dataStartRow}:${String.fromCharCode(64 + archiveHeaders.length)}${dataEndRow}`);
-        clearRange.clear(Excel.ClearApplyTo.contents);
-        await context.sync();
-        
-        // Write new data
-        if (archiveData.length > 0) {
-            const writeRange = archiveSheet.getRange(
-                `A${dataStartRow}:${String.fromCharCode(64 + archiveHeaders.length)}${dataStartRow + archiveData.length - 1}`
-            );
-            writeRange.values = archiveData;
+        if (archiveHeaders.length === 0 || !headersMatch) {
+            console.log("[Archive] Setting archive headers to match PR_Data_Clean");
+            archiveHeaders = cleanHeaders;
+            archiveData = [];
+            
+            // Write headers
+            const headerRange = archiveSheet.getRangeByIndexes(0, 0, 1, cleanHeaders.length);
+            headerRange.values = [cleanHeaders];
             await context.sync();
         }
         
-        console.log(`[Archive] Archive summary updated with ${archiveData.length} periods`);
+        // Find date column in archive
+        const archiveDateIdx = archiveHeadersLower.findIndex(h => 
+            (h.includes("payroll") && h.includes("date")) || h.includes("pay period") || h === "date"
+        );
+        
+        // Group existing archive data by period date
+        const periodMap = new Map();
+        archiveData.forEach(row => {
+            const periodDate = archiveDateIdx >= 0 ? String(row[archiveDateIdx] || "").trim() : "";
+            if (periodDate) {
+                if (!periodMap.has(periodDate)) {
+                    periodMap.set(periodDate, []);
+                }
+                periodMap.get(periodDate).push(row);
+            }
+        });
+        
+        console.log(`[Archive] Found ${periodMap.size} existing periods in archive`);
+        
+        // Remove current period if it exists (we're replacing it)
+        if (currentPeriodDate && periodMap.has(currentPeriodDate)) {
+            console.log(`[Archive] Removing existing data for period: ${currentPeriodDate}`);
+            periodMap.delete(currentPeriodDate);
+        }
+        
+        // Add current period data
+        periodMap.set(currentPeriodDate || `period_${Date.now()}`, cleanData);
+        
+        // If more than 5 periods, remove oldest
+        const MAX_PERIODS = 5;
+        if (periodMap.size > MAX_PERIODS) {
+            // Sort periods by date (oldest first) and remove oldest
+            const sortedPeriods = Array.from(periodMap.keys()).sort((a, b) => {
+                // Parse dates for comparison
+                const dateA = new Date(a);
+                const dateB = new Date(b);
+                if (!isNaN(dateA) && !isNaN(dateB)) {
+                    return dateA - dateB;
+                }
+                return a.localeCompare(b);
+            });
+            
+            const periodsToRemove = sortedPeriods.slice(0, periodMap.size - MAX_PERIODS);
+            periodsToRemove.forEach(period => {
+                console.log(`[Archive] Removing oldest period: ${period}`);
+                periodMap.delete(period);
+            });
+        }
+        
+        // Flatten all periods back into rows (newest periods first)
+        const sortedPeriods = Array.from(periodMap.keys()).sort((a, b) => {
+            const dateA = new Date(a);
+            const dateB = new Date(b);
+            if (!isNaN(dateA) && !isNaN(dateB)) {
+                return dateB - dateA; // Descending (newest first)
+            }
+            return b.localeCompare(a);
+        });
+        
+        const allArchiveRows = [];
+        sortedPeriods.forEach(period => {
+            const rows = periodMap.get(period);
+            allArchiveRows.push(...rows);
+        });
+        
+        console.log(`[Archive] Total rows to write: ${allArchiveRows.length} across ${periodMap.size} periods`);
+        
+        // Clear existing data (keep headers)
+        if (!archiveRange.isNullObject && archiveRange.rowCount > 1) {
+            const clearRange = archiveSheet.getRangeByIndexes(1, 0, archiveRange.rowCount - 1, archiveHeaders.length);
+            clearRange.clear(Excel.ClearApplyTo.contents);
+            await context.sync();
+        }
+        
+        // Write all archive data
+        if (allArchiveRows.length > 0) {
+            const writeRange = archiveSheet.getRangeByIndexes(1, 0, allArchiveRows.length, archiveHeaders.length);
+            writeRange.values = allArchiveRows;
+            await context.sync();
+        }
+        
+        console.log(`[Archive] Archive summary updated: ${allArchiveRows.length} rows, ${periodMap.size} periods`);
+        showToast(`Archive updated with ${allArchiveRows.length} rows across ${periodMap.size} periods`, "success", 4000);
     });
 }
 
