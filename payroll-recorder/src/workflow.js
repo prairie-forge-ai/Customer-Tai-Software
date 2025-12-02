@@ -6094,7 +6094,30 @@ function advanceToNextStep(currentStepId) {
     const nextIndex = currentIndex + 1;
     if (nextIndex < WORKFLOW_STEPS.length) {
         focusStep(nextIndex);
+        // Scroll side panel to top
+        scrollPanelToTop();
     }
+}
+
+/**
+ * Scroll the side panel to the top
+ */
+function scrollPanelToTop() {
+    // Try multiple selectors for the scrollable container
+    const containers = [
+        document.querySelector('.pf-root'),
+        document.querySelector('.pf-step-guide'),
+        document.body
+    ];
+    
+    for (const container of containers) {
+        if (container) {
+            container.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+    
+    // Also scroll window
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // Legacy handlers (kept for backwards compatibility)

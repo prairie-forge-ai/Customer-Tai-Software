@@ -411,7 +411,7 @@ const STEP_SHEET_MAP = {
 // Reverse map: sheet name → step ID (for tab-to-panel sync)
 const SHEET_TO_STEP_MAP = {
     "PTO_Homepage": 0,         // Homepage → Configuration
-    "PTO_Data": 1,             // PTO_Data → Import
+    "PTO_Data": 1,             // PTO_Data → Import (also used for Headcount)
     "PTO_Analysis": 4,         // PTO_Analysis → Accrual Review
     "PTO_JE_Draft": 5,         // PTO_JE_Draft → Journal Entry
     "PTO_Archive_Summary": 6,  // Archive → Archive step
@@ -1513,7 +1513,7 @@ function bindStepView(stepId) {
                       return false;
                   }
                 : null,
-        onComplete: stepId === 2 ? handleHeadcountSignoff : null
+        onComplete: getStepCompleteHandler(stepId)
     });
     backBtn?.addEventListener("click", async () => {
         const homepageConfig = getHomepageConfig(MODULE_KEY);
@@ -1679,7 +1679,11 @@ function bindConfigView() {
     bindSignoffToggle(0, {
         buttonId: "config-signoff-toggle",
         inputId: "config-signoff-date",
-        onComplete: persistConfigBasics
+        onComplete: () => {
+            persistConfigBasics();
+            advanceToNextStep(0);
+            scrollPanelToTop();
+        }
     });
 }
 
@@ -1701,6 +1705,55 @@ function focusStep(index, stepId = null) {
         void syncPtoAnalysis();
         refreshHeadcountAnalysis();
     }
+}
+
+/**
+ * Get the completion handler for a step
+ * All steps (0-5) advance to the next step when completed
+ * Step 6 (Archive) has its own special flow
+ */
+function getStepCompleteHandler(stepId) {
+    // Step 6 is handled separately with archive flow
+    if (stepId === 6) return null;
+    
+    // All other steps advance to the next step
+    return () => advanceToNextStep(stepId);
+}
+
+/**
+ * Advance to the next step after completing the current one
+ */
+function advanceToNextStep(currentStepId) {
+    const currentIndex = WORKFLOW_STEPS.findIndex((step) => step.id === currentStepId);
+    if (currentIndex === -1) return;
+    
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < WORKFLOW_STEPS.length) {
+        focusStep(nextIndex, WORKFLOW_STEPS[nextIndex].id);
+        // Scroll side panel to top
+        scrollPanelToTop();
+    }
+}
+
+/**
+ * Scroll the side panel to the top
+ */
+function scrollPanelToTop() {
+    // Try multiple selectors for the scrollable container
+    const containers = [
+        document.querySelector('.pf-root'),
+        document.querySelector('.pf-step-guide'),
+        document.body
+    ];
+    
+    for (const container of containers) {
+        if (container) {
+            container.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+    
+    // Also scroll window
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function moveFocus(delta) {
@@ -2817,11 +2870,203 @@ async function archiveAndReset() {
                 6: "complete"
             }
         });
+        
+        // Show celebratory toast and return to home
+        showArchiveSuccessToast();
     } catch (error) {
         console.error(error);
+        showToast("Archive failed: " + error.message, "error");
     } finally {
         toggleLoader(false);
     }
+}
+
+/**
+ * Show celebratory archive success toast with rotating messages
+ * Displays for 3 seconds then redirects to homepage
+ */
+function showArchiveSuccessToast() {
+    // Remove existing toasts
+    document.querySelectorAll(".pf-toast, .pf-success-toast").forEach(t => t.remove());
+    
+    // Lucide icon SVGs with Prairie Forge purple
+    const messages = [
+        {
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>`,
+            title: "Done.",
+            subtitle: "Efficiency unlocked."
+        },
+        {
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+            title: "Locked in.",
+            subtitle: "You're good to go."
+        },
+        {
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z"/><path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5Z"/></svg>`,
+            title: "Stored.",
+            subtitle: "Everything stays aligned."
+        },
+        {
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
+            title: "PTO archived.",
+            subtitle: "Flow restored."
+        }
+    ];
+    
+    // Pick a random message
+    const msg = messages[Math.floor(Math.random() * messages.length)];
+    
+    const toast = document.createElement("div");
+    toast.className = "pf-success-toast";
+    toast.innerHTML = `
+        <div class="pf-success-toast-icon">${msg.icon}</div>
+        <div class="pf-success-toast-text">
+            <div class="pf-success-toast-title">${msg.title}</div>
+            <div class="pf-success-toast-subtitle">${msg.subtitle}</div>
+        </div>
+        <div class="pf-success-toast-progress"></div>
+    `;
+    
+    // Add styles if not already present
+    if (!document.getElementById("pf-success-toast-styles")) {
+        const style = document.createElement("style");
+        style.id = "pf-success-toast-styles";
+        style.textContent = `
+            .pf-success-toast {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(145deg, rgba(30, 30, 50, 0.98), rgba(20, 20, 35, 0.99));
+                border: 1px solid rgba(99, 102, 241, 0.3);
+                color: white;
+                padding: 32px 48px;
+                border-radius: 24px;
+                box-shadow: 
+                    0 32px 64px rgba(0, 0, 0, 0.5),
+                    0 0 0 1px rgba(99, 102, 241, 0.2) inset,
+                    0 0 80px rgba(99, 102, 241, 0.15);
+                z-index: 10002;
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                animation: pf-success-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                overflow: hidden;
+            }
+            @keyframes pf-success-in {
+                from { 
+                    opacity: 0; 
+                    transform: translate(-50%, -50%) scale(0.9);
+                }
+                to { 
+                    opacity: 1; 
+                    transform: translate(-50%, -50%) scale(1);
+                }
+            }
+            @keyframes pf-success-out {
+                from { 
+                    opacity: 1; 
+                    transform: translate(-50%, -50%) scale(1);
+                }
+                to { 
+                    opacity: 0; 
+                    transform: translate(-50%, -50%) scale(0.95) translateY(-20px);
+                }
+            }
+            .pf-success-toast-icon {
+                width: 56px;
+                height: 56px;
+                background: linear-gradient(145deg, #6366f1, #4f46e5);
+                border-radius: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+                animation: pf-icon-pulse 2s ease-in-out infinite;
+            }
+            @keyframes pf-icon-pulse {
+                0%, 100% { box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4); }
+                50% { box-shadow: 0 8px 32px rgba(99, 102, 241, 0.6); }
+            }
+            .pf-success-toast-text {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .pf-success-toast-title {
+                font-size: 22px;
+                font-weight: 700;
+                color: #fff;
+                letter-spacing: -0.5px;
+            }
+            .pf-success-toast-subtitle {
+                font-size: 15px;
+                color: rgba(255, 255, 255, 0.6);
+                font-weight: 500;
+            }
+            .pf-success-toast-progress {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                height: 3px;
+                background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1);
+                background-size: 200% 100%;
+                animation: pf-progress-shrink 3s linear forwards, pf-progress-shimmer 1s linear infinite;
+                border-radius: 0 0 24px 24px;
+            }
+            @keyframes pf-progress-shrink {
+                from { width: 100%; }
+                to { width: 0%; }
+            }
+            @keyframes pf-progress-shimmer {
+                from { background-position: 200% 0; }
+                to { background-position: -200% 0; }
+            }
+            .pf-success-toast.closing {
+                animation: pf-success-out 0.3s ease forwards;
+            }
+            .pf-success-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.4);
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                z-index: 10001;
+                animation: pf-confirm-fade-in 0.2s ease;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Add backdrop
+    const backdrop = document.createElement("div");
+    backdrop.className = "pf-success-backdrop";
+    document.body.appendChild(backdrop);
+    document.body.appendChild(toast);
+    
+    // After 3 seconds, close and redirect
+    setTimeout(() => {
+        toast.classList.add("closing");
+        backdrop.style.opacity = "0";
+        backdrop.style.transition = "opacity 0.3s ease";
+        
+        setTimeout(() => {
+            toast.remove();
+            backdrop.remove();
+            // Return to homepage
+            returnHome();
+        }, 300);
+    }, 3000);
+}
+
+/**
+ * Return to the module homepage
+ */
+async function returnHome() {
+    const homepageConfig = getHomepageConfig(MODULE_KEY);
+    await activateHomepageSheet(homepageConfig.sheetName, homepageConfig.title, homepageConfig.subtitle);
+    setState({ activeView: "home", activeStepId: null });
 }
 
 async function openSheet(sheetName) {
