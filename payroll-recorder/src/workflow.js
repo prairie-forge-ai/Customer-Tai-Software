@@ -3172,9 +3172,14 @@ function bindSignoffToggle({
             }
         }
         
-        if (requireNotesCheck && !requireNotesCheck()) {
-            showToast("Please add notes before completing this step.", "info");
-            return;
+        // Check if notes are required (differences exist and skip not checked)
+        if (requireNotesCheck && requireNotesCheck()) {
+            // Notes are required - check if they've been entered
+            const notesValue = document.getElementById("step-notes-input")?.value.trim() || "";
+            if (!notesValue) {
+                showToast("⚠️ Please document the headcount differences before signing off (or click 'Skip Analysis').", "info");
+                return;
+            }
         }
         const nextActive = !button.classList.contains("is-active");
         console.log(`[Signoff] ${buttonId} clicked, toggling to: ${nextActive}`);
@@ -5998,12 +6003,21 @@ function updateHeadcountSignoffState() {
     const notesRequired = isHeadcountNotesRequired();
     const notesInput = document.getElementById("step-notes-input");
     const notesValue = notesInput?.value.trim() || "";
-    button.disabled = notesRequired && !notesValue;
+    const isBlocked = notesRequired && !notesValue;
+    
+    // Don't disable the button - let the click handler show the message
+    // This improves UX by letting users know WHY they can't complete
+    button.disabled = false;
+    
+    // Add visual indicator that notes are required
+    button.classList.toggle("pf-needs-attention", isBlocked);
+    
     const hint = document.getElementById("headcount-notes-hint");
     if (hint) {
         hint.textContent = notesRequired
-            ? "Please document outstanding differences before signing off."
+            ? "⚠️ Notes required — document outstanding differences or click 'Skip Analysis'"
             : "";
+        hint.style.color = notesRequired ? "#f59e0b" : "";
     }
     if (headcountState.skipAnalysis) {
         enforceHeadcountSkipNote();
