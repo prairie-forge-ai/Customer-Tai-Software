@@ -3,6 +3,7 @@ import { applyModuleTabVisibility, showAllSheets } from "../../Common/tab-visibi
 import { renderCopilotCard, bindCopilotCard, createExcelContextProvider } from "../../Common/copilot.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab, removeAdaFab } from "../../Common/homepage-sheet.js";
 import { initDatePicker } from "../../Common/date-picker.js";
+import * as XLSX from "xlsx";
 import {
     HOME_ICON_SVG,
     MODULES_ICON_SVG,
@@ -5557,16 +5558,16 @@ async function handleArchiveRun() {
 }
 
 /**
- * Step 1: Export payroll data to CSV files for archiving
- * Downloads a CSV file containing all key payroll data
+ * Step 1: Export payroll data to Excel file for archiving
+ * Downloads a proper .xlsx file with all sheets
  */
 async function createArchiveWorkbook() {
     try {
         // Get current payroll date for filename
         const payrollDate = getPayrollDateValue() || new Date().toISOString().split("T")[0];
-        const baseFilename = `Payroll_Archive_${payrollDate}`;
+        const filename = `Payroll_Archive_${payrollDate}.xlsx`;
         
-        console.log("[Archive] Exporting payroll data to CSV...");
+        console.log("[Archive] Creating Excel archive file...");
         
         return await Excel.run(async (context) => {
             const workbook = context.workbook;
@@ -5574,20 +5575,22 @@ async function createArchiveWorkbook() {
             sourceSheets.load("items/name");
             await context.sync();
             
-            // Sheets to archive (in order of importance)
+            // Sheets to archive (in order they'll appear in the file)
             const sheetsToArchive = [
-                { name: SHEET_NAMES.JE_DRAFT, label: "Journal Entry" },
-                { name: SHEET_NAMES.DATA_CLEAN, label: "Payroll Detail" },
-                { name: SHEET_NAMES.DATA, label: "Raw Import" }
+                SHEET_NAMES.JE_DRAFT,
+                SHEET_NAMES.DATA_CLEAN,
+                SHEET_NAMES.DATA,
+                SHEET_NAMES.EXPENSE_REVIEW
             ];
             
-            // Collect all data
-            const allData = [];
+            // Create new workbook using SheetJS
+            const newWorkbook = XLSX.utils.book_new();
+            let sheetsAdded = 0;
             
-            for (const sheet of sheetsToArchive) {
-                const sourceSheet = sourceSheets.items.find(s => s.name === sheet.name);
+            for (const sheetName of sheetsToArchive) {
+                const sourceSheet = sourceSheets.items.find(s => s.name === sheetName);
                 if (!sourceSheet) {
-                    console.log(`[Archive] Sheet not found: ${sheet.name}`);
+                    console.log(`[Archive] Sheet not found: ${sheetName}`);
                     continue;
                 }
                 
@@ -5596,33 +5599,34 @@ async function createArchiveWorkbook() {
                 await context.sync();
                 
                 if (!usedRange.isNullObject && usedRange.values && usedRange.values.length > 0) {
-                    allData.push({
-                        sheetName: sheet.name,
-                        label: sheet.label,
-                        values: usedRange.values
-                    });
-                    console.log(`[Archive] Collected: ${sheet.name} (${usedRange.values.length} rows)`);
+                    // Convert to SheetJS worksheet
+                    const worksheet = XLSX.utils.aoa_to_sheet(usedRange.values);
+                    
+                    // Add to workbook
+                    XLSX.utils.book_append_sheet(newWorkbook, worksheet, sheetName);
+                    sheetsAdded++;
+                    console.log(`[Archive] Added sheet: ${sheetName} (${usedRange.values.length} rows)`);
                 }
             }
             
-            if (allData.length === 0) {
+            if (sheetsAdded === 0) {
                 window.alert("No data to archive. Please complete the payroll workflow first.");
                 return false;
             }
             
-            // Download each sheet as separate CSV
-            for (const data of allData) {
-                const csv = convertToCSV(data.values);
-                const filename = `${baseFilename}_${data.sheetName}.csv`;
-                downloadCSV(csv, filename);
-                console.log(`[Archive] Downloaded: ${filename}`);
-            }
+            // Generate Excel file and download
+            const excelBuffer = XLSX.write(newWorkbook, { bookType: "xlsx", type: "array" });
+            const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            
+            downloadFile(blob, filename);
+            
+            console.log(`[Archive] Downloaded: ${filename} with ${sheetsAdded} sheets`);
             
             window.alert(
-                `📥 Archive Files Downloaded!\n\n` +
-                `${allData.length} CSV file(s) have been downloaded:\n\n` +
-                allData.map(d => `• ${baseFilename}_${d.sheetName}.csv`).join("\n") +
-                `\n\nPlease save these files to your archive folder.\n\n` +
+                `📥 Archive Downloaded!\n\n` +
+                `File: ${filename}\n` +
+                `Sheets: ${sheetsAdded}\n\n` +
+                `Please save this file to your archive folder.\n\n` +
                 `Click OK to continue clearing this workbook for the next period.`
             );
             
@@ -5630,7 +5634,7 @@ async function createArchiveWorkbook() {
         });
         
     } catch (error) {
-        console.error("[Archive] Error exporting archive:", error);
+        console.error("[Archive] Error creating archive:", error);
         window.alert(
             "Archive Export Error\n\n" +
             error.message + "\n\n" +
@@ -5646,32 +5650,9 @@ async function createArchiveWorkbook() {
 }
 
 /**
- * Convert 2D array to CSV string
+ * Trigger browser download of a file
  */
-function convertToCSV(data) {
-    return data.map(row => 
-        row.map(cell => {
-            // Handle null/undefined
-            if (cell == null) return "";
-            
-            // Convert to string
-            let str = String(cell);
-            
-            // Escape quotes and wrap in quotes if contains comma, quote, or newline
-            if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-                str = '"' + str.replace(/"/g, '""') + '"';
-            }
-            
-            return str;
-        }).join(",")
-    ).join("\n");
-}
-
-/**
- * Trigger browser download of CSV file
- */
-function downloadCSV(csvContent, filename) {
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+function downloadFile(blob, filename) {
     const url = URL.createObjectURL(blob);
     
     const link = document.createElement("a");

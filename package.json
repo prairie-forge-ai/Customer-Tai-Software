@@ -13,5 +13,8 @@
     "esbuild": "^0.27.0",
     "eslint": "^9.39.1",
     "globals": "^16.1.0"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
   }
 }
