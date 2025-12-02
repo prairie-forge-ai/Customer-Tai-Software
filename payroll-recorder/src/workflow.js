@@ -1716,7 +1716,7 @@ function renderArchiveStep(detail) {
                 </div>
                 ${!allComplete ? `<p class="pf-step-note pf-step-note--info">⚠️ Complete all ${incompleteCount} remaining step(s) before archiving.</p>` : ""}
                 <div class="pf-pill-row pf-config-actions">
-                    <button type="button" class="pf-pill-btn" id="archive-run-btn" ${allComplete ? "" : "disabled"}>Archive</button>
+                    <button type="button" class="pf-pill-btn" id="archive-run-btn" ${allComplete ? "" : "disabled"} onclick="window.handleArchiveClick()">Archive</button>
                 </div>
             </article>
         </section>
@@ -2236,6 +2236,11 @@ function bindConfigInteractions() {
 }
 
 function bindStepInteractions(stepId) {
+    // Debug: Log which step is being bound
+    if (stepId === 6) {
+        console.log("[Archive DEBUG] bindStepInteractions called for step 6");
+    }
+    
     document.getElementById("step-back-btn")?.addEventListener("click", () => {
         returnHome();
     });
@@ -5467,6 +5472,16 @@ function handleExpenseReviewComplete() {
  * 4. Clear non-permanent step notes
  * 5. Reset non-permanent config values
  */
+// Global handler for archive button (inline onclick)
+window.handleArchiveClick = async function() {
+    window.alert("Archive button clicked!");
+    try {
+        await handleArchiveRun();
+    } catch (error) {
+        window.alert("Archive failed: " + error.message);
+    }
+};
+
 async function handleArchiveRun() {
     console.log("[Archive] handleArchiveRun called");
     
