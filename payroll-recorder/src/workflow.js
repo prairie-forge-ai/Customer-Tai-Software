@@ -275,15 +275,19 @@ async function runPayrollCompletenessCheck() {
                         console.log("Completeness Check - Looking for periods:", historicalPeriods.map(p => p.key || p.label));
                         
                         // Build a lookup map from archive: normalize dates to YYYY-MM-DD for matching
+                        // SUM all rows for each date (archive may have multiple rows per pay period)
                         const archiveLookup = new Map();
                         for (const row of dataRows) {
                             const rawDate = row[dateIdx];
                             const normalizedKey = normalizeDateForLookup(rawDate);
                             if (normalizedKey) {
-                                archiveLookup.set(normalizedKey, Number(row[totalIdx]) || 0);
+                                const amount = Number(row[totalIdx]) || 0;
+                                const existing = archiveLookup.get(normalizedKey) || 0;
+                                archiveLookup.set(normalizedKey, existing + amount);
                             }
                         }
                         console.log("Completeness Check - Archive lookup keys:", Array.from(archiveLookup.keys()));
+                        console.log("Completeness Check - Archive lookup values:", Array.from(archiveLookup.entries()));
                         
                         // Match each historical period against archive
                         let archiveSum = 0;
