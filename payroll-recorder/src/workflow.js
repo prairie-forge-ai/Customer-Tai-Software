@@ -2051,7 +2051,8 @@ function bindConfigInteractions() {
     const payrollInput = document.getElementById("config-payroll-date");
     payrollInput?.addEventListener("change", (event) => {
         const value = event.target.value || "";
-        scheduleConfigWrite(resolvePayrollDateFieldName(), value);
+        // Always use the primary field name to avoid duplicate rows
+        scheduleConfigWrite("PR_Payroll_Date", value);
         if (!value) return;
         if (!configState.overrides.accountingPeriod) {
             const derivedPeriod = deriveAccountingPeriod(value);
@@ -2826,13 +2827,24 @@ function formatDateInput(value) {
 function deriveAccountingPeriod(payrollDate) {
     const parts = parseDateInput(payrollDate);
     if (!parts) return "";
+    // Validate year is reasonable (1900-2100)
+    if (parts.year < 1900 || parts.year > 2100) {
+        console.warn("deriveAccountingPeriod - Invalid year:", parts.year, "from input:", payrollDate);
+        return "";
+    }
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    // Format: "Dec 2025" - use full 4-digit year to prevent Excel date interpretation
     return `${monthNames[parts.month - 1]} ${parts.year}`;
 }
 
 function deriveJeId(payrollDate) {
     const parts = parseDateInput(payrollDate);
     if (!parts) return "";
+    // Validate year is reasonable (1900-2100)
+    if (parts.year < 1900 || parts.year > 2100) {
+        console.warn("deriveJeId - Invalid year:", parts.year, "from input:", payrollDate);
+        return "";
+    }
     return `PR-AUTO-${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
 }
 
@@ -2887,12 +2899,17 @@ async function writeConfigValue(fieldName, value) {
             const columnCount = headers.length;
             console.log(`[Payroll] Table has ${rows.length} rows, ${columnCount} columns`);
 
-            const targetIndex = rows.findIndex(
-                (row) => normalizeFieldName(row[CONFIG_COLUMNS.FIELD]) === normalizedField
-            );
-            if (targetIndex === -1) {
+            // Find ALL matching rows (to handle duplicates)
+            const matchingIndices = [];
+            rows.forEach((row, idx) => {
+                if (normalizeFieldName(row[CONFIG_COLUMNS.FIELD]) === normalizedField) {
+                    matchingIndices.push(idx);
+                }
+            });
+
+            if (matchingIndices.length === 0) {
+                // No existing row - add new one
                 configState.permanents[normalizedField] = configState.permanents[normalizedField] ?? DEFAULT_CONFIG_PERMANENT;
-                // Build row with correct number of columns for SS_PF_Config (Category, Field, Value, Permanent)
                 const newRow = new Array(columnCount).fill("");
                 if (CONFIG_COLUMNS.TYPE >= 0 && CONFIG_COLUMNS.TYPE < columnCount) newRow[CONFIG_COLUMNS.TYPE] = DEFAULT_CONFIG_TYPE;
                 if (CONFIG_COLUMNS.FIELD >= 0 && CONFIG_COLUMNS.FIELD < columnCount) newRow[CONFIG_COLUMNS.FIELD] = normalizedField;
@@ -2903,10 +2920,27 @@ async function writeConfigValue(fieldName, value) {
                 await context.sync();
                 console.log(`[Payroll] ✓ New row added for ${normalizedField}`);
             } else {
+                // Update the first matching row
+                const targetIndex = matchingIndices[0];
                 console.log(`[Payroll] Updating existing row ${targetIndex} for ${normalizedField}`);
                 body.getCell(targetIndex, CONFIG_COLUMNS.VALUE).values = [[value ?? ""]];
                 await context.sync();
                 console.log(`[Payroll] ✓ Updated ${normalizedField}`);
+
+                // Delete duplicate rows (in reverse order to maintain indices)
+                if (matchingIndices.length > 1) {
+                    console.log(`[Payroll] Found ${matchingIndices.length - 1} duplicate rows for ${normalizedField}, removing...`);
+                    const duplicateIndices = matchingIndices.slice(1).reverse();
+                    for (const dupIdx of duplicateIndices) {
+                        try {
+                            table.rows.getItemAt(dupIdx).delete();
+                        } catch (e) {
+                            console.warn(`[Payroll] Could not delete duplicate row ${dupIdx}:`, e.message);
+                        }
+                    }
+                    await context.sync();
+                    console.log(`[Payroll] ✓ Removed duplicate rows for ${normalizedField}`);
+                }
             }
         });
     } catch (error) {
