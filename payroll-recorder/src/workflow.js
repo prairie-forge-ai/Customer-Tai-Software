@@ -172,6 +172,7 @@ const journalState = {
     debitTotal: null,
     creditTotal: null,
     difference: null,
+    cleanTotal: null, // PR_Data_Clean total for comparison
     loading: false,
     lastError: null
 };
@@ -1560,13 +1561,16 @@ function renderJournalStep(detail) {
     const debitTotal = journalState.debitTotal ?? 0;
     const creditTotal = journalState.creditTotal ?? 0;
     const lineAmount = debitTotal - creditTotal;
-    const cleanTotal = validationState.cleanTotal ?? 0;
+    // Use journalState.cleanTotal (read directly from PR_Data_Clean) instead of validationState
+    const cleanTotal = journalState.cleanTotal ?? 0;
+    const hasCleanTotal = journalState.cleanTotal !== null;
     
     // Line Amount check: Debit - Credit should make sense
     const lineAmountValid = hasRun; // Always valid if we have data
     
-    // Total matches PR_Data_Clean
-    const totalMatchesClean = hasRun && Math.abs(lineAmount - cleanTotal) < 0.01;
+    // Total matches PR_Data_Clean - compare line amount (debit - credit) to clean total
+    // Show as pending if we haven't read the clean total yet
+    const totalMatchesClean = hasRun && hasCleanTotal && Math.abs(lineAmount - cleanTotal) < 0.01;
     
     // Build validation check rows
     const renderCheckRow = (desc, passed) => {
@@ -1596,13 +1600,17 @@ function renderJournalStep(detail) {
     const debitDisplay = hasRun ? formatCurrency(debitTotal) : "—";
     const creditDisplay = hasRun ? formatCurrency(creditTotal) : "—";
     const lineAmountDisplay = hasRun ? formatCurrency(lineAmount) : "—";
-    const cleanDisplay = hasRun ? formatCurrency(cleanTotal) : "—";
+    const cleanDisplay = hasCleanTotal ? formatCurrency(cleanTotal) : "—";
     
+    // Show difference if they don't match
+    const diffAmount = hasCleanTotal ? Math.abs(lineAmount - cleanTotal) : 0;
+    const diffDisplay = diffAmount >= 0.01 ? ` (diff: ${formatCurrency(diffAmount)})` : "";
+
     const checksHtml = `
         ${renderCheckRow(`Total Debits = ${debitDisplay}`, lineAmountValid)}
         ${renderCheckRow(`Total Credits = ${creditDisplay}`, lineAmountValid)}
         ${renderCheckRow(`Line Amount (Debit - Credit) = ${lineAmountDisplay}`, lineAmountValid)}
-        ${renderCheckRow(`JE Total matches PR_Data_Clean (${cleanDisplay})`, totalMatchesClean)}
+        ${renderCheckRow(`JE Total matches PR_Data_Clean (${cleanDisplay})${diffDisplay}`, totalMatchesClean)}
     `;
 
     return `
@@ -5910,11 +5918,14 @@ async function runJournalSummary() {
     renderApp();
     try {
         const totals = await Excel.run(async (context) => {
-            const sheet = context.workbook.worksheets.getItem(SHEET_NAMES.JE_DRAFT);
-            const range = sheet.getUsedRangeOrNullObject();
-            range.load("values");
+            const jeSheet = context.workbook.worksheets.getItem(SHEET_NAMES.JE_DRAFT);
+            const cleanSheet = context.workbook.worksheets.getItemOrNullObject(SHEET_NAMES.DATA_CLEAN);
+            const jeRange = jeSheet.getUsedRangeOrNullObject();
+            jeRange.load("values");
+            cleanSheet.load("name");
             await context.sync();
-            const values = range.isNullObject ? [] : range.values || [];
+            
+            const values = jeRange.isNullObject ? [] : jeRange.values || [];
             if (!values.length) {
                 throw new Error(`${SHEET_NAMES.JE_DRAFT} is empty.`);
             }
@@ -5930,7 +5941,27 @@ async function runJournalSummary() {
                 debitTotal += Number(row[debitIdx]) || 0;
                 creditTotal += Number(row[creditIdx]) || 0;
             });
-            return { debitTotal, creditTotal, difference: creditTotal - debitTotal };
+            
+            // Also read PR_Data_Clean total for comparison
+            let cleanTotal = 0;
+            if (!cleanSheet.isNullObject) {
+                const cleanRange = cleanSheet.getUsedRangeOrNullObject();
+                cleanRange.load("values");
+                await context.sync();
+                
+                if (!cleanRange.isNullObject && cleanRange.values && cleanRange.values.length > 1) {
+                    const cleanHeaders = (cleanRange.values[0] || []).map(h => normalizeHeader(h));
+                    const amountIdx = cleanHeaders.findIndex(h => h.includes("amount"));
+                    
+                    if (amountIdx >= 0) {
+                        cleanRange.values.slice(1).forEach(row => {
+                            cleanTotal += Number(row[amountIdx]) || 0;
+                        });
+                    }
+                }
+            }
+            
+            return { debitTotal, creditTotal, difference: creditTotal - debitTotal, cleanTotal };
         });
         Object.assign(journalState, totals, { lastError: null });
     } catch (error) {
@@ -5939,6 +5970,7 @@ async function runJournalSummary() {
         journalState.debitTotal = null;
         journalState.creditTotal = null;
         journalState.difference = null;
+        journalState.cleanTotal = null;
     } finally {
         journalState.loading = false;
         renderApp();
@@ -6189,10 +6221,17 @@ async function createJournalDraft() {
             jeSheet.getRange("A1").select();
             await context.sync();
             
+            // Calculate PR_Data_Clean total for comparison
+            let cleanTotal = 0;
+            for (let i = 1; i < cleanValues.length; i++) {
+                cleanTotal += Number(cleanValues[i][colIdx.amount]) || 0;
+            }
+            
             // Update journal state with totals
             journalState.debitTotal = totalDebit;
             journalState.creditTotal = totalCredit;
             journalState.difference = totalCredit - totalDebit;
+            journalState.cleanTotal = cleanTotal;
         });
         
         journalState.loading = false;
