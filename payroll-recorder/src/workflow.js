@@ -1,5 +1,5 @@
 import { VERSION, WORKFLOW_STEPS as STEP_DETAILS, SHEET_NAMES } from "./constants.js";
-import { applyModuleTabVisibility, hideSystemSheets } from "../../Common/tab-visibility.js";
+import { applyModuleTabVisibility, showAllSheets } from "../../Common/tab-visibility.js";
 import { renderCopilotCard, bindCopilotCard, createExcelContextProvider } from "../../Common/copilot.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab, removeAdaFab } from "../../Common/homepage-sheet.js";
 import {
@@ -45,42 +45,42 @@ const HERO_COPY =
 
 const WORKFLOW_STEPS = STEP_DETAILS.map(({ id, title }) => ({ id, title }));
 
-// SS_PF_Config structure: Category (0), Field (1), Value (2), Value2 (3), Other/Permanent (4)
-// For Tab Structure rows: Field=Module Name, Value=Tab Name, Value2=Module Key
-// For Config rows: Field=Setting Name, Value=Setting Value, Other=Permanent flag
+// SS_PF_Config structure: Category (0), Field (1), Value (2), Permanent (3)
+// For module-prefix rows: Field=Prefix (e.g., "PR_"), Value=Module Key (e.g., "payroll-recorder")
+// For Config rows: Field=Setting Name, Value=Setting Value, Permanent=Y/N flag
 const CONFIG_COLUMNS = {
     TYPE: 0,      // Category column (A)
     FIELD: 1,     // Field name column (B)
     VALUE: 2,     // Value column (C)
-    VALUE2: 3,    // Value2 column (D) - used for module key in tab structure
-    PERMANENT: 4, // Permanent/Other column (E) - Y/N flag for archive persistence
+    PERMANENT: 3, // Permanent column (D) - Y/N flag for archive persistence
     TITLE: -1     // Not used
 };
 const DEFAULT_CONFIG_TYPE = "Run Settings";
 const DEFAULT_CONFIG_TITLE = "";
 const DEFAULT_CONFIG_PERMANENT = "N";
 const NOTE_PLACEHOLDER = "Enter notes here...";
-const JE_TOTAL_DEBIT_FIELD = "PR_JE_Total_Debit";
-const JE_TOTAL_CREDIT_FIELD = "PR_JE_Total_Credit";
+const JE_TOTAL_DEBIT_FIELD = "PR_JE_Debit_Total";
+const JE_TOTAL_CREDIT_FIELD = "PR_JE_Credit_Total";
 const JE_DIFFERENCE_FIELD = "PR_JE_Difference";
 
+// Step notes/sign-off fields - Pattern: PR_{Type}_{StepName}
 const STEP_NOTES_FIELDS = {
-    0: { note: "Notes_PR_Config", reviewer: "Reviewer_PR_Config", signOff: "Sign_Off_Date_PR_Config" },
-    1: { note: "Notes_PR_Payroll_Data", reviewer: "Reviewer_PR_Payroll_Data", signOff: "Sign_Off_Date_PR_Payroll_Data" },
-    2: { note: "Notes_PR_Headcount", reviewer: "Reviewer_PR_Headcount", signOff: "Sign_Off_Date_PR_Headcount" },
-    3: { note: "Notes_PR_Validate", reviewer: "Reviewer_PR_Validate", signOff: "Sign_Off_Date_PR_Validate" },
-    4: { note: "Notes_PR_Review", reviewer: "Reviewer_PR_Review", signOff: "Sign_Off_Date_PR_Review" },
-    5: { note: "Notes_PR_JE", reviewer: "Reviewer_PR_JE", signOff: "Sign_Off_Date_PR_JE" },
-    6: { note: "Notes_PR_Archive", reviewer: "Reviewer_PR_Archive", signOff: "Sign_Off_Date_PR_Archive" }
+    0: { note: "PR_Notes_Config", reviewer: "PR_Reviewer_Config", signOff: "PR_SignOff_Config" },
+    1: { note: "PR_Notes_Import", reviewer: "PR_Reviewer_Import", signOff: "PR_SignOff_Import" },
+    2: { note: "PR_Notes_Headcount", reviewer: "PR_Reviewer_Headcount", signOff: "PR_SignOff_Headcount" },
+    3: { note: "PR_Notes_Validate", reviewer: "PR_Reviewer_Validate", signOff: "PR_SignOff_Validate" },
+    4: { note: "PR_Notes_Review", reviewer: "PR_Reviewer_Review", signOff: "PR_SignOff_Review" },
+    5: { note: "PR_Notes_JE", reviewer: "PR_Reviewer_JE", signOff: "PR_SignOff_JE" },
+    6: { note: "PR_Notes_Archive", reviewer: "PR_Reviewer_Archive", signOff: "PR_SignOff_Archive" }
 };
 const STEP_COMPLETE_FIELDS = {
-    0: "Complete_PR_Config",
-    1: "Complete_PR_Payroll_Data",
-    2: "Complete_PR_Headcount",
-    3: "Complete_PR_Validate",
-    4: "Complete_PR_Review",
-    5: "Complete_PR_JE",
-    6: "Complete_PR_Archive"
+    0: "PR_Complete_Config",
+    1: "PR_Complete_Import",
+    2: "PR_Complete_Headcount",
+    3: "PR_Complete_Validate",
+    4: "PR_Complete_Review",
+    5: "PR_Complete_JE",
+    6: "PR_Complete_Archive"
 };
 const STEP_SHEET_MAP = {
     1: SHEET_NAMES.DATA,
@@ -89,9 +89,9 @@ const STEP_SHEET_MAP = {
     4: SHEET_NAMES.EXPENSE_REVIEW,
     5: SHEET_NAMES.JE_DRAFT       // Journal Entry Prep → PR_JE_Draft
 };
-const CONFIG_REVIEWER_FIELD = "PR_Reviewer_Name";
+// Config field names - Pattern: PR_{Descriptor}
+const CONFIG_REVIEWER_FIELD = "PR_Reviewer";
 const PAYROLL_PROVIDER_FIELD = "PR_Payroll_Provider";
-// PAYROLL_PROVIDER_FALLBACK removed - consolidated to PR_Payroll_Provider
 const HEADCOUNT_SKIP_NOTE = "User opted to skip the headcount review this period.";
 
 const appState = {
@@ -114,11 +114,12 @@ const configState = {
 
 const pendingWrites = new Map();
 let resolvedConfigTableName = null;
+// Payroll date - primary name first, legacy fallbacks for migration
 const PAYROLL_DATE_ALIASES = [
+    "PR_Payroll_Date",
     "Payroll Date (YYYY-MM-DD)", 
     "Payroll_Date", 
     "Payroll Date",
-    "PR_Payroll_Date",
     "Payroll_Date_(YYYY-MM-DD)"
 ];
 
@@ -812,10 +813,10 @@ async function init() {
 }
 
 async function ensureTabVisibility() {
-    // Apply module-specific tab visibility
-    // Shows PR_* tabs, hides PTO_* tabs and system sheets
+    // Apply prefix-based tab visibility
+    // Shows PR_* tabs, hides PTO_* and SS_* tabs
     try {
-        await applyModuleTabVisibility(MODULE_KEY, { aliasTokens: MODULE_ALIAS_TOKENS });
+        await applyModuleTabVisibility(MODULE_KEY);
         console.log(`[Payroll] Tab visibility applied for ${MODULE_KEY}`);
     } catch (error) {
         console.warn("[Payroll] Could not apply tab visibility:", error);
@@ -880,7 +881,7 @@ function renderApp() {
 }
 
 function renderBanner(prevDisabled, nextDisabled) {
-    const company = getConfigValue("Company_Name") || "your company";
+    const company = getConfigValue("SS_Company_Name") || "your company";
     return `
         <div class="pf-brand-float" aria-hidden="true">
             <span class="pf-brand-wave"></span>
@@ -957,11 +958,11 @@ function renderConfigView() {
     }
     const stepFields = STEP_NOTES_FIELDS[0];
     const payrollDate = formatDateInput(getPayrollDateValue());
-    const accountingPeriod = formatDateInput(getConfigValue("Accounting_Period"));
-    const jeId = getConfigValue("Journal_Entry_ID");
-    const accountingLink = getConfigValue("Accounting_Software");
+    const accountingPeriod = formatDateInput(getConfigValue("PR_Accounting_Period"));
+    const jeId = getConfigValue("PR_Journal_Entry_ID");
+    const accountingLink = getConfigValue("SS_Accounting_Software");
     const payrollLink = getPayrollProviderLink();
-    const companyName = getConfigValue("Company_Name");
+    const companyName = getConfigValue("SS_Company_Name");
     const userName = getConfigValue(CONFIG_REVIEWER_FIELD) || getReviewerDefault();
     const notes = stepFields ? getConfigValue(stepFields.note) : "";
     const notesPermanent = stepFields ? isFieldPermanent(stepFields.note) : false;
@@ -1493,9 +1494,7 @@ function renderExpenseReviewStep(detail) {
                 </div>
             </article>
             ${renderPayrollCompletenessCard()}
-            <div class="pf-ada-coming-soon-wrapper">
                 ${copilotMarkup}
-            </div>
             ${
                 stepFields
                     ? `
@@ -2009,7 +2008,7 @@ function bindConfigInteractions() {
             if (derivedPeriod) {
                 const periodInput = document.getElementById("config-accounting-period");
                 if (periodInput) periodInput.value = derivedPeriod;
-                scheduleConfigWrite("Accounting_Period", derivedPeriod);
+                scheduleConfigWrite("PR_Accounting_Period", derivedPeriod);
             }
         }
         if (!configState.overrides.jeId) {
@@ -2017,7 +2016,7 @@ function bindConfigInteractions() {
             if (derivedJe) {
                 const jeInput = document.getElementById("config-je-id");
                 if (jeInput) jeInput.value = derivedJe;
-                scheduleConfigWrite("Journal_Entry_ID", derivedJe);
+                scheduleConfigWrite("PR_Journal_Entry_ID", derivedJe);
             }
         }
     });
@@ -2027,17 +2026,17 @@ function bindConfigInteractions() {
     const periodInput = document.getElementById("config-accounting-period");
     periodInput?.addEventListener("change", (event) => {
         configState.overrides.accountingPeriod = Boolean(event.target.value);
-        scheduleConfigWrite("Accounting_Period", event.target.value || "");
+        scheduleConfigWrite("PR_Accounting_Period", event.target.value || "");
     });
 
     const jeInput = document.getElementById("config-je-id");
     jeInput?.addEventListener("change", (event) => {
         configState.overrides.jeId = Boolean(event.target.value);
-        scheduleConfigWrite("Journal_Entry_ID", event.target.value.trim());
+        scheduleConfigWrite("PR_Journal_Entry_ID", event.target.value.trim());
     });
 
     document.getElementById("config-company-name")?.addEventListener("change", (event) => {
-        scheduleConfigWrite("Company_Name", event.target.value.trim());
+        scheduleConfigWrite("SS_Company_Name", event.target.value.trim());
     });
 
     document.getElementById("config-payroll-provider")?.addEventListener("change", (event) => {
@@ -2046,7 +2045,7 @@ function bindConfigInteractions() {
     });
 
     document.getElementById("config-accounting-link")?.addEventListener("change", (event) => {
-        scheduleConfigWrite("Accounting_Software", event.target.value.trim());
+        scheduleConfigWrite("SS_Accounting_Software", event.target.value.trim());
     });
 
     const notesInput = document.getElementById("config-notes");
@@ -2444,7 +2443,7 @@ function setState(partial) {
 
 function getReviewerDefault() {
     // Fallback to legacy field if the new one is missing
-    return getConfigValue(CONFIG_REVIEWER_FIELD) || getConfigValue("Reviewer_Name") || "";
+    return getConfigValue(CONFIG_REVIEWER_FIELD) || getConfigValue("SS_Default_Reviewer") || "";
 }
 
 function updateActionToggleState(button, isActive) {
@@ -2699,8 +2698,9 @@ async function loadConfigurationValues() {
             });
             configState.values = map;
             configState.permanents = permanents;
-            configState.overrides.accountingPeriod = Boolean(map.Accounting_Period);
-            configState.overrides.jeId = Boolean(map.Journal_Entry_ID);
+            // Check both new and legacy field names for overrides
+            configState.overrides.accountingPeriod = Boolean(map.PR_Accounting_Period || map.Accounting_Period);
+            configState.overrides.jeId = Boolean(map.PR_Journal_Entry_ID || map.Journal_Entry_ID);
             configState.loaded = true;
         });
     } catch (error) {
@@ -3682,7 +3682,7 @@ async function writeExpenseReviewSheet(context, sheet, periods) {
     const priorSummary = prior.summary || {};
     
     // Get period from config
-    const configPeriod = getConfigValue("Accounting_Period") || getPayrollDateValue() || "";
+    const configPeriod = getConfigValue("PR_Accounting_Period") || getPayrollDateValue() || "";
     
     // Key metrics
     const totalPayroll = Number(currentSummary.total) || 0;
@@ -5625,13 +5625,15 @@ async function clearNonPermanentNotes() {
  * Step 5: Reset non-permanent config values (run-specific settings)
  */
 async function resetNonPermanentConfig() {
-    // Fields to reset after each archive
+    // Fields to reset after each archive (new + legacy names for migration)
     const fieldsToReset = [
+        "PR_Payroll_Date",
+        "PR_Accounting_Period",
+        "PR_Journal_Entry_ID",
+        // Legacy field names (for migration)
         "Payroll_Date",
-        "PR_Payroll_Date", 
         "Accounting_Period",
         "Journal_Entry_ID",
-        "PR_Journal_Entry_ID",
         "JE_Transaction_ID",
         // Sign-off dates and completion flags
         ...Object.values(STEP_NOTES_FIELDS).map(f => f.signOff),

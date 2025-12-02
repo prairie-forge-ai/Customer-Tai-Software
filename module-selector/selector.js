@@ -174,15 +174,15 @@ const MODULES = [
         url: "../pto-accrual/index.html"
     },
     {
-        key: "future-module-1",
-        name: "Future Module",
-        available: false,
+        key: "credit-card-expense",
+        name: "Credit Card Expense Review",
+        available: true,
         url: "#"
     },
     {
-        key: "future-module-2",
-        name: "Future Module",
-        available: false,
+        key: "commission-calc",
+        name: "Commission Calculation",
+        available: true,
         url: "#"
     }
 ];
@@ -256,7 +256,7 @@ const MODULE_ICON_MAP = {
             <path d="m19.07 4.93-1.41 1.41" />
         </svg>
     `.trim(),
-    "future-module-1": `
+    "credit-card-expense": `
         <svg
             class="module-icon-svg"
             aria-hidden="true"
@@ -271,13 +271,11 @@ const MODULE_ICON_MAP = {
             stroke-linecap="round"
             stroke-linejoin="round"
         >
-            <path d="M12 22c5-3 7-7 7-12" />
-            <path d="M12 22c-5-3-7-7-7-12" />
-            <path d="M12 22V2" />
-            <path d="M16 6H8" />
+            <rect width="20" height="14" x="2" y="5" rx="2" />
+            <line x1="2" x2="22" y1="10" y2="10" />
         </svg>
     `.trim(),
-    "future-module-2": `
+    "commission-calc": `
         <svg
             class="module-icon-svg"
             aria-hidden="true"
@@ -292,7 +290,8 @@ const MODULE_ICON_MAP = {
             stroke-linecap="round"
             stroke-linejoin="round"
         >
-            <path d="M10 2h4v8l3-3 3 3-8 8-8-8 3-3 3 3V2Z" />
+            <line x1="12" x2="12" y1="2" y2="22" />
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
         </svg>
     `.trim()
 };
@@ -323,8 +322,8 @@ const MODULE_ALIAS_TOKENS = {
     "payroll-recorder": ["payroll-recorder", "payroll", "payroll recorder", "payroll review", "pr"],
     "employee-roster": ["employee-roster", "employee roster", "headcount", "headcount review", "roster"],
     "pto-accrual": ["pto-accrual", "pto", "pto accrual", "pto review"],
-    "future-module-1": ["future", "coming-soon"],
-    "future-module-2": ["future", "coming-soon"]
+    "credit-card-expense": ["credit-card", "credit card", "cc expense", "card expense"],
+    "commission-calc": ["commission", "commission calc", "commissions", "sales commission"]
 };
 
 const heroGreetingEl = document.getElementById("heroGreeting");
@@ -466,7 +465,7 @@ async function launchModule(moduleKey) {
         console.warn("Module not available yet.");
         return;
     }
-    await applyModuleTabVisibility(moduleKey, { aliasTokens: getAliasTokens(moduleKey) });
+    await applyModuleTabVisibility(moduleKey);
     window.location.href = module.url;
 }
 
@@ -4671,8 +4670,8 @@ function renderTabMappings() {
     });
 }
 
-// Valid module keys for Tab Structure Value2 column
-const VALID_MODULE_KEYS = ["payroll-recorder", "pto-accrual", "employee-roster", "shared", "all"];
+// Valid module keys for module-prefix category
+const VALID_MODULE_KEYS = ["payroll-recorder", "pto-accrual", "credit-card-expense", "commission-calc", "system"];
 
 /**
  * Add a new tab mapping with validation
@@ -4719,7 +4718,7 @@ async function addTabMapping() {
         showValidationError(
             `"${folder}" is not a valid module key.\n\n` +
             `Valid options:\n• ${VALID_MODULE_KEYS.join("\n• ")}\n\n` +
-            `Please update Value2 (Module Key) field.`
+            `Please update the Module field.`
         );
         return;
     }
@@ -4852,11 +4851,11 @@ async function loadSharedConfigFromExcel() {
             const values = range.values || [];
             const configMap = buildConfigMap(values);
             
-            // Populate shared config fields
-            sharedConfig.companyName = configMap.get("Company_Name") || "";
-            sharedConfig.defaultReviewer = configMap.get("Default_Reviewer") || "";
-            sharedConfig.accountingLink = configMap.get("Accounting_Software_Link") || "";
-            sharedConfig.payrollLink = configMap.get("Payroll_Provider_Link") || "";
+            // Populate shared config fields (check new + legacy names)
+            sharedConfig.companyName = configMap.get("SS_Company_Name") || configMap.get("Company_Name") || "";
+            sharedConfig.defaultReviewer = configMap.get("SS_Default_Reviewer") || configMap.get("Default_Reviewer") || "";
+            sharedConfig.accountingLink = configMap.get("SS_Accounting_Software") || configMap.get("Accounting_Software_Link") || "";
+            sharedConfig.payrollLink = configMap.get("SS_Payroll_Provider") || configMap.get("Payroll_Provider_Link") || "";
             
             // Update UI
             document.getElementById("sharedCompanyName").value = sharedConfig.companyName;
@@ -4895,12 +4894,12 @@ async function saveSharedConfig() {
                 return;
             }
             
-            // Write shared config values
+            // Write shared config values (using new SS_ prefix)
             const fieldsToWrite = [
-                { field: "Company_Name", value: sharedConfig.companyName, category: "shared" },
-                { field: "Default_Reviewer", value: sharedConfig.defaultReviewer, category: "shared" },
-                { field: "Accounting_Software_Link", value: sharedConfig.accountingLink, category: "shared" },
-                { field: "Payroll_Provider_Link", value: sharedConfig.payrollLink, category: "shared" }
+                { field: "SS_Company_Name", value: sharedConfig.companyName, category: "shared" },
+                { field: "SS_Default_Reviewer", value: sharedConfig.defaultReviewer, category: "shared" },
+                { field: "SS_Accounting_Software", value: sharedConfig.accountingLink, category: "shared" },
+                { field: "SS_Payroll_Provider", value: sharedConfig.payrollLink, category: "shared" }
             ];
             
             await writeConfigFields(context, configSheet, fieldsToWrite);
@@ -4927,14 +4926,14 @@ async function validateConfig() {
     
     // Valid categories for reference
     const VALID_CATEGORIES = {
-        "tab-structure": { label: "Tab Structure", requiresValue2: true },
-        "run-settings": { label: "Run Settings", requiresValue2: false },
-        "step-notes": { label: "Step Notes", requiresValue2: false },
-        "shared": { label: "Shared", requiresValue2: false },
-        "column-mapping": { label: "Column Mapping", requiresValue2: false }
+        "module-prefix": { label: "Module Prefix", description: "Maps tab prefixes to modules" },
+        "run-settings": { label: "Run Settings", description: "Per-period configuration values" },
+        "step-notes": { label: "Step Notes", description: "Notes and sign-off data" },
+        "shared": { label: "Shared", description: "Global settings" },
+        "column-mapping": { label: "Column Mapping", description: "Maps source to target columns" }
     };
     
-    const validModuleKeys = ["payroll-recorder", "pto-accrual", "employee-roster", "shared", "all"];
+    const validModuleKeys = ["payroll-recorder", "pto-accrual", "credit-card-expense", "commission-calc", "system"];
     
     try {
         await Excel.run(async (context) => {
@@ -4991,22 +4990,19 @@ async function validateConfig() {
                     errors++;
                 }
                 
-                // Check Value2 rules
-                const catConfig = VALID_CATEGORIES[category];
-                if (catConfig.requiresValue2) {
-                    if (!value2) {
-                        logAdmin(`Row ${rowNum}: Tab Structure requires Value2 (module key)`, "error");
-                        errors++;
-                    } else {
-                        const normalizedValue2 = value2.toLowerCase().trim().replace(/[\s_]+/g, "-");
-                        if (!validModuleKeys.includes(normalizedValue2)) {
-                            logAdmin(`Row ${rowNum}: Value2 "${value2}" not recognized. Expected: ${validModuleKeys.join(", ")}`, "error");
-                            warnings++;
-                        }
+                // Category-specific validation
+                if (category === "module-prefix") {
+                    // Validate prefix format (should end with underscore)
+                    if (!field.endsWith("_")) {
+                        logAdmin(`Row ${rowNum}: Prefix "${field}" should end with underscore (e.g., "PR_")`, "error");
+                        warnings++;
                     }
-                } else if (value2) {
-                    logAdmin(`Row ${rowNum}: Value2 should be empty for "${catConfig.label}" (found: "${value2}")`, "error");
-                    warnings++;
+                    // Validate module key
+                    const normalizedValue = value.toLowerCase().trim().replace(/[\s_]+/g, "-");
+                    if (!validModuleKeys.includes(normalizedValue)) {
+                        logAdmin(`Row ${rowNum}: Module "${value}" not recognized. Expected: ${validModuleKeys.join(", ")}`, "error");
+                        warnings++;
+                    }
                 }
             }
             
@@ -5029,12 +5025,12 @@ function generateAllFields() {
     
     const allFields = [];
     
-    // Shared fields
+    // Shared fields (SS_ prefix)
     allFields.push(
-        { category: "shared", field: "Company_Name", value: "" },
-        { category: "shared", field: "Default_Reviewer", value: "" },
-        { category: "shared", field: "Accounting_Software_Link", value: "" },
-        { category: "shared", field: "Payroll_Provider_Link", value: "" }
+        { category: "shared", field: "SS_Company_Name", value: "" },
+        { category: "shared", field: "SS_Default_Reviewer", value: "" },
+        { category: "shared", field: "SS_Accounting_Software", value: "" },
+        { category: "shared", field: "SS_Payroll_Provider", value: "" }
     );
     
     // Module-specific fields

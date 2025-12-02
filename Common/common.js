@@ -779,11 +779,12 @@ PrairieForge.renderMismatchTiles = function({
 /**
  * Shared configuration field names
  */
+// Shared config field names - SS_ prefix for shared settings
 PrairieForge.SHARED_CONFIG_FIELDS = {
-    companyName: "Company_Name",
-    defaultReviewer: "Default_Reviewer",
-    accountingLink: "Accounting_Software_Link",
-    payrollLink: "Payroll_Provider_Link"
+    companyName: "SS_Company_Name",
+    defaultReviewer: "SS_Default_Reviewer",
+    accountingLink: "SS_Accounting_Software",
+    payrollLink: "SS_Payroll_Provider"
 };
 
 /**

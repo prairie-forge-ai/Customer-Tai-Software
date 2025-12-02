@@ -1,4 +1,4 @@
-import { applyModuleTabVisibility, hideSystemSheets } from "../../Common/tab-visibility.js";
+import { applyModuleTabVisibility, showAllSheets } from "../../Common/tab-visibility.js";
 import { bindInstructionsButton } from "../../Common/instructions.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab, removeAdaFab } from "../../Common/homepage-sheet.js";
 import {
@@ -36,42 +36,44 @@ const HERO_COPY =
 const SELECTOR_URL = "../module-selector/index.html";
 const LOADER_ID = "pf-loader-overlay";
 const CONFIG_TABLES = ["SS_PF_Config"];
+// PTO Config Fields - Pattern: PTO_{Descriptor}
 const PTO_CONFIG_FIELDS = {
     payrollProvider: "PTO_Payroll_Provider",
     payrollDate: "PTO_Analysis_Date",
     accountingPeriod: "PTO_Accounting_Period",
     journalEntryId: "PTO_Journal_Entry_ID",
-    companyName: "PTO_Company_Name",
-    accountingSoftware: "PTO_Accounting_Software",
-    reviewerName: "PTO_Reviewer_Name",
+    companyName: "SS_Company_Name",           // Shared field
+    accountingSoftware: "SS_Accounting_Software", // Shared field
+    reviewerName: "PTO_Reviewer",
     validationDataBalance: "PTO_Validation_Data_Balance",
     validationCleanBalance: "PTO_Validation_Clean_Balance",
     validationDifference: "PTO_Validation_Difference",
     headcountRosterCount: "PTO_Headcount_Roster_Count",
     headcountPayrollCount: "PTO_Headcount_Payroll_Count",
     headcountDifference: "PTO_Headcount_Difference",
-    journalDebitTotal: "PTO_JE_Total_Debit",
-    journalCreditTotal: "PTO_JE_Total_Credit",
+    journalDebitTotal: "PTO_JE_Debit_Total",
+    journalCreditTotal: "PTO_JE_Credit_Total",
     journalDifference: "PTO_JE_Difference"
 };
 const HEADCOUNT_SKIP_NOTE = "User opted to skip the headcount review this period.";
+// Step notes/sign-off fields - Pattern: PTO_{Type}_{StepName}
 const STEP_CONFIG_FIELDS = {
-    0: { note: "Notes_PTO_Config", reviewer: "Reviewer_PTO_Config", signOff: "Sign_Off_Date_PTO_Config" },
-    1: { note: "Notes_PTO_Import", reviewer: "Reviewer_PTO_Import", signOff: "Sign_Off_Date_PTO_Import" },
-    2: { note: "Notes_PTO_Headcount", reviewer: "Reviewer_PTO_Headcount", signOff: "Sign_Off_Date_PTO_Headcount" },
-    3: { note: "Notes_PTO_Validate", reviewer: "Reviewer_PTO_Validate", signOff: "Sign_Off_Date_PTO_Validate" },
-    4: { note: "Notes_PTO_Review", reviewer: "Reviewer_PTO_Review", signOff: "Sign_Off_Date_PTO_Review" },
-    5: { note: "Notes_PTO_JE", reviewer: "Reviewer_PTO_JE", signOff: "Sign_Off_Date_PTO_JE" },
-    6: { note: "Notes_PTO_Archive", reviewer: "Reviewer_PTO_Archive", signOff: "Sign_Off_Date_PTO_Archive" }
+    0: { note: "PTO_Notes_Config", reviewer: "PTO_Reviewer_Config", signOff: "PTO_SignOff_Config" },
+    1: { note: "PTO_Notes_Import", reviewer: "PTO_Reviewer_Import", signOff: "PTO_SignOff_Import" },
+    2: { note: "PTO_Notes_Headcount", reviewer: "PTO_Reviewer_Headcount", signOff: "PTO_SignOff_Headcount" },
+    3: { note: "PTO_Notes_Validate", reviewer: "PTO_Reviewer_Validate", signOff: "PTO_SignOff_Validate" },
+    4: { note: "PTO_Notes_Review", reviewer: "PTO_Reviewer_Review", signOff: "PTO_SignOff_Review" },
+    5: { note: "PTO_Notes_JE", reviewer: "PTO_Reviewer_JE", signOff: "PTO_SignOff_JE" },
+    6: { note: "PTO_Notes_Archive", reviewer: "PTO_Reviewer_Archive", signOff: "PTO_SignOff_Archive" }
 };
 const STEP_COMPLETE_FIELDS = {
-    0: "Complete_PTO_Config",
-    1: "Complete_PTO_Import",
-    2: "Complete_PTO_Headcount",
-    3: "Complete_PTO_Validate",
-    4: "Complete_PTO_Review",
-    5: "Complete_PTO_JE",
-    6: "Complete_PTO_Archive"
+    0: "PTO_Complete_Config",
+    1: "PTO_Complete_Import",
+    2: "PTO_Complete_Headcount",
+    3: "PTO_Complete_Validate",
+    4: "PTO_Complete_Review",
+    5: "PTO_Complete_JE",
+    6: "PTO_Complete_Archive"
 };
 
 const PTO_ACTIVITY_COLUMNS = [
@@ -343,6 +345,7 @@ async function init() {
     try {
         rootEl = document.getElementById("app");
         loadingEl = document.getElementById("loading");
+        
         await ensureTabVisibility();
         await loadStepConfig();
         // Load shared config for fallback values (Company Name, Default Reviewer, etc.)
@@ -364,10 +367,10 @@ async function init() {
 }
 
 async function ensureTabVisibility() {
-    // Apply module-specific tab visibility
-    // Shows PTO_* tabs, hides PR_* tabs and system sheets
+    // Apply prefix-based tab visibility
+    // Shows PTO_* tabs, hides PR_* and SS_* tabs
     try {
-        await applyModuleTabVisibility(MODULE_KEY, { aliasTokens: MODULE_ALIAS_TOKENS });
+        await applyModuleTabVisibility(MODULE_KEY);
         console.log(`[PTO] Tab visibility applied for ${MODULE_KEY}`);
     } catch (error) {
         console.warn("[PTO] Could not apply tab visibility:", error);
@@ -399,12 +402,16 @@ async function loadStepConfig() {
         // Also map new naming convention to old field names
         const values = { ...moduleValues };
         
-        // Map shared config fields to PTO field names
+        // Map shared config fields to PTO field names (new + legacy names)
         const fieldMappings = {
+            "SS_Default_Reviewer": PTO_CONFIG_FIELDS.reviewerName,
             "Default_Reviewer": PTO_CONFIG_FIELDS.reviewerName,
             "PTO_Reviewer": PTO_CONFIG_FIELDS.reviewerName,
+            "SS_Company_Name": PTO_CONFIG_FIELDS.companyName,
             "Company_Name": PTO_CONFIG_FIELDS.companyName,
+            "SS_Payroll_Provider": PTO_CONFIG_FIELDS.payrollProvider,
             "Payroll_Provider_Link": PTO_CONFIG_FIELDS.payrollProvider,
+            "SS_Accounting_Software": PTO_CONFIG_FIELDS.accountingSoftware,
             "Accounting_Software_Link": PTO_CONFIG_FIELDS.accountingSoftware
         };
         
@@ -2722,9 +2729,10 @@ function getReviewerWithFallback(stepReviewer) {
     const moduleDefault = getConfigValue(PTO_CONFIG_FIELDS.reviewerName);
     if (moduleDefault) return moduleDefault;
     
-    // Shared default (from cached SS_PF_Config)
+    // Shared default (from cached SS_PF_Config) - check new + legacy names
     if (window.PrairieForge?._sharedConfigCache) {
-        const sharedDefault = window.PrairieForge._sharedConfigCache.get("Default_Reviewer");
+        const sharedDefault = window.PrairieForge._sharedConfigCache.get("SS_Default_Reviewer") 
+            || window.PrairieForge._sharedConfigCache.get("Default_Reviewer");
         if (sharedDefault) return sharedDefault;
     }
     
