@@ -3093,6 +3093,17 @@ button:disabled,
   transform: scale(0.95);
 }
 
+.pf-datepicker-close {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 18px;
+  margin-left: 4px;
+}
+
+.pf-datepicker-close:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
 .pf-datepicker-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -3112,8 +3123,10 @@ button:disabled,
 .pf-datepicker-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr); /* Always 6 rows for consistent height */
   padding: 8px 16px 16px;
   gap: 4px;
+  min-height: 210px; /* Fixed height: 6 rows × ~35px each */
 }
 
 .pf-datepicker-day {

@@ -84,6 +84,7 @@ export function initDatePicker(inputId, options = {}) {
                 <span class="pf-datepicker-title">${MONTH_NAMES[month]} ${year}</span>
                 <button type="button" class="pf-datepicker-nav pf-datepicker-next" title="Next Month">›</button>
                 <button type="button" class="pf-datepicker-nav pf-datepicker-next-year" title="Next Year">»</button>
+                <button type="button" class="pf-datepicker-nav pf-datepicker-close" title="Close">×</button>
             </div>
             <div class="pf-datepicker-weekdays">
                 ${DAY_NAMES.map(d => `<span>${d}</span>`).join('')}
@@ -124,6 +125,13 @@ export function initDatePicker(inputId, options = {}) {
             e.stopPropagation();
             viewDate.setFullYear(viewDate.getFullYear() + 1);
             renderCalendar();
+        });
+        
+        // Close button
+        dropdown.querySelector('.pf-datepicker-close')?.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeDropdown();
         });
         
         // Bind day clicks - use mousedown to prevent blur
@@ -188,9 +196,10 @@ export function initDatePicker(inputId, options = {}) {
             html += `<span class="${classes}" data-day="${day}" data-month="${month}" data-year="${year}">${day}</span>`;
         }
         
-        // Next month days (fill to complete grid)
-        const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
-        const nextMonthDays = totalCells - (firstDay + daysInMonth);
+        // Next month days - ALWAYS fill to 42 cells (6 rows × 7 days) for consistent height
+        const totalCells = 42;
+        const currentCells = firstDay + daysInMonth;
+        const nextMonthDays = totalCells - currentCells;
         for (let day = 1; day <= nextMonthDays; day++) {
             const nextMonth = month === 11 ? 0 : month + 1;
             const nextYear = month === 11 ? year + 1 : year;
