@@ -491,7 +491,8 @@ const STEP_COMPLETE_FIELDS = {
     6: "PR_Complete_Archive"
 };
 const STEP_SHEET_MAP = {
-    1: SHEET_NAMES.DATA,
+    0: "PR_Homepage",             // Configuration → PR_Homepage
+    1: SHEET_NAMES.DATA,          // Import → PR_Data
     2: SHEET_NAMES.DATA_CLEAN,    // Headcount Review → PR_Data_Clean
     3: SHEET_NAMES.DATA_CLEAN,    // Validate & Reconcile → PR_Data_Clean
     4: SHEET_NAMES.EXPENSE_REVIEW,
@@ -499,12 +500,11 @@ const STEP_SHEET_MAP = {
 };
 
 // Reverse map: sheet name → step ID (for tab-to-panel sync)
-// When multiple steps use the same sheet, prefer the earlier step
-// Use -1 for homepage (special case)
+// Use -1 for homepage (special case - goes to home view, not config)
 const SHEET_TO_STEP_MAP = {
-    "PR_Homepage": -1,                  // Homepage → Home view
+    "PR_Homepage": 0,                   // Homepage → Configuration (Step 0)
     [SHEET_NAMES.DATA]: 1,              // PR_Data → Import
-    [SHEET_NAMES.DATA_CLEAN]: 3,        // PR_Data_Clean → Validate (could be 2 or 3)
+    [SHEET_NAMES.DATA_CLEAN]: 2,        // PR_Data_Clean → Headcount Review
     [SHEET_NAMES.EXPENSE_REVIEW]: 4,    // PR_Expense_Review → Expense Review
     [SHEET_NAMES.JE_DRAFT]: 5,          // PR_JE_Draft → Journal Entry
     [SHEET_NAMES.ARCHIVE_SUMMARY]: 6,   // PR_Archive_Summary → Archive
@@ -1279,14 +1279,6 @@ async function handleWorksheetActivated(event) {
             const stepId = SHEET_TO_STEP_MAP[sheetName];
             
             console.log(`[Payroll] Tab changed to: ${sheetName} → Step ${stepId}`);
-            
-            // Handle homepage (stepId -1)
-            if (stepId === -1) {
-                if (appState.activeView !== "home") {
-                    setState({ activeView: "home", activeStepId: null });
-                }
-                return;
-            }
             
             // Only sync if we have a mapped step and it's different from current
             if (stepId !== undefined && stepId !== appState.activeStepId) {
