@@ -39,6 +39,146 @@ import { formatSheetHeaders, formatCurrencyColumn, formatDateColumn, NUMBER_FORM
 const MODULE_KEY = "payroll-recorder";
 const MODULE_ALIAS_TOKENS = ["payroll", "payroll recorder", "payroll review", "pr"];
 const MODULE_NAME = "Payroll Recorder";
+
+// =============================================================================
+// OFFICE-SAFE DIALOGS (window.alert not supported in Office Add-ins)
+// =============================================================================
+
+/**
+ * Show a toast notification in the UI (Office-safe alternative to window.alert)
+ */
+function showToast(message, type = "info", duration = 4000) {
+    // Remove existing toasts
+    document.querySelectorAll(".pf-toast").forEach(t => t.remove());
+    
+    const toast = document.createElement("div");
+    toast.className = `pf-toast pf-toast--${type}`;
+    toast.innerHTML = `
+        <div class="pf-toast-content">
+            <span class="pf-toast-icon">${type === "success" ? "✅" : type === "error" ? "❌" : "ℹ️"}</span>
+            <span class="pf-toast-message">${message.replace(/\n/g, "<br>")}</span>
+        </div>
+        <button class="pf-toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    // Add styles if not already present
+    if (!document.getElementById("pf-toast-styles")) {
+        const style = document.createElement("style");
+        style.id = "pf-toast-styles";
+        style.textContent = `
+            .pf-toast {
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #1a1a2e;
+                color: white;
+                padding: 16px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                z-index: 10000;
+                max-width: 90%;
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                animation: toastIn 0.3s ease;
+            }
+            .pf-toast--success { border-left: 4px solid #22c55e; }
+            .pf-toast--error { border-left: 4px solid #ef4444; }
+            .pf-toast--info { border-left: 4px solid #3b82f6; }
+            .pf-toast-content { display: flex; align-items: flex-start; gap: 8px; flex: 1; }
+            .pf-toast-icon { font-size: 18px; }
+            .pf-toast-message { font-size: 14px; line-height: 1.4; }
+            .pf-toast-close { background: none; border: none; color: #888; font-size: 20px; cursor: pointer; padding: 0; margin-left: 8px; }
+            .pf-toast-close:hover { color: white; }
+            @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(toast);
+    
+    if (duration > 0) {
+        setTimeout(() => toast.remove(), duration);
+    }
+    
+    return toast;
+}
+
+/**
+ * Show a confirmation dialog (Office-safe alternative to window.confirm)
+ * Returns a Promise that resolves to true/false
+ */
+function showConfirm(message) {
+    return new Promise((resolve) => {
+        // Remove existing dialogs
+        document.querySelectorAll(".pf-confirm-overlay").forEach(d => d.remove());
+        
+        const overlay = document.createElement("div");
+        overlay.className = "pf-confirm-overlay";
+        overlay.innerHTML = `
+            <div class="pf-confirm-dialog">
+                <div class="pf-confirm-message">${message.replace(/\n/g, "<br>")}</div>
+                <div class="pf-confirm-buttons">
+                    <button class="pf-confirm-btn pf-confirm-btn--cancel">Cancel</button>
+                    <button class="pf-confirm-btn pf-confirm-btn--ok">OK</button>
+                </div>
+            </div>
+        `;
+        
+        // Add styles if not already present
+        if (!document.getElementById("pf-confirm-styles")) {
+            const style = document.createElement("style");
+            style.id = "pf-confirm-styles";
+            style.textContent = `
+                .pf-confirm-overlay {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0,0,0,0.6);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10001;
+                }
+                .pf-confirm-dialog {
+                    background: #1a1a2e;
+                    color: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    max-width: 400px;
+                    width: 90%;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+                }
+                .pf-confirm-message { font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+                .pf-confirm-buttons { display: flex; gap: 12px; justify-content: flex-end; }
+                .pf-confirm-btn {
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+                .pf-confirm-btn--cancel { background: #374151; color: white; }
+                .pf-confirm-btn--cancel:hover { background: #4b5563; }
+                .pf-confirm-btn--ok { background: #3b82f6; color: white; }
+                .pf-confirm-btn--ok:hover { background: #2563eb; }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(overlay);
+        
+        overlay.querySelector(".pf-confirm-btn--cancel").onclick = () => {
+            overlay.remove();
+            resolve(false);
+        };
+        overlay.querySelector(".pf-confirm-btn--ok").onclick = () => {
+            overlay.remove();
+            resolve(true);
+        };
+    });
+}
 const MODULE_CONFIG_SHEET = SHEET_NAMES.CONFIG || "SS_PF_Config";
 const CONFIG_TABLE_CANDIDATES = ["SS_PF_Config"];
 const DEFAULT_CONFIG_CATEGORY = "Run Settings";
@@ -2246,7 +2386,7 @@ function bindStepInteractions(stepId) {
     });
     document.getElementById("step-action-btn")?.addEventListener("click", () => {
         const detail = STEP_DETAILS.find((step) => step.id === stepId);
-        window.alert(detail?.ctaLabel ? `${detail.ctaLabel} coming soon.` : "Step actions coming soon.");
+        showToast(detail?.ctaLabel ? `${detail.ctaLabel} coming soon.` : "Step actions coming soon.", "info");
     });
 
     if (stepId === 1) {
@@ -2500,11 +2640,11 @@ When asked about readiness, be specific about what passes and what needs attenti
             archiveBtn.parentNode.replaceChild(newBtn, archiveBtn);
             
             newBtn.onclick = async function() {
-                window.alert("Archive button clicked! Starting archive process...");
+                showToast("Starting archive process...", "info", 2000);
                 try {
                     await handleArchiveRun();
                 } catch (error) {
-                    window.alert("Archive Error: " + error.message);
+                    showToast("Archive Error: " + error.message, "error", 8000);
                 }
             };
         }
@@ -2686,7 +2826,7 @@ function bindSignoffToggle({
         }
         
         if (requireNotesCheck && !requireNotesCheck()) {
-            window.alert("Please add notes before completing this step.");
+            showToast("Please add notes before completing this step.", "info");
             return;
         }
         const nextActive = !button.classList.contains("is-active");
@@ -2731,7 +2871,7 @@ function bindSignoffToggle({
 
 async function openConfigurationSheet() {
     if (!hasExcelRuntime()) {
-        window.alert("Open this module inside Excel to edit configuration settings.");
+        showToast("Open this module inside Excel to edit configuration settings.", "info");
         return;
     }
     try {
@@ -2744,13 +2884,13 @@ async function openConfigurationSheet() {
         setState({ statusText: `${MODULE_CONFIG_SHEET} opened.` });
     } catch (error) {
         console.error("Unable to open configuration sheet", error);
-        window.alert(`Unable to open ${MODULE_CONFIG_SHEET}. Confirm the sheet exists in this workbook.`);
+        showToast(`Unable to open ${MODULE_CONFIG_SHEET}. Confirm the sheet exists in this workbook.`, "error");
     }
 }
 
 async function openDataSheet() {
     if (!hasExcelRuntime()) {
-        window.alert("Open this module inside Excel to access the data sheet.");
+        showToast("Open this module inside Excel to access the data sheet.", "info");
         return;
     }
     try {
@@ -2762,16 +2902,16 @@ async function openDataSheet() {
         });
     } catch (error) {
         console.error("Unable to open PR_Data sheet", error);
-        window.alert(`Unable to open ${SHEET_NAMES.DATA}. Confirm the sheet exists in this workbook.`);
+        showToast(`Unable to open ${SHEET_NAMES.DATA}. Confirm the sheet exists in this workbook.`, "error");
     }
 }
 
 async function clearPrDataSheet() {
     if (!hasExcelRuntime()) {
-        window.alert("Open this module inside Excel to clear data.");
+        showToast("Open this module inside Excel to clear data.", "info");
         return;
     }
-    const confirmed = window.confirm("Are you sure you want to clear all data from PR_Data? This cannot be undone.");
+    const confirmed = await showConfirm("Are you sure you want to clear all data from PR_Data?\n\nThis cannot be undone.");
     if (!confirmed) return;
     
     try {
@@ -2792,10 +2932,10 @@ async function clearPrDataSheet() {
             sheet.getRange("A1").select();
             await context.sync();
         });
-        window.alert("PR_Data cleared successfully.");
+        showToast("PR_Data cleared successfully.", "success");
     } catch (error) {
         console.error("Unable to clear PR_Data sheet", error);
-        window.alert("Unable to clear PR_Data. Please try again.");
+        showToast("Unable to clear PR_Data. Please try again.", "error");
     }
 }
 
@@ -5397,7 +5537,7 @@ function handleHeadcountSignoff() {
     const notesRequired = isHeadcountNotesRequired();
     const notesValue = document.getElementById("step-notes-input")?.value.trim() || "";
     if (notesRequired && !notesValue) {
-        window.alert("Please enter a brief explanation of the outstanding differences before completing this step.");
+        showToast("Please enter a brief explanation of the outstanding differences before completing this step.", "info");
         return;
     }
     setState({ statusText: "Headcount Review signed off." });
@@ -5449,7 +5589,7 @@ function handleBankAmountInput(event) {
 }
 
 function handlePlugDifference() {
-    window.alert("Difference resolution will be available soon.");
+    showToast("Difference resolution will be available soon.", "info");
 }
 
 function handleValidationComplete() {
@@ -5474,11 +5614,11 @@ function handleExpenseReviewComplete() {
  */
 // Global handler for archive button (inline onclick)
 window.handleArchiveClick = async function() {
-    window.alert("Archive button clicked!");
+    showToast("Starting archive process...", "info", 2000);
     try {
         await handleArchiveRun();
     } catch (error) {
-        window.alert("Archive failed: " + error.message);
+        showToast("Archive failed: " + error.message, "error", 8000);
     }
 };
 
@@ -5486,24 +5626,25 @@ async function handleArchiveRun() {
     console.log("[Archive] handleArchiveRun called");
     
     if (!hasExcelRuntime()) {
-        window.alert("Excel runtime is unavailable.");
+        showToast("Excel runtime is unavailable.", "error");
         return;
     }
     
     // Confirm before proceeding
-    const confirmed = window.confirm(
+    const confirmed = await showConfirm(
         "Archive Payroll Run\n\n" +
         "This will:\n" +
-        "1. Update PR_Archive_Summary with current period\n" +
-        "2. Clear working data from all payroll sheets\n" +
-        "3. Clear non-permanent notes and config values\n\n" +
-        "Note: Please manually save a copy of your workbook before archiving.\n\n" +
-        "Make sure you've completed all review steps before archiving.\n\n" +
+        "1. Download an Excel archive file\n" +
+        "2. Update PR_Archive_Summary with current period\n" +
+        "3. Clear working data from all payroll sheets\n" +
+        "4. Clear non-permanent notes and config values\n\n" +
+        "Make sure you've completed all review steps.\n\n" +
         "Continue?"
     );
     
     if (!confirmed) {
         console.log("[Archive] User cancelled");
+        showToast("Archive cancelled", "info", 2000);
         return;
     }
     
@@ -5568,22 +5709,18 @@ async function handleArchiveRun() {
         await loadConfigurationValues();
         renderApp();
         
-        window.alert(
-            "✅ Archive Complete!\n\n" +
-            "✓ Archive workbook created (please save it if you haven't)\n" +
-            "✓ PR_Archive_Summary updated with current period\n" +
-            "✓ Working data cleared from PR_Data, PR_Data_Clean, PR_JE_Draft\n" +
-            "✓ Notes and config reset\n\n" +
-            "Ready for next payroll cycle!"
+        showToast(
+            "✅ Archive Complete! Data cleared and ready for next payroll cycle.",
+            "success",
+            8000
         );
         
     } catch (error) {
         console.error("[Archive] Error during archive:", error);
-        window.alert(
-            "Archive Error\n\n" +
-            "An error occurred during the archive process:\n" +
-            error.message + "\n\n" +
-            "Please check the console for details and verify your data."
+        showToast(
+            "Archive Error: " + error.message,
+            "error",
+            10000
         );
     }
 }
@@ -5641,7 +5778,7 @@ async function createArchiveWorkbook() {
             }
             
             if (sheetsAdded === 0) {
-                window.alert("No data to archive. Please complete the payroll workflow first.");
+                showToast("No data to archive. Please complete the payroll workflow first.", "error");
                 return false;
             }
             
@@ -5653,27 +5790,18 @@ async function createArchiveWorkbook() {
             
             console.log(`[Archive] Downloaded: ${filename} with ${sheetsAdded} sheets`);
             
-            window.alert(
-                `📥 Archive Downloaded!\n\n` +
-                `File: ${filename}\n` +
-                `Sheets: ${sheetsAdded}\n\n` +
-                `Please save this file to your archive folder.\n\n` +
-                `Click OK to continue clearing this workbook for the next period.`
-            );
+            showToast(`📥 Archive downloaded: ${filename} (${sheetsAdded} sheets)`, "success", 5000);
             
             return true;
         });
         
     } catch (error) {
         console.error("[Archive] Error creating archive:", error);
-        window.alert(
-            "Archive Export Error\n\n" +
-            error.message + "\n\n" +
-            "Please manually save a copy of this workbook before continuing."
-        );
+        showToast("Archive Export Error: " + error.message, "error", 8000);
         
         // Ask if user wants to continue anyway
-        return window.confirm(
+        return await showConfirm(
+            "Archive download failed.\n\n" +
             "Do you want to continue with clearing the data?\n\n" +
             "Make sure you have saved a backup first!"
         );
@@ -5980,7 +6108,7 @@ async function resetNonPermanentConfig() {
 
 async function runJournalSummary() {
     if (!hasExcelRuntime()) {
-        window.alert("Excel runtime is unavailable.");
+        showToast("Excel runtime is unavailable.", "error");
         return;
     }
     journalState.loading = true;
@@ -6066,7 +6194,7 @@ async function saveJournalSummary() {
 
 async function createJournalDraft() {
     if (!hasExcelRuntime()) {
-        window.alert("Excel runtime is unavailable.");
+        showToast("Excel runtime is unavailable.", "error");
         return;
     }
     
@@ -6319,7 +6447,7 @@ async function createJournalDraft() {
 
 async function exportJournalDraft() {
     if (!hasExcelRuntime()) {
-        window.alert("Excel runtime is unavailable.");
+        showToast("Excel runtime is unavailable.", "error");
         return;
     }
     try {
@@ -6338,7 +6466,7 @@ async function exportJournalDraft() {
         downloadCsv(`pr-je-draft-${todayIso()}.csv`, csv);
     } catch (error) {
         console.warn("JE export:", error);
-        window.alert("Unable to export the JE draft. Confirm the sheet has data.");
+        showToast("Unable to export the JE draft. Confirm the sheet has data.", "error");
     }
 }
 
