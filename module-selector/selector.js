@@ -2457,6 +2457,19 @@ function renderEmployeeForm(action, form) {
         termDate: row[5] || ''
     }));
     
+    // Department options dropdown HTML
+    const deptOptions = `
+        <option value="">Select Department...</option>
+        <option value="COGS Support">COGS Support</option>
+        <option value="COGS Onboarding">COGS Onboarding</option>
+        <option value="COGS Prof. Services">COGS Prof. Services</option>
+        <option value="Sales & Marketing">Sales & Marketing</option>
+        <option value="Marketing">Marketing</option>
+        <option value="Client Success">Client Success</option>
+        <option value="Research & Development">Research & Development</option>
+        <option value="General & Administrative">General & Administrative</option>
+    `;
+    
     switch (action) {
         case 'add':
             form.innerHTML = `
@@ -2466,7 +2479,7 @@ function renderEmployeeForm(action, form) {
                 </div>
                 <div class="form-group">
                     <label>Department</label>
-                    <input type="text" id="empAddDept" placeholder="Department name">
+                    <select id="empAddDept">${deptOptions}</select>
                 </div>
                 <div class="form-group">
                     <label>Pay Rate</label>
@@ -2504,7 +2517,7 @@ function renderEmployeeForm(action, form) {
                 </div>
                 <div class="form-group" id="empTransferDeptGroup" hidden>
                     <label>New Department</label>
-                    <input type="text" id="empTransferDept" placeholder="New department name">
+                    <select id="empTransferDept">${deptOptions}</select>
                 </div>
             `;
             wireEmployeeSearchForm('transfer', employees);
@@ -2524,7 +2537,7 @@ function renderEmployeeForm(action, form) {
                     </div>
                     <div class="form-group">
                         <label>Department</label>
-                        <input type="text" id="empEditDept">
+                        <select id="empEditDept">${deptOptions}</select>
                     </div>
                     <div class="form-group">
                         <label>Pay Rate</label>
@@ -2549,10 +2562,12 @@ function renderEmployeeForm(action, form) {
  * Wire up the Add Employee form
  */
 function wireEmployeeAddForm() {
-    const inputs = ['empAddName', 'empAddDept', 'empAddPayRate', 'empAddHireDate'];
-    inputs.forEach(id => {
+    // Text inputs use 'input' event
+    ['empAddName', 'empAddPayRate', 'empAddHireDate'].forEach(id => {
         document.getElementById(id)?.addEventListener("input", updateEmployeeAddPreview);
     });
+    // Select uses 'change' event
+    document.getElementById('empAddDept')?.addEventListener("change", updateEmployeeAddPreview);
 }
 
 /**
@@ -2672,7 +2687,8 @@ function selectEmployee(actionType, employee) {
             document.getElementById("empTransferDeptGroup").hidden = false;
             const transferDeptInput = document.getElementById("empTransferDept");
             if (transferDeptInput) {
-                transferDeptInput.addEventListener("input", () => {
+                // Use 'change' event for select dropdown
+                transferDeptInput.addEventListener("change", () => {
                     updateTransferPreview(employee, transferDeptInput.value);
                 });
             }
@@ -2858,7 +2874,10 @@ function resetQuickEditEmployee() {
  * Confirm and apply quick edit changes for Employee
  */
 async function confirmQuickEditEmployee() {
-    if (editState.pendingChanges.length === 0) return;
+    if (editState.pendingChanges.length === 0) {
+        alert("No changes to save.");
+        return;
+    }
     
     if (!hasExcelRuntime()) {
         alert("Excel not available");
@@ -2866,6 +2885,17 @@ async function confirmQuickEditEmployee() {
     }
     
     const config = REF_DATA_CONFIG.roster;
+    
+    // Build summary for success message
+    const changeSummary = editState.pendingChanges.map(c => {
+        switch (c.type) {
+            case 'add': return `✅ Added: ${c.data.name}`;
+            case 'terminate': return `✅ Terminated: ${c.data.name} (${c.data.termDate})`;
+            case 'transfer': return `✅ Transferred: ${c.data.name} → ${c.data.department}`;
+            case 'edit': return `✅ Updated: ${c.data.name}`;
+            default: return `✅ Changed: ${c.data.name}`;
+        }
+    });
     
     try {
         await Excel.run(async (context) => {
@@ -2903,13 +2933,13 @@ async function confirmQuickEditEmployee() {
             await context.sync();
         });
         
-        // Success - refresh and close edit mode
-        alert("Changes saved successfully!");
+        // Success - show specific message and refresh
+        alert("Employee Roster Updated!\n\n" + changeSummary.join("\n"));
         showViewMode();
         
     } catch (error) {
         console.error("Error saving changes:", error);
-        alert("Error saving changes: " + error.message);
+        alert("❌ Error saving changes:\n\n" + error.message);
     }
 }
 
