@@ -2968,17 +2968,22 @@ function parseDateInput(value) {
     }
     
     // Handle Excel serial date number
+    // Use UTC to avoid timezone offset issues - Excel dates should be treated as UTC
     const numValue = Number(value);
     if (Number.isFinite(numValue) && numValue > 40000 && numValue < 60000) {
         // Excel serial date: days since Jan 1, 1900 (with 1900 leap year bug)
-        const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
-        const jsDate = new Date(excelEpoch.getTime() + numValue * 24 * 60 * 60 * 1000);
+        // Convert to UTC timestamp to avoid local timezone shifting the date
+        const utcDays = Math.floor(numValue - 25569); // Days since Unix epoch (Jan 1, 1970)
+        const utcMs = utcDays * 86400 * 1000;
+        const jsDate = new Date(utcMs);
         if (!isNaN(jsDate.getTime())) {
-            console.log("DEBUG parseDateInput - Converted Excel serial", numValue, "to", jsDate.toISOString().split("T")[0]);
+            // Use UTC methods to extract date components to prevent timezone shift
+            const isoDate = `${jsDate.getUTCFullYear()}-${String(jsDate.getUTCMonth() + 1).padStart(2, "0")}-${String(jsDate.getUTCDate()).padStart(2, "0")}`;
+            console.log("DEBUG parseDateInput - Converted Excel serial", numValue, "to", isoDate);
             return {
-                year: jsDate.getFullYear(),
-                month: jsDate.getMonth() + 1,
-                day: jsDate.getDate()
+                year: jsDate.getUTCFullYear(),
+                month: jsDate.getUTCMonth() + 1,
+                day: jsDate.getUTCDate()
             };
         }
     }
@@ -2998,6 +3003,15 @@ function parseDateInput(value) {
 }
 
 function formatDateFromDate(date) {
+    // Use UTC methods if this date was derived from Excel serial number
+    // to prevent timezone shift causing off-by-one day errors
+    if (date._isUTC) {
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(date.getUTCDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+    // For regular dates (like "today"), use local time
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
@@ -3328,7 +3342,10 @@ function convertExcelDate(serial) {
     const utcDays = Math.floor(serial - 25569);
     if (!Number.isFinite(utcDays)) return null;
     const utcValue = utcDays * 86400 * 1000;
-    return new Date(utcValue);
+    const date = new Date(utcValue);
+    // Mark this date as UTC-derived so formatDateFromDate can use UTC methods
+    date._isUTC = true;
+    return date;
 }
 
 function formatFriendlyPeriod(key) {
