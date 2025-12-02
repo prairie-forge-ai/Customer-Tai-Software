@@ -32,6 +32,146 @@ const MODULE_VERSION = "1.1.0";
 const MODULE_KEY = "pto-accrual";
 const MODULE_ALIAS_TOKENS = ["pto", "pto-accrual", "pto review", "accrual"];
 const MODULE_NAME = "PTO Accrual";
+
+// =============================================================================
+// OFFICE-SAFE DIALOGS (window.alert not supported in Office Add-ins)
+// =============================================================================
+
+/**
+ * Show a toast notification in the UI (Office-safe alternative to window.alert)
+ */
+function showToast(message, type = "info", duration = 4000) {
+    // Remove existing toasts
+    document.querySelectorAll(".pf-toast").forEach(t => t.remove());
+    
+    const toast = document.createElement("div");
+    toast.className = `pf-toast pf-toast--${type}`;
+    toast.innerHTML = `
+        <div class="pf-toast-content">
+            <span class="pf-toast-icon">${type === "success" ? "✅" : type === "error" ? "❌" : "ℹ️"}</span>
+            <span class="pf-toast-message">${message.replace(/\n/g, "<br>")}</span>
+        </div>
+        <button class="pf-toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    // Add styles if not already present
+    if (!document.getElementById("pf-toast-styles")) {
+        const style = document.createElement("style");
+        style.id = "pf-toast-styles";
+        style.textContent = `
+            .pf-toast {
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #1a1a2e;
+                color: white;
+                padding: 16px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                z-index: 10000;
+                max-width: 90%;
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                animation: toastIn 0.3s ease;
+            }
+            .pf-toast--success { border-left: 4px solid #22c55e; }
+            .pf-toast--error { border-left: 4px solid #ef4444; }
+            .pf-toast--info { border-left: 4px solid #3b82f6; }
+            .pf-toast-content { display: flex; align-items: flex-start; gap: 8px; flex: 1; }
+            .pf-toast-icon { font-size: 18px; }
+            .pf-toast-message { font-size: 14px; line-height: 1.4; }
+            .pf-toast-close { background: none; border: none; color: #888; font-size: 20px; cursor: pointer; padding: 0; margin-left: 8px; }
+            .pf-toast-close:hover { color: white; }
+            @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(toast);
+    
+    if (duration > 0) {
+        setTimeout(() => toast.remove(), duration);
+    }
+    
+    return toast;
+}
+
+/**
+ * Show a confirmation dialog (Office-safe alternative to window.confirm)
+ * Returns a Promise that resolves to true/false
+ */
+function showConfirm(message) {
+    return new Promise((resolve) => {
+        // Remove existing dialogs
+        document.querySelectorAll(".pf-confirm-overlay").forEach(d => d.remove());
+        
+        const overlay = document.createElement("div");
+        overlay.className = "pf-confirm-overlay";
+        overlay.innerHTML = `
+            <div class="pf-confirm-dialog">
+                <div class="pf-confirm-message">${message.replace(/\n/g, "<br>")}</div>
+                <div class="pf-confirm-buttons">
+                    <button class="pf-confirm-btn pf-confirm-btn--cancel">Cancel</button>
+                    <button class="pf-confirm-btn pf-confirm-btn--ok">OK</button>
+                </div>
+            </div>
+        `;
+        
+        // Add styles if not already present
+        if (!document.getElementById("pf-confirm-styles")) {
+            const style = document.createElement("style");
+            style.id = "pf-confirm-styles";
+            style.textContent = `
+                .pf-confirm-overlay {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0,0,0,0.6);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10001;
+                }
+                .pf-confirm-dialog {
+                    background: #1a1a2e;
+                    color: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    max-width: 400px;
+                    width: 90%;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+                }
+                .pf-confirm-message { font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+                .pf-confirm-buttons { display: flex; gap: 12px; justify-content: flex-end; }
+                .pf-confirm-btn {
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+                .pf-confirm-btn--cancel { background: #374151; color: white; }
+                .pf-confirm-btn--cancel:hover { background: #4b5563; }
+                .pf-confirm-btn--ok { background: #3b82f6; color: white; }
+                .pf-confirm-btn--ok:hover { background: #2563eb; }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(overlay);
+        
+        overlay.querySelector(".pf-confirm-btn--cancel").onclick = () => {
+            overlay.remove();
+            resolve(false);
+        };
+        overlay.querySelector(".pf-confirm-btn--ok").onclick = () => {
+            overlay.remove();
+            resolve(true);
+        };
+    });
+}
 const HERO_COPY =
     "Calculate your PTO liability, compare against last period, and generate a balanced journal entry—all without leaving Excel.";
 const SELECTOR_URL = "../module-selector/index.html";
@@ -1202,7 +1342,7 @@ function bindStepView(stepId) {
                       if (!isHeadcountNotesRequired()) return true;
                       const notes = document.getElementById("step-notes-input")?.value.trim() || "";
                       if (notes) return true;
-                      window.alert("Please enter a brief explanation of the headcount differences before completing this step.");
+                      showToast("Please enter a brief explanation of the headcount differences before completing this step.", "info");
                       return false;
                   }
                 : null,
@@ -1480,7 +1620,7 @@ async function importSampleData() {
 
 async function refreshValidationData() {
     if (!hasExcel()) {
-        window.alert("Excel is not available. Open this module inside Excel to refresh data.");
+        showToast("Excel is not available. Open this module inside Excel to refresh data.", "info");
         return;
     }
     toggleLoader(true, "Refreshing PTO_Analysis...");
@@ -1496,7 +1636,7 @@ async function refreshValidationData() {
         }
     } catch (error) {
         console.error("Refresh error:", error);
-        window.alert(`Failed to refresh data: ${error.message}`);
+        showToast(`Failed to refresh data: ${error.message}`, "error");
         toggleLoader(false);
     }
 }
@@ -1514,7 +1654,7 @@ async function handlePayRateSave() {
     const rowIndex = parseInt(input.dataset.row, 10);
     
     if (isNaN(payRate) || payRate <= 0) {
-        window.alert("Please enter a valid pay rate greater than 0.");
+        showToast("Please enter a valid pay rate greater than 0.", "info");
         return;
     }
     
@@ -1567,7 +1707,7 @@ async function handlePayRateSave() {
         
     } catch (error) {
         console.error("Failed to save pay rate:", error);
-        window.alert(`Failed to save pay rate: ${error.message}`);
+        showToast(`Failed to save pay rate: ${error.message}`, "error");
         toggleLoader(false);
     }
 }
@@ -1594,7 +1734,7 @@ function handlePayRateIgnore() {
 
 async function runDataQualityCheck() {
     if (!hasExcel()) {
-        window.alert("Excel is not available. Open this module inside Excel to run quality check.");
+        showToast("Excel is not available. Open this module inside Excel to run quality check.", "info");
         return;
     }
     
@@ -1696,7 +1836,7 @@ async function runDataQualityCheck() {
         
     } catch (error) {
         console.error("Data quality check error:", error);
-        window.alert(`Quality check failed: ${error.message}`);
+        showToast(`Quality check failed: ${error.message}`, "error");
         dataQualityState.hasRun = false;
     } finally {
         dataQualityState.loading = false;
@@ -1812,7 +1952,7 @@ async function runCompletenessCheck() {
  */
 async function runFullAnalysis() {
     if (!hasExcel()) {
-        window.alert("Excel is not available. Open this module inside Excel to run analysis.");
+        showToast("Excel is not available. Open this module inside Excel to run analysis.", "info");
         return;
     }
     
@@ -1833,7 +1973,7 @@ async function runFullAnalysis() {
         
     } catch (error) {
         console.error("Full analysis error:", error);
-        window.alert(`Analysis failed: ${error.message}`);
+        showToast(`Analysis failed: ${error.message}`, "error");
     } finally {
         toggleLoader(false);
     }
@@ -1936,7 +2076,7 @@ async function checkAnalysisPrerequisites() {
 
 async function runJournalSummary() {
     if (!hasExcel()) {
-        window.alert("Excel is not available. Open this module inside Excel to run journal checks.");
+        showToast("Excel is not available. Open this module inside Excel to run journal checks.", "info");
         return;
     }
     journalState.loading = true;
@@ -2109,7 +2249,7 @@ const LIABILITY_OFFSET_ACCOUNT = "21540";
  */
 async function createJournalDraft() {
     if (!hasExcel()) {
-        window.alert("Excel is not available. Open this module inside Excel to create the journal entry.");
+        showToast("Excel is not available. Open this module inside Excel to create the journal entry.", "info");
         return;
     }
     
@@ -2432,7 +2572,7 @@ async function createJournalDraft() {
         
     } catch (error) {
         console.error("Create JE Draft error:", error);
-        window.alert(`Unable to create Journal Entry: ${error.message}`);
+        showToast(`Unable to create Journal Entry: ${error.message}`, "error");
     } finally {
         toggleLoader(false);
     }
@@ -2440,7 +2580,7 @@ async function createJournalDraft() {
 
 async function exportJournalDraft() {
     if (!hasExcel()) {
-        window.alert("Excel is not available. Open this module inside Excel to export.");
+        showToast("Excel is not available. Open this module inside Excel to export.", "info");
         return;
     }
     toggleLoader(true, "Preparing JE CSV...");
@@ -2460,7 +2600,7 @@ async function exportJournalDraft() {
         downloadCsv(`pto-je-draft-${todayIso()}.csv`, csv);
     } catch (error) {
         console.error("PTO JE export:", error);
-        window.alert("Unable to export the JE draft. Confirm the sheet has data.");
+        showToast("Unable to export the JE draft. Confirm the sheet has data.", "error");
     } finally {
         toggleLoader(false);
     }
@@ -2542,7 +2682,7 @@ async function openSheet(sheetName) {
 async function clearPtoData() {
     if (!hasExcel()) return;
     
-    const confirmed = window.confirm("This will clear all data in PTO_Data. Are you sure?");
+    const confirmed = await showConfirm("This will clear all data in PTO_Data.\n\nAre you sure?");
     if (!confirmed) return;
     
     toggleLoader(true);
@@ -2564,10 +2704,10 @@ async function clearPtoData() {
             sheet.getRange("A1").select();
             await context.sync();
         });
-        window.alert("PTO_Data cleared successfully. You can now paste new data.");
+        showToast("PTO_Data cleared successfully. You can now paste new data.", "success");
     } catch (error) {
         console.error("Clear PTO_Data error:", error);
-        window.alert(`Failed to clear PTO_Data: ${error.message}`);
+        showToast(`Failed to clear PTO_Data: ${error.message}`, "error");
     } finally {
         toggleLoader(false);
     }
@@ -4332,7 +4472,7 @@ function handleHeadcountSignoff() {
     const notesRequired = isHeadcountNotesRequired();
     const notesValue = document.getElementById("step-notes-input")?.value.trim() || "";
     if (notesRequired && !notesValue) {
-        window.alert("Please enter a brief explanation of the outstanding differences before completing this step.");
+        showToast("Please enter a brief explanation of the outstanding differences before completing this step.", "info");
         return;
     }
 }
