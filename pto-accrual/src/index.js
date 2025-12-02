@@ -2264,17 +2264,63 @@ async function createJournalDraft() {
             
             // Group Change amounts by Department
             const deptTotals = {};
-            analysisValues.slice(1).forEach(row => {
+            let totalRows = 0;
+            let zeroChangeRows = 0;
+            let missingDeptRows = 0;
+            
+            analysisValues.slice(1).forEach((row, idx) => {
+                totalRows++;
                 const dept = String(row[deptIdx] || "").trim();
-                const change = Number(row[changeIdx]) || 0;
+                const rawChange = row[changeIdx];
+                const change = Number(rawChange) || 0;
                 
-                if (dept && change !== 0) {
-                    if (!deptTotals[dept]) {
-                        deptTotals[dept] = 0;
-                    }
-                    deptTotals[dept] += change;
+                // Log first few rows for debugging
+                if (idx < 3) {
+                    console.log(`[JE Draft] Row ${idx + 2}: Dept="${dept}", Change raw="${rawChange}", Change num=${change}`);
                 }
+                
+                if (!dept) {
+                    missingDeptRows++;
+                    return;
+                }
+                if (change === 0) {
+                    zeroChangeRows++;
+                    return;
+                }
+                
+                if (!deptTotals[dept]) {
+                    deptTotals[dept] = 0;
+                }
+                deptTotals[dept] += change;
             });
+            
+            console.log(`[JE Draft] Data summary: ${totalRows} rows, ${zeroChangeRows} with zero change, ${missingDeptRows} missing dept`);
+            console.log("[JE Draft] Department totals:", deptTotals);
+            
+            // Check if we have any data to create JE from
+            const deptCount = Object.keys(deptTotals).length;
+            if (deptCount === 0) {
+                // Build helpful error message
+                let errorMsg = "No journal entry lines could be created.\n\n";
+                
+                if (zeroChangeRows === totalRows) {
+                    errorMsg += "All 'Change' amounts in PTO_Analysis are $0.00.\n\n";
+                    errorMsg += "Common causes:\n";
+                    errorMsg += "• Missing Pay Rate data (Liability = Balance × Pay Rate)\n";
+                    errorMsg += "• No prior period data to compare against\n";
+                    errorMsg += "• PTO Analysis hasn't been run yet\n\n";
+                    errorMsg += "Please verify Pay Rate values exist in PTO_Analysis.";
+                } else if (missingDeptRows === totalRows) {
+                    errorMsg += "All rows are missing Department values.\n\n";
+                    errorMsg += "Please ensure the 'Department' column is populated in PTO_Analysis.";
+                } else {
+                    errorMsg += `Found ${totalRows} rows but none had both a Department and non-zero Change amount.\n`;
+                    errorMsg += `• ${zeroChangeRows} rows with zero change\n`;
+                    errorMsg += `• ${missingDeptRows} rows missing department`;
+                }
+                
+                throw new Error(errorMsg);
+            }
             
             // Build JE rows
             const jeHeaders = ["RefNumber", "TxnDate", "Account Number", "Account Name", "LineAmount", "Debit", "Credit", "LineDesc", "Department"];
