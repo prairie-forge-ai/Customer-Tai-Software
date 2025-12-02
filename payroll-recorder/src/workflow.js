@@ -2,6 +2,7 @@ import { VERSION, WORKFLOW_STEPS as STEP_DETAILS, SHEET_NAMES } from "./constant
 import { applyModuleTabVisibility, showAllSheets } from "../../Common/tab-visibility.js";
 import { renderCopilotCard, bindCopilotCard, createExcelContextProvider } from "../../Common/copilot.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab, removeAdaFab } from "../../Common/homepage-sheet.js";
+import { initDatePicker } from "../../Common/date-picker.js";
 import {
     HOME_ICON_SVG,
     MODULES_ICON_SVG,
@@ -2063,26 +2064,27 @@ function bindConfigInteractions() {
         }
     });
 
-    const payrollInput = document.getElementById("config-payroll-date");
-    payrollInput?.addEventListener("change", (event) => {
-        const value = event.target.value || "";
-        // Always use the primary field name to avoid duplicate rows
-        scheduleConfigWrite("PR_Payroll_Date", value);
-        if (!value) return;
-        if (!configState.overrides.accountingPeriod) {
-            const derivedPeriod = deriveAccountingPeriod(value);
-            if (derivedPeriod) {
-                const periodInput = document.getElementById("config-accounting-period");
-                if (periodInput) periodInput.value = derivedPeriod;
-                scheduleConfigWrite("PR_Accounting_Period", derivedPeriod);
+    // Initialize custom date picker for Payroll Date
+    initDatePicker("config-payroll-date", {
+        onChange: (value) => {
+            // Always use the primary field name to avoid duplicate rows
+            scheduleConfigWrite("PR_Payroll_Date", value);
+            if (!value) return;
+            if (!configState.overrides.accountingPeriod) {
+                const derivedPeriod = deriveAccountingPeriod(value);
+                if (derivedPeriod) {
+                    const periodInput = document.getElementById("config-accounting-period");
+                    if (periodInput) periodInput.value = derivedPeriod;
+                    scheduleConfigWrite("PR_Accounting_Period", derivedPeriod);
+                }
             }
-        }
-        if (!configState.overrides.jeId) {
-            const derivedJe = deriveJeId(value);
-            if (derivedJe) {
-                const jeInput = document.getElementById("config-je-id");
-                if (jeInput) jeInput.value = derivedJe;
-                scheduleConfigWrite("PR_Journal_Entry_ID", derivedJe);
+            if (!configState.overrides.jeId) {
+                const derivedJe = deriveJeId(value);
+                if (derivedJe) {
+                    const jeInput = document.getElementById("config-je-id");
+                    if (jeInput) jeInput.value = derivedJe;
+                    scheduleConfigWrite("PR_Journal_Entry_ID", derivedJe);
+                }
             }
         }
     });

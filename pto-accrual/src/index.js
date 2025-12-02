@@ -1,6 +1,7 @@
 import { applyModuleTabVisibility, showAllSheets } from "../../Common/tab-visibility.js";
 import { bindInstructionsButton } from "../../Common/instructions.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab, removeAdaFab } from "../../Common/homepage-sheet.js";
+import { initDatePicker } from "../../Common/date-picker.js";
 import {
     HOME_ICON_SVG,
     MODULES_ICON_SVG,
@@ -1271,25 +1272,26 @@ function bindStepView(stepId) {
 }
 
 function bindConfigView() {
-    const payrollInput = document.getElementById("config-payroll-date");
-    payrollInput?.addEventListener("change", (event) => {
-        const value = event.target.value || "";
-        scheduleConfigWrite(PTO_CONFIG_FIELDS.payrollDate, value);
-        if (!value) return;
-        if (!configState.overrides.accountingPeriod) {
-            const derivedPeriod = deriveAccountingPeriod(value);
-            if (derivedPeriod) {
-                const periodInput = document.getElementById("config-accounting-period");
-                if (periodInput) periodInput.value = derivedPeriod;
-                scheduleConfigWrite(PTO_CONFIG_FIELDS.accountingPeriod, derivedPeriod);
+    // Initialize custom date picker
+    initDatePicker("config-payroll-date", {
+        onChange: (value) => {
+            scheduleConfigWrite(PTO_CONFIG_FIELDS.payrollDate, value);
+            if (!value) return;
+            if (!configState.overrides.accountingPeriod) {
+                const derivedPeriod = deriveAccountingPeriod(value);
+                if (derivedPeriod) {
+                    const periodInput = document.getElementById("config-accounting-period");
+                    if (periodInput) periodInput.value = derivedPeriod;
+                    scheduleConfigWrite(PTO_CONFIG_FIELDS.accountingPeriod, derivedPeriod);
+                }
             }
-        }
-        if (!configState.overrides.journalId) {
-            const derivedJe = deriveJournalId(value);
-            if (derivedJe) {
-                const jeInput = document.getElementById("config-journal-id");
-                if (jeInput) jeInput.value = derivedJe;
-                scheduleConfigWrite(PTO_CONFIG_FIELDS.journalEntryId, derivedJe);
+            if (!configState.overrides.journalId) {
+                const derivedJe = deriveJournalId(value);
+                if (derivedJe) {
+                    const jeInput = document.getElementById("config-journal-id");
+                    if (jeInput) jeInput.value = derivedJe;
+                    scheduleConfigWrite(PTO_CONFIG_FIELDS.journalEntryId, derivedJe);
+                }
             }
         }
     });

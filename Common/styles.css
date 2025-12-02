@@ -2983,3 +2983,225 @@ button:disabled,
     height: 56px;
   }
 }
+
+/* =============================================================================
+   PRAIRIE FORGE DATE PICKER
+   A modern, dark-themed date picker component
+   ============================================================================= */
+
+.pf-datepicker-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.pf-datepicker-input {
+  cursor: pointer;
+  padding-right: 40px !important;
+}
+
+.pf-datepicker-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.pf-datepicker-wrapper:hover .pf-datepicker-icon,
+.pf-datepicker-wrapper.open .pf-datepicker-icon {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.pf-datepicker-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  min-width: 280px;
+  background: linear-gradient(145deg, #1a1a2e, #16162a);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.pf-datepicker-dropdown.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.pf-datepicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pf-datepicker-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  flex: 1;
+  text-align: center;
+}
+
+.pf-datepicker-nav {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pf-datepicker-nav:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.pf-datepicker-nav:active {
+  transform: scale(0.95);
+}
+
+.pf-datepicker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 12px 16px 8px;
+  gap: 4px;
+}
+
+.pf-datepicker-weekdays span {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pf-datepicker-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 8px 16px 16px;
+  gap: 4px;
+}
+
+.pf-datepicker-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pf-datepicker-day:hover:not(.disabled):not(.selected) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pf-datepicker-day.other-month {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.pf-datepicker-day.today {
+  background: rgba(53, 51, 205, 0.3);
+  color: #fff;
+  font-weight: 600;
+}
+
+.pf-datepicker-day.selected {
+  background: linear-gradient(145deg, #4C2FFF, #3533CD);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(76, 47, 255, 0.4);
+}
+
+.pf-datepicker-day.disabled {
+  color: rgba(255, 255, 255, 0.15);
+  cursor: not-allowed;
+}
+
+.pf-datepicker-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pf-datepicker-today,
+.pf-datepicker-clear {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pf-datepicker-today {
+  background: rgba(53, 51, 205, 0.2);
+  color: #a5b4fc;
+}
+
+.pf-datepicker-today:hover {
+  background: rgba(53, 51, 205, 0.3);
+  color: #fff;
+}
+
+.pf-datepicker-clear {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pf-datepicker-clear:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+/* Animation for day hover */
+.pf-datepicker-day:active:not(.disabled) {
+  transform: scale(0.9);
+}
+
+/* Mobile adjustments */
+@media (max-width: 360px) {
+  .pf-datepicker-dropdown {
+    min-width: 260px;
+  }
+  
+  .pf-datepicker-day {
+    font-size: 12px;
+  }
+  
+  .pf-datepicker-header {
+    padding: 12px;
+  }
+}
