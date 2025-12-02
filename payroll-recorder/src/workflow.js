@@ -1682,6 +1682,9 @@ function renderArchiveStep(detail) {
         complete: isStepCompleteFromConfig(step.id)
     }));
     const allComplete = completionItems.every((item) => item.complete);
+    
+    console.log("[Archive] Step completion status:", completionItems);
+    console.log("[Archive] All complete?", allComplete);
     const statusList = completionItems
         .map(
             (item) => `
@@ -2486,7 +2489,15 @@ When asked about readiness, be specific about what passes and what needs attenti
         updateHeadcountSignoffState();
     }
     if (stepId === 6) {
-        document.getElementById("archive-run-btn")?.addEventListener("click", handleArchiveRun);
+        const archiveBtn = document.getElementById("archive-run-btn");
+        console.log("[Archive] Binding archive button:", archiveBtn);
+        console.log("[Archive] Button disabled?", archiveBtn?.disabled);
+        if (archiveBtn) {
+            archiveBtn.addEventListener("click", () => {
+                console.log("[Archive] Button clicked!");
+                handleArchiveRun();
+            });
+        }
     }
 }
 
