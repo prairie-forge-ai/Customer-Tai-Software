@@ -2117,13 +2117,42 @@ async function createJournalDraft() {
     
     try {
         await Excel.run(async (context) => {
-            // 1. Read config values
-            const configTable = context.workbook.tables.getItem(CONFIG_TABLES[0]);
-            const configRange = configTable.getDataBodyRange();
-            configRange.load("values");
+            // 1. Read config values - try table first, fall back to sheet
+            let configValues = [];
+            const configTable = context.workbook.tables.getItemOrNullObject(CONFIG_TABLES[0]);
+            configTable.load("isNullObject");
+            await context.sync();
+            
+            if (!configTable.isNullObject) {
+                const configRange = configTable.getDataBodyRange();
+                configRange.load("values");
+                await context.sync();
+                configValues = configRange.values || [];
+            } else {
+                // Fall back to reading the sheet directly (if it exists but isn't a table)
+                const configSheet = context.workbook.worksheets.getItemOrNullObject("SS_PF_Config");
+                configSheet.load("isNullObject");
+                await context.sync();
+                
+                if (!configSheet.isNullObject) {
+                    const configRange = configSheet.getUsedRangeOrNullObject();
+                    configRange.load("values");
+                    await context.sync();
+                    // Skip header row if reading from sheet directly
+                    const allValues = configRange.isNullObject ? [] : configRange.values || [];
+                    configValues = allValues.length > 1 ? allValues.slice(1) : [];
+                }
+            }
             
             // 2. Read PTO_Analysis
-            const analysisSheet = context.workbook.worksheets.getItem("PTO_Analysis");
+            const analysisSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Analysis");
+            analysisSheet.load("isNullObject");
+            await context.sync();
+            
+            if (analysisSheet.isNullObject) {
+                throw new Error("PTO_Analysis sheet not found. Please ensure the worksheet exists.");
+            }
+            
             const analysisRange = analysisSheet.getUsedRangeOrNullObject();
             analysisRange.load("values");
             
@@ -2140,11 +2169,10 @@ async function createJournalDraft() {
                 coaData = coaRange.isNullObject ? [] : coaRange.values || [];
             }
             
-            const configValues = configRange.values || [];
             const analysisValues = analysisRange.isNullObject ? [] : analysisRange.values || [];
             
-            if (!analysisValues.length) {
-                throw new Error("PTO_Analysis is empty. Run the analysis first.");
+            if (!analysisValues.length || analysisValues.length < 2) {
+                throw new Error("PTO_Analysis is empty or has no data rows. Run the analysis first (Step 4).");
             }
             
             // Parse config values - SS_PF_Config structure:
@@ -2222,11 +2250,16 @@ async function createJournalDraft() {
             
             // Parse PTO_Analysis headers and find columns
             const headers = (analysisValues[0] || []).map(h => normalizeName(h));
+            console.log("[JE Draft] PTO_Analysis headers:", headers);
+            console.log("[JE Draft] PTO_Analysis row count:", analysisValues.length - 1);
+            
             const deptIdx = findColumnIndex(headers, ["department"]);
             const changeIdx = findColumnIndex(headers, ["change"]);
             
+            console.log("[JE Draft] Column indices - Department:", deptIdx, "Change:", changeIdx);
+            
             if (deptIdx === -1 || changeIdx === -1) {
-                throw new Error("Could not find Department or Change columns in PTO_Analysis.");
+                throw new Error(`Could not find required columns in PTO_Analysis. Found headers: ${headers.join(", ")}. Looking for "Department" (found: ${deptIdx !== -1}) and "Change" (found: ${changeIdx !== -1}).`);
             }
             
             // Group Change amounts by Department
