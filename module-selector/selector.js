@@ -2201,6 +2201,7 @@ async function refreshRefData() {
 
 /**
  * Open Reference Data sheet in Excel
+ * Makes sheet visible first if it's hidden by tab visibility
  */
 async function openRefDataSheet() {
     const config = REF_DATA_CONFIG[refDataState.type];
@@ -2209,7 +2210,7 @@ async function openRefDataSheet() {
     try {
         await Excel.run(async (context) => {
             let sheet = context.workbook.worksheets.getItemOrNullObject(config.sheetName);
-            sheet.load("isNullObject");
+            sheet.load("isNullObject,visibility");
             await context.sync();
             
             if (sheet.isNullObject) {
@@ -2220,10 +2221,16 @@ async function openRefDataSheet() {
                 headerRange.format.font.bold = true;
                 headerRange.format.fill.color = "#f0f0f0";
                 await context.sync();
+            } else {
+                // Make sure sheet is visible before activating (may be hidden by tab visibility)
+                sheet.visibility = Excel.SheetVisibility.visible;
+                await context.sync();
             }
             
             sheet.activate();
+            sheet.getRange("A1").select();
             await context.sync();
+            console.log(`[Module Selector] Opened sheet: ${config.sheetName}`);
         });
         
         closeRefData();
