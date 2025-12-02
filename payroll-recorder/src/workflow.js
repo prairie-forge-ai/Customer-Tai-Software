@@ -497,6 +497,21 @@ const STEP_SHEET_MAP = {
     4: SHEET_NAMES.EXPENSE_REVIEW,
     5: SHEET_NAMES.JE_DRAFT       // Journal Entry Prep → PR_JE_Draft
 };
+
+// Reverse map: sheet name → step ID (for tab-to-panel sync)
+// When multiple steps use the same sheet, prefer the earlier step
+// Use -1 for homepage (special case)
+const SHEET_TO_STEP_MAP = {
+    "PR_Homepage": -1,                  // Homepage → Home view
+    [SHEET_NAMES.DATA]: 1,              // PR_Data → Import
+    [SHEET_NAMES.DATA_CLEAN]: 3,        // PR_Data_Clean → Validate (could be 2 or 3)
+    [SHEET_NAMES.EXPENSE_REVIEW]: 4,    // PR_Expense_Review → Expense Review
+    [SHEET_NAMES.JE_DRAFT]: 5,          // PR_JE_Draft → Journal Entry
+    [SHEET_NAMES.ARCHIVE_SUMMARY]: 6,   // PR_Archive_Summary → Archive
+    "SS_PF_Config": 0,                  // Config sheet → Configuration
+    "SS_Employee_Roster": 2,            // Roster → Headcount Review
+    "PR_Expense_Mapping": 4             // Expense Mapping → Expense Review
+};
 // Config field names - Pattern: PR_{Descriptor}
 const CONFIG_REVIEWER_FIELD = "PR_Reviewer";
 const PAYROLL_PROVIDER_FIELD = "PR_Payroll_Provider";
@@ -1218,10 +1233,80 @@ async function init() {
         const homepageConfig = getHomepageConfig(MODULE_KEY);
         await activateHomepageSheet(homepageConfig.sheetName, homepageConfig.title, homepageConfig.subtitle);
         
+        // Set up worksheet change listener for bi-directional sync
+        await setupWorksheetChangeListener();
+        
         renderApp();
     } catch (error) {
         console.error("[Payroll] Module initialization failed:", error);
         throw error;
+    }
+}
+
+/**
+ * Set up listener for worksheet activation changes
+ * Syncs the side panel when user manually switches Excel tabs
+ */
+async function setupWorksheetChangeListener() {
+    if (!hasExcelRuntime()) return;
+    
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            
+            // Listen for worksheet activation
+            worksheets.onActivated.add(handleWorksheetActivated);
+            
+            await context.sync();
+            console.log("[Payroll] Worksheet change listener registered");
+        });
+    } catch (error) {
+        console.warn("[Payroll] Could not set up worksheet listener:", error);
+    }
+}
+
+/**
+ * Handle worksheet activation - sync side panel to match
+ */
+async function handleWorksheetActivated(event) {
+    try {
+        await Excel.run(async (context) => {
+            const sheet = context.workbook.worksheets.getItem(event.worksheetId);
+            sheet.load("name");
+            await context.sync();
+            
+            const sheetName = sheet.name;
+            const stepId = SHEET_TO_STEP_MAP[sheetName];
+            
+            console.log(`[Payroll] Tab changed to: ${sheetName} → Step ${stepId}`);
+            
+            // Handle homepage (stepId -1)
+            if (stepId === -1) {
+                if (appState.activeView !== "home") {
+                    setState({ activeView: "home", activeStepId: null });
+                }
+                return;
+            }
+            
+            // Only sync if we have a mapped step and it's different from current
+            if (stepId !== undefined && stepId !== appState.activeStepId) {
+                // Find the index in WORKFLOW_STEPS
+                const stepIndex = WORKFLOW_STEPS.findIndex(s => s.id === stepId);
+                if (stepIndex >= 0) {
+                    // Update state without re-activating the worksheet (to avoid loop)
+                    pendingScrollIndex = stepIndex;
+                    const view = stepId === 0 ? "config" : "step";
+                    setState({ focusedIndex: stepIndex, activeView: view, activeStepId: stepId });
+                    
+                    // Trigger step-specific initialization if needed
+                    if (stepId === 2 && !headcountState.hasAnalyzed) {
+                        buildDataCleanIfNeeded().then(() => refreshHeadcountAnalysis());
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.warn("[Payroll] Error handling worksheet change:", error);
     }
 }
 
