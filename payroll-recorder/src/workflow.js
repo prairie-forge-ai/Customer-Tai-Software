@@ -2403,8 +2403,14 @@ function bindStepInteractions(stepId) {
             }
             updateHeadcountSignoffState();
         });
-        document.getElementById("roster-run-btn")?.addEventListener("click", () => refreshHeadcountAnalysis());
-        document.getElementById("roster-refresh-btn")?.addEventListener("click", () => refreshHeadcountAnalysis());
+        document.getElementById("roster-run-btn")?.addEventListener("click", async () => {
+            await buildDataCleanIfNeeded();
+            refreshHeadcountAnalysis();
+        });
+        document.getElementById("roster-refresh-btn")?.addEventListener("click", async () => {
+            await buildDataCleanIfNeeded();
+            refreshHeadcountAnalysis();
+        });
         document.getElementById("roster-review-btn")?.addEventListener("click", () => {
             const items = headcountState.roster?.mismatches || [];
             showHeadcountModal("Roster Differences", items, {
@@ -2662,8 +2668,12 @@ function focusStep(index) {
     if (sheetName) {
         activateWorksheet(sheetName);
     }
+    // Step 2 (Headcount Review) - Build PR_Data_Clean first, then run analysis
     if (step.id === 2 && !headcountState.hasAnalyzed) {
-        refreshHeadcountAnalysis();
+        // Build PR_Data_Clean before headcount analysis
+        buildDataCleanIfNeeded().then(() => {
+            refreshHeadcountAnalysis();
+        });
     }
     // Step 3 (Validate & Reconcile) - User must click Run/Refresh to trigger
     // Step 4 (Expense Review) - User must click Run/Refresh to trigger
@@ -2928,10 +2938,32 @@ async function clearPrDataSheet() {
                 await context.sync();
             }
             
+            // Also clear PR_Data_Clean
+            const cleanSheet = context.workbook.worksheets.getItemOrNullObject(SHEET_NAMES.DATA_CLEAN);
+            cleanSheet.load("isNullObject");
+            await context.sync();
+            
+            if (!cleanSheet.isNullObject) {
+                const cleanDataRange = cleanSheet.getRange("A2:Z10000");
+                cleanDataRange.clear(Excel.ClearApplyTo.contents);
+                await context.sync();
+            }
+            
             sheet.activate();
             sheet.getRange("A1").select();
             await context.sync();
         });
+        
+        // Reset workflow states so they'll rebuild when needed
+        headcountState.hasAnalyzed = false;
+        headcountState.roster = null;
+        headcountState.departments = null;
+        updateValidationState({
+            prDataTotal: null,
+            cleanTotal: null,
+            reconDifference: null
+        }, { rerender: false });
+        
         showToast("PR_Data cleared successfully.", "success");
     } catch (error) {
         console.error("Unable to clear PR_Data sheet", error);
@@ -5024,6 +5056,74 @@ function updateExpenseReviewState(partial = {}, { rerender = true } = {}) {
     Object.assign(expenseReviewState, partial);
     if (rerender) {
         renderApp();
+    }
+}
+
+/**
+ * Build PR_Data_Clean from PR_Data if it's empty or needs refresh
+ * This is called automatically when entering Step 2 or when user refreshes
+ */
+async function buildDataCleanIfNeeded() {
+    if (!hasExcelRuntime()) {
+        console.log("[DataClean] Excel runtime not available");
+        return;
+    }
+    
+    try {
+        const needsBuild = await Excel.run(async (context) => {
+            const dataSheet = context.workbook.worksheets.getItemOrNullObject(SHEET_NAMES.DATA);
+            const cleanSheet = context.workbook.worksheets.getItemOrNullObject(SHEET_NAMES.DATA_CLEAN);
+            
+            dataSheet.load("isNullObject");
+            cleanSheet.load("isNullObject");
+            await context.sync();
+            
+            if (dataSheet.isNullObject) {
+                console.log("[DataClean] PR_Data sheet not found");
+                return false;
+            }
+            
+            if (cleanSheet.isNullObject) {
+                console.log("[DataClean] PR_Data_Clean sheet not found");
+                return false;
+            }
+            
+            // Check if PR_Data has data
+            const dataRange = dataSheet.getUsedRangeOrNullObject();
+            dataRange.load("rowCount");
+            await context.sync();
+            
+            if (dataRange.isNullObject || dataRange.rowCount < 2) {
+                console.log("[DataClean] PR_Data is empty, nothing to build");
+                return false;
+            }
+            
+            // Check if PR_Data_Clean is empty or has much less data
+            const cleanRange = cleanSheet.getUsedRangeOrNullObject();
+            cleanRange.load("rowCount");
+            await context.sync();
+            
+            const dataRowCount = dataRange.rowCount;
+            const cleanRowCount = cleanRange.isNullObject ? 0 : cleanRange.rowCount;
+            
+            // Rebuild if clean is empty or significantly smaller (indicating stale data)
+            if (cleanRowCount < 2 || cleanRowCount < dataRowCount / 2) {
+                console.log(`[DataClean] PR_Data_Clean needs rebuild: ${cleanRowCount} clean rows vs ${dataRowCount} data rows`);
+                return true;
+            }
+            
+            console.log(`[DataClean] PR_Data_Clean appears up to date: ${cleanRowCount} rows`);
+            return false;
+        });
+        
+        if (needsBuild) {
+            console.log("[DataClean] Building PR_Data_Clean...");
+            showToast("Building PR_Data_Clean...", "info", 2000);
+            await prepareValidationData();
+            console.log("[DataClean] PR_Data_Clean built successfully");
+        }
+    } catch (error) {
+        console.warn("[DataClean] Error checking/building PR_Data_Clean:", error);
     }
 }
 
