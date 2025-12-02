@@ -107,9 +107,18 @@ function showToast(message, type = "info", duration = 4000) {
 
 /**
  * Show a confirmation dialog (Office-safe alternative to window.confirm)
+ * Apple-inspired design with glassmorphism
  * Returns a Promise that resolves to true/false
  */
-function showConfirm(message) {
+function showConfirm(message, options = {}) {
+    const {
+        title = "Confirm Action",
+        confirmText = "Continue",
+        cancelText = "Cancel",
+        icon = "🗂️",
+        destructive = false
+    } = options;
+    
     return new Promise((resolve) => {
         // Remove existing dialogs
         document.querySelectorAll(".pf-confirm-overlay").forEach(d => d.remove());
@@ -118,10 +127,12 @@ function showConfirm(message) {
         overlay.className = "pf-confirm-overlay";
         overlay.innerHTML = `
             <div class="pf-confirm-dialog">
+                <div class="pf-confirm-icon">${icon}</div>
+                <div class="pf-confirm-title">${title}</div>
                 <div class="pf-confirm-message">${message.replace(/\n/g, "<br>")}</div>
                 <div class="pf-confirm-buttons">
-                    <button class="pf-confirm-btn pf-confirm-btn--cancel">Cancel</button>
-                    <button class="pf-confirm-btn pf-confirm-btn--ok">OK</button>
+                    <button class="pf-confirm-btn pf-confirm-btn--cancel">${cancelText}</button>
+                    <button class="pf-confirm-btn pf-confirm-btn--ok ${destructive ? 'pf-confirm-btn--destructive' : ''}">${confirmText}</button>
                 </div>
             </div>
         `;
@@ -134,40 +145,116 @@ function showConfirm(message) {
                 .pf-confirm-overlay {
                     position: fixed;
                     inset: 0;
-                    background: rgba(0,0,0,0.6);
+                    background: rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter: blur(8px);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     z-index: 10001;
+                    animation: pf-confirm-fade-in 0.2s ease;
+                }
+                @keyframes pf-confirm-fade-in {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes pf-confirm-scale-in {
+                    from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+                    to { opacity: 1; transform: scale(1) translateY(0); }
                 }
                 .pf-confirm-dialog {
-                    background: #1a1a2e;
+                    background: linear-gradient(145deg, rgba(30, 30, 50, 0.95), rgba(20, 20, 35, 0.98));
+                    border: 1px solid rgba(255, 255, 255, 0.08);
                     color: white;
-                    padding: 24px;
-                    border-radius: 12px;
-                    max-width: 400px;
+                    padding: 28px 32px;
+                    border-radius: 20px;
+                    max-width: 380px;
                     width: 90%;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+                    box-shadow: 
+                        0 24px 48px rgba(0, 0, 0, 0.4),
+                        0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+                        0 1px 0 rgba(255, 255, 255, 0.1) inset;
+                    text-align: center;
+                    animation: pf-confirm-scale-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
                 }
-                .pf-confirm-message { font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
-                .pf-confirm-buttons { display: flex; gap: 12px; justify-content: flex-end; }
+                .pf-confirm-icon {
+                    font-size: 48px;
+                    margin-bottom: 16px;
+                    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+                }
+                .pf-confirm-title {
+                    font-size: 18px;
+                    font-weight: 600;
+                    color: #fff;
+                    margin-bottom: 12px;
+                    letter-spacing: -0.3px;
+                }
+                .pf-confirm-message {
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: rgba(255, 255, 255, 0.7);
+                    margin-bottom: 24px;
+                    text-align: left;
+                }
+                .pf-confirm-buttons {
+                    display: flex;
+                    gap: 12px;
+                    justify-content: center;
+                }
                 .pf-confirm-btn {
-                    padding: 10px 20px;
-                    border-radius: 6px;
+                    flex: 1;
+                    padding: 12px 24px;
+                    border-radius: 12px;
                     border: none;
                     cursor: pointer;
-                    font-size: 14px;
-                    font-weight: 500;
+                    font-size: 15px;
+                    font-weight: 600;
+                    letter-spacing: -0.2px;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                 }
-                .pf-confirm-btn--cancel { background: #374151; color: white; }
-                .pf-confirm-btn--cancel:hover { background: #4b5563; }
-                .pf-confirm-btn--ok { background: #3b82f6; color: white; }
-                .pf-confirm-btn--ok:hover { background: #2563eb; }
+                .pf-confirm-btn:active {
+                    transform: scale(0.97);
+                }
+                .pf-confirm-btn--cancel {
+                    background: rgba(255, 255, 255, 0.08);
+                    color: rgba(255, 255, 255, 0.9);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+                .pf-confirm-btn--cancel:hover {
+                    background: rgba(255, 255, 255, 0.12);
+                    border-color: rgba(255, 255, 255, 0.15);
+                }
+                .pf-confirm-btn--ok {
+                    background: linear-gradient(145deg, #6366f1, #4f46e5);
+                    color: white;
+                    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+                }
+                .pf-confirm-btn--ok:hover {
+                    background: linear-gradient(145deg, #818cf8, #6366f1);
+                    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
+                    transform: translateY(-1px);
+                }
+                .pf-confirm-btn--destructive {
+                    background: linear-gradient(145deg, #ef4444, #dc2626);
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+                }
+                .pf-confirm-btn--destructive:hover {
+                    background: linear-gradient(145deg, #f87171, #ef4444);
+                    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5);
+                }
             `;
             document.head.appendChild(style);
         }
         
         document.body.appendChild(overlay);
+        
+        // Close on overlay click (outside dialog)
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+                resolve(false);
+            }
+        });
         
         overlay.querySelector(".pf-confirm-btn--cancel").onclick = () => {
             overlay.remove();
@@ -2921,7 +3008,16 @@ async function clearPrDataSheet() {
         showToast("Open this module inside Excel to clear data.", "info");
         return;
     }
-    const confirmed = await showConfirm("Are you sure you want to clear all data from PR_Data?\n\nThis cannot be undone.");
+    const confirmed = await showConfirm(
+        "All data in PR_Data will be permanently removed.\n\nThis action cannot be undone.",
+        {
+            title: "Clear Payroll Data",
+            icon: "🗑️",
+            confirmText: "Clear Data",
+            cancelText: "Keep Data",
+            destructive: true
+        }
+    );
     if (!confirmed) return;
     
     try {
@@ -5763,14 +5859,18 @@ async function handleArchiveRun() {
     
     // Confirm before proceeding
     const confirmed = await showConfirm(
-        "Archive Payroll Run\n\n" +
-        "This will:\n" +
-        "1. Download an Excel archive file\n" +
-        "2. Update PR_Archive_Summary with current period\n" +
-        "3. Clear working data from all payroll sheets\n" +
-        "4. Clear non-permanent notes and config values\n\n" +
-        "Make sure you've completed all review steps.\n\n" +
-        "Continue?"
+        "This will:\n\n" +
+        "• Download an Excel archive file\n" +
+        "• Update PR_Archive_Summary\n" +
+        "• Clear working data from all sheets\n" +
+        "• Reset non-permanent notes & config\n\n" +
+        "Make sure you've completed all review steps.",
+        {
+            title: "Archive Payroll Run",
+            icon: "📦",
+            confirmText: "Archive Now",
+            cancelText: "Not Yet"
+        }
     );
     
     if (!confirmed) {
