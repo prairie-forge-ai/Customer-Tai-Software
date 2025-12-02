@@ -5451,6 +5451,8 @@ function handleExpenseReviewComplete() {
  * 5. Reset non-permanent config values
  */
 async function handleArchiveRun() {
+    console.log("[Archive] handleArchiveRun called");
+    
     if (!hasExcelRuntime()) {
         window.alert("Excel runtime is unavailable.");
         return;
@@ -5460,65 +5462,58 @@ async function handleArchiveRun() {
     const confirmed = window.confirm(
         "Archive Payroll Run\n\n" +
         "This will:\n" +
-        "1. Create an archive workbook with all payroll tabs\n" +
-        "2. Update PR_Archive_Summary with current period\n" +
-        "3. Clear working data from all payroll sheets\n" +
-        "4. Clear non-permanent notes and config values\n\n" +
+        "1. Update PR_Archive_Summary with current period\n" +
+        "2. Clear working data from all payroll sheets\n" +
+        "3. Clear non-permanent notes and config values\n\n" +
+        "Note: Please manually save a copy of your workbook before archiving.\n\n" +
         "Make sure you've completed all review steps before archiving.\n\n" +
         "Continue?"
     );
     
-    if (!confirmed) return;
+    if (!confirmed) {
+        console.log("[Archive] User cancelled");
+        return;
+    }
+    
+    console.log("[Archive] User confirmed, starting archive process...");
     
     try {
         // ═══════════════════════════════════════════════════════════════════
-        // STEP 1: Archive payroll tabs to new workbook
+        // STEP 1: Update PR_Archive_Summary with current period
+        // (Skipping automatic workbook creation - user should manually save a copy)
         // ═══════════════════════════════════════════════════════════════════
-        console.log("[Archive] Step 1: Creating archive workbook...");
-        
-        const archiveSuccess = await createArchiveWorkbook();
-        if (!archiveSuccess) {
-            window.alert("Archive cancelled or failed. No data was modified.");
-            return;
-        }
-        
-        console.log("[Archive] Step 1 complete: Archive workbook created");
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // STEP 2: Update PR_Archive_Summary with current period
-        // ═══════════════════════════════════════════════════════════════════
-        console.log("[Archive] Step 2: Updating PR_Archive_Summary...");
+        console.log("[Archive] Step 1: Updating PR_Archive_Summary...");
         
         await updateArchiveSummary();
         
-        console.log("[Archive] Step 2 complete: Archive summary updated");
+        console.log("[Archive] Step 1 complete: Archive summary updated");
         
         // ═══════════════════════════════════════════════════════════════════
-        // STEP 3: Clear working data from payroll sheets
+        // STEP 2: Clear working data from payroll sheets
         // ═══════════════════════════════════════════════════════════════════
-        console.log("[Archive] Step 3: Clearing working data...");
+        console.log("[Archive] Step 2: Clearing working data...");
         
         await clearWorkingData();
         
-        console.log("[Archive] Step 3 complete: Working data cleared");
+        console.log("[Archive] Step 2 complete: Working data cleared");
         
         // ═══════════════════════════════════════════════════════════════════
-        // STEP 4: Clear non-permanent step notes
+        // STEP 3: Clear non-permanent step notes
         // ═══════════════════════════════════════════════════════════════════
-        console.log("[Archive] Step 4: Clearing non-permanent notes...");
+        console.log("[Archive] Step 3: Clearing non-permanent notes...");
         
         await clearNonPermanentNotes();
         
-        console.log("[Archive] Step 4 complete: Notes cleared");
+        console.log("[Archive] Step 3 complete: Notes cleared");
         
         // ═══════════════════════════════════════════════════════════════════
-        // STEP 5: Reset non-permanent config values
+        // STEP 4: Reset non-permanent config values
         // ═══════════════════════════════════════════════════════════════════
-        console.log("[Archive] Step 5: Resetting config values...");
+        console.log("[Archive] Step 4: Resetting config values...");
         
         await resetNonPermanentConfig();
         
-        console.log("[Archive] Step 5 complete: Config reset");
+        console.log("[Archive] Step 4 complete: Config reset");
         
         // ═══════════════════════════════════════════════════════════════════
         // COMPLETE
@@ -5531,9 +5526,8 @@ async function handleArchiveRun() {
         
         window.alert(
             "Archive Complete!\n\n" +
-            "✓ Payroll tabs archived to new workbook\n" +
             "✓ PR_Archive_Summary updated with current period\n" +
-            "✓ Working data cleared\n" +
+            "✓ Working data cleared from PR_Data, PR_Data_Clean, etc.\n" +
             "✓ Notes and config reset\n\n" +
             "Ready for next payroll cycle."
         );
