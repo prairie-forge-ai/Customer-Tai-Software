@@ -2490,13 +2490,18 @@ When asked about readiness, be specific about what passes and what needs attenti
     if (stepId === 6) {
         const archiveBtn = document.getElementById("archive-run-btn");
         if (archiveBtn) {
-            archiveBtn.addEventListener("click", async () => {
+            // Remove any existing listeners by cloning
+            const newBtn = archiveBtn.cloneNode(true);
+            archiveBtn.parentNode.replaceChild(newBtn, archiveBtn);
+            
+            newBtn.onclick = async function() {
+                window.alert("Archive button clicked! Starting archive process...");
                 try {
                     await handleArchiveRun();
                 } catch (error) {
                     window.alert("Archive Error: " + error.message);
                 }
-            });
+            };
         }
     }
 }
