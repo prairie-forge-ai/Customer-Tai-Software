@@ -2713,7 +2713,8 @@ function bindConfigInteractions() {
             fieldName: stepFields.signOff,
             completeField: STEP_COMPLETE_FIELDS[0],
             initialActive: isStepComplete,
-            stepId: 0 // Step 0 has no prerequisites
+            stepId: 0, // Step 0 has no prerequisites
+            onComplete: getStepCompleteHandler(0)
         });
     }
 }
@@ -2967,14 +2968,7 @@ When asked about readiness, be specific about what passes and what needs attenti
             requireNotesCheck: stepId === 2 ? isHeadcountNotesRequired : null,
             initialActive: Boolean(initialSignOff || initialCompleteFlag),
             stepId, // Pass stepId for sequential validation
-            onComplete:
-                stepId === 3
-                    ? handleValidationComplete
-                    : stepId === 4
-                        ? handleExpenseReviewComplete
-                        : stepId === 2
-                            ? handleHeadcountSignoff
-                            : null
+            onComplete: getStepCompleteHandler(stepId)
         });
     }
 
@@ -6024,6 +6018,8 @@ function handleHeadcountSignoff() {
         return;
     }
     setState({ statusText: "Headcount Review signed off." });
+    // Advance to next step (Step 3 - Validate)
+    advanceToNextStep(2);
 }
 
 function enforceHeadcountSkipNote() {
@@ -6075,16 +6071,39 @@ function handlePlugDifference() {
     showToast("Difference resolution will be available soon.", "info");
 }
 
-function handleValidationComplete() {
-    const currentIndex = WORKFLOW_STEPS.findIndex((step) => step.id === 3);
+/**
+ * Get the completion handler for a step
+ * All steps (0-5) advance to the next step when completed
+ * Step 6 (Archive) has its own special flow with popup and return to home
+ */
+function getStepCompleteHandler(stepId) {
+    // Step 6 is handled separately with archive popup
+    if (stepId === 6) return null;
+    
+    // All other steps advance to the next step
+    return () => advanceToNextStep(stepId);
+}
+
+/**
+ * Advance to the next step after completing the current one
+ */
+function advanceToNextStep(currentStepId) {
+    const currentIndex = WORKFLOW_STEPS.findIndex((step) => step.id === currentStepId);
     if (currentIndex === -1) return;
-    focusStep(Math.min(WORKFLOW_STEPS.length - 1, currentIndex + 1));
+    
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < WORKFLOW_STEPS.length) {
+        focusStep(nextIndex);
+    }
+}
+
+// Legacy handlers (kept for backwards compatibility)
+function handleValidationComplete() {
+    advanceToNextStep(3);
 }
 
 function handleExpenseReviewComplete() {
-    const currentIndex = WORKFLOW_STEPS.findIndex((step) => step.id === 4);
-    if (currentIndex === -1) return;
-    focusStep(Math.min(WORKFLOW_STEPS.length - 1, currentIndex + 1));
+    advanceToNextStep(4);
 }
 
 /**
