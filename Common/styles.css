@@ -760,6 +760,13 @@ body {
   font-size: 15px;
   font-family: inherit;
   resize: vertical;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pf-notes-body textarea:focus {
+  outline: none;
+  border-color: var(--pf-accent);
+  box-shadow: 0 0 0 3px rgba(53, 51, 205, 0.25);
 }
 
 .pf-notes-body textarea::placeholder {

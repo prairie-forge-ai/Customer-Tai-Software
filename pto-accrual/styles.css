@@ -217,6 +217,7 @@ body {
 .pf-config-field textarea:focus {
     outline: none;
     border-color: var(--pf-accent);
+    box-shadow: 0 0 0 3px rgba(53, 51, 205, 0.25);
 }
 
 .pf-config-field textarea {
