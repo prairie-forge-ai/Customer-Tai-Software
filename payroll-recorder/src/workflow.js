@@ -1202,6 +1202,14 @@ function renderHeadcountStep(detail) {
         ${renderCheckRow("Difference", rosterDiff, rosterDiff === 0)}
     `;
     
+    // Build a helpful note if department count differs from employee counts
+    const employeesCompared = departments.rosterCount ?? 0;
+    const rosterTotal = roster.rosterCount ?? 0;
+    const payrollTotal = roster.payrollCount ?? 0;
+    const departmentNote = (hasRun && employeesCompared > 0 && employeesCompared < Math.max(rosterTotal, payrollTotal))
+        ? `<p class="pf-step-note pf-step-note--info">ℹ️ Only ${employeesCompared} employees appear in both lists, so only those can be compared for department alignment.</p>`
+        : "";
+    
     const deptChecksHtml = `
         ${renderCheckRow("Expected departments", departments.rosterCount ?? "—", true)}
         ${renderCheckRow("PR_Data departments", departments.payrollCount ?? "—", true)}
@@ -1287,6 +1295,7 @@ function renderHeadcountStep(detail) {
                     <h3>Department Alignment</h3>
                     <p class="pf-config-subtext">Verify department assignments are consistent.</p>
                 </div>
+                ${departmentNote}
                 <div class="pf-je-checks-container">
                     ${deptChecksHtml}
                 </div>

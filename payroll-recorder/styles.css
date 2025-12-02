@@ -186,6 +186,16 @@ body {
     color: var(--pf-tertiary);
 }
 
+.pf-step-note--info {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(53, 51, 205, 0.1);
+    border-left: 3px solid var(--pf-accent);
+    padding: 8px 12px;
+    margin: 8px 0;
+    border-radius: 4px;
+}
+
 .pf-step-highlight {
     display: flex;
     flex-direction: column;
