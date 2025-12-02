@@ -1847,6 +1847,7 @@ function renderFooter() {
             <div class="pf-brand-text">
                 <div class="pf-brand-label">prairie.forge</div>
                 <div class="pf-brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version ${VERSION}</div>
+                <button type="button" class="pf-config-link" id="showConfigSheets">CONFIGURATION</button>
             </div>
         </footer>
     `;
@@ -1908,6 +1909,55 @@ function bindSharedInteractions() {
         quickToggle?.classList.remove("is-active");
         await navigateToExpenseMapping();
     });
+    
+    // CONFIGURATION link - unhides SS_* sheets for config access
+    document.getElementById("showConfigSheets")?.addEventListener("click", async () => {
+        await unhideSystemSheets();
+    });
+}
+
+/**
+ * Unhide system sheets (SS_* prefix) for configuration access
+ */
+async function unhideSystemSheets() {
+    if (typeof Excel === "undefined") {
+        console.log("Excel not available");
+        return;
+    }
+    
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            worksheets.load("items/name,visibility");
+            await context.sync();
+            
+            let unhiddenCount = 0;
+            worksheets.items.forEach((sheet) => {
+                if (sheet.name.toUpperCase().startsWith("SS_")) {
+                    sheet.visibility = Excel.SheetVisibility.visible;
+                    console.log(`[Config] Made visible: ${sheet.name}`);
+                    unhiddenCount++;
+                }
+            });
+            
+            await context.sync();
+            
+            // Activate SS_PF_Config if it exists
+            const configSheet = context.workbook.worksheets.getItemOrNullObject("SS_PF_Config");
+            configSheet.load("isNullObject");
+            await context.sync();
+            
+            if (!configSheet.isNullObject) {
+                configSheet.activate();
+                configSheet.getRange("A1").select();
+                await context.sync();
+            }
+            
+            console.log(`[Config] ${unhiddenCount} system sheets now visible`);
+        });
+    } catch (error) {
+        console.error("[Config] Error unhiding system sheets:", error);
+    }
 }
 
 /**

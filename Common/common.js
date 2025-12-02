@@ -1115,4 +1115,67 @@ PrairieForge.writeAllSharedConfig = async function(fields) {
     }
 };
 
+/**
+ * Show ALL sheets in the workbook (emergency recovery / debugging)
+ * Makes every sheet visible, including veryHidden ones
+ */
+PrairieForge.showAllSheets = async function() {
+    if (typeof Excel === 'undefined') {
+        console.log("Excel not available");
+        return;
+    }
+    
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            worksheets.load("items/name,visibility");
+            await context.sync();
+            
+            let unhiddenCount = 0;
+            worksheets.items.forEach((sheet) => {
+                if (sheet.visibility !== Excel.SheetVisibility.visible) {
+                    sheet.visibility = Excel.SheetVisibility.visible;
+                    console.log(`[ShowAll] Made visible: ${sheet.name}`);
+                    unhiddenCount++;
+                }
+            });
+            
+            await context.sync();
+            console.log(`[ShowAll] Done! Made ${unhiddenCount} sheets visible. Total: ${worksheets.items.length}`);
+        });
+    } catch (error) {
+        console.error("[ShowAll] Error:", error);
+    }
+};
+
+/**
+ * Unhide system sheets (SS_* prefix)
+ */
+PrairieForge.unhideSystemSheets = async function() {
+    if (typeof Excel === 'undefined') {
+        console.log("Excel not available");
+        return;
+    }
+    
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            worksheets.load("items/name,visibility");
+            await context.sync();
+            
+            worksheets.items.forEach((sheet) => {
+                if (sheet.name.toUpperCase().startsWith("SS_")) {
+                    sheet.visibility = Excel.SheetVisibility.visible;
+                    console.log(`[Unhide] Made visible: ${sheet.name}`);
+                }
+            });
+            
+            await context.sync();
+            console.log("[Unhide] System sheets are now visible!");
+        });
+    } catch (error) {
+        console.error("[Unhide] Error:", error);
+    }
+};
+
 console.log('Prairie Forge Common Utilities loaded');
