@@ -1682,9 +1682,7 @@ function renderArchiveStep(detail) {
         complete: isStepCompleteFromConfig(step.id)
     }));
     const allComplete = completionItems.every((item) => item.complete);
-    
-    console.log("[Archive] Step completion status:", completionItems);
-    console.log("[Archive] All complete?", allComplete);
+    const incompleteCount = completionItems.filter(i => !i.complete).length;
     const statusList = completionItems
         .map(
             (item) => `
@@ -1714,8 +1712,9 @@ function renderArchiveStep(detail) {
             <article class="pf-step-card pf-step-detail pf-config-card">
                 <div class="pf-config-head">
                     <h3>Archive & Reset</h3>
-                    <p class="pf-config-subtext">Create an archive of this module’s sheets and clear work tabs.</p>
+                    <p class="pf-config-subtext">Create an archive of this module's sheets and clear work tabs.</p>
                 </div>
+                ${!allComplete ? `<p class="pf-step-note pf-step-note--info">⚠️ Complete all ${incompleteCount} remaining step(s) before archiving.</p>` : ""}
                 <div class="pf-pill-row pf-config-actions">
                     <button type="button" class="pf-pill-btn" id="archive-run-btn" ${allComplete ? "" : "disabled"}>Archive</button>
                 </div>
@@ -2490,12 +2489,13 @@ When asked about readiness, be specific about what passes and what needs attenti
     }
     if (stepId === 6) {
         const archiveBtn = document.getElementById("archive-run-btn");
-        console.log("[Archive] Binding archive button:", archiveBtn);
-        console.log("[Archive] Button disabled?", archiveBtn?.disabled);
         if (archiveBtn) {
-            archiveBtn.addEventListener("click", () => {
-                console.log("[Archive] Button clicked!");
-                handleArchiveRun();
+            archiveBtn.addEventListener("click", async () => {
+                try {
+                    await handleArchiveRun();
+                } catch (error) {
+                    window.alert("Archive Error: " + error.message);
+                }
             });
         }
     }
