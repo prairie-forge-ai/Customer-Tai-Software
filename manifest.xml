@@ -6,7 +6,7 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
   xsi:type="TaskPaneApp"
 >
-  <Id>18ec8be2-5471-47c8-b621-ce79b6782994</Id>
+  <Id>16b2f680-b42c-4f45-ab67-af2d2c3c9d15</Id>
   <Version>1.0.0.0</Version>
   <ProviderName>Prairie Forge</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
@@ -23,7 +23,7 @@
     <Host Name="Workbook" />
   </Hosts>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://prairie-forge-ai.github.io/Customer-ArchCollins-Foundry/module-selector/index.html" />
+    <SourceLocation DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html" />
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
   <VersionOverrides xsi:type="ov:VersionOverridesV1_0">
@@ -73,8 +73,8 @@
         <bt:Image id="residIcon80" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_White.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="residTaskpaneUrl" DefaultValue="https://prairie-forge-ai.github.io/Customer-ArchCollins-Foundry/module-selector/index.html" />
-        <bt:Url id="residLearnMoreUrl" DefaultValue="https://prairieforge.ai/solutions/archcollins" />
+        <bt:Url id="residTaskpaneUrl" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html" />
+        <bt:Url id="residLearnMoreUrl" DefaultValue="https://prairieforge.ai/solutions/tai-software" />
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="residTaskpaneGroupLabel" DefaultValue="ForgeSuite" />
