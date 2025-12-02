@@ -3021,19 +3021,20 @@ button:disabled,
 
 .pf-datepicker-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
   left: 0;
   right: 0;
   min-width: 280px;
   background: linear-gradient(145deg, #1a1a2e, #16162a);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5),
+  box-shadow: 0 -10px 50px rgba(0, 0, 0, 0.5),
+              0 20px 50px rgba(0, 0, 0, 0.3),
               0 0 0 1px rgba(255, 255, 255, 0.05) inset;
-  z-index: 1000;
+  z-index: 9999;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-10px) scale(0.95);
+  transform: translateY(10px) scale(0.95);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
