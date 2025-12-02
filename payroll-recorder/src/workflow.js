@@ -4048,17 +4048,29 @@ function parseBankAmount(value) {
 }
 
 function normalizePeriodKey(value) {
-    if (value instanceof Date) return formatDateFromDate(value);
+    if (value instanceof Date) {
+        return formatDateFromDate(value);
+    }
     if (typeof value === "number" && !Number.isNaN(value)) {
+        // Excel serial date - convert using UTC to avoid timezone shift
         const date = convertExcelDate(value);
         return date ? formatDateFromDate(date) : "";
     }
     const str = String(value ?? "").trim();
     if (!str) return "";
+    
+    // If already in ISO format (YYYY-MM-DD), return as-is - no conversion needed
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    
+    // For other date formats, extract components directly to avoid timezone issues
+    // Try to parse using local interpretation
     const parsed = new Date(str);
     if (!Number.isNaN(parsed.getTime())) {
-        return formatDateFromDate(parsed);
+        // Use local methods since the string was likely entered in local time
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+        const day = String(parsed.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
     }
     return str;
 }
@@ -4076,6 +4088,15 @@ function convertExcelDate(serial) {
 
 function formatFriendlyPeriod(key) {
     if (!key) return "";
+    
+    // If ISO format (YYYY-MM-DD), parse manually to avoid timezone shift
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+        const [year, month, day] = key.split("-").map(Number);
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return `${monthNames[month - 1]} ${day}, ${year}`;
+    }
+    
+    // For other formats, try parsing but use local interpretation
     const parsed = new Date(key);
     if (!Number.isNaN(parsed.getTime())) {
         return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
