@@ -3059,13 +3059,44 @@ function normalizeFieldName(value) {
 function isNoiseName(value) {
     const normalized = String(value ?? "").trim().toLowerCase();
     if (!normalized) return true;
-    // Filter out header-like values and totals
-    const noiseTerms = [
-        "total", "totals", "grand total", "subtotal", "summary",
+    
+    // Exact match terms (headers, placeholders)
+    const exactMatchTerms = [
         "employee", "employee name", "name", "full name",
         "header", "column", "n/a", "none", "blank", "null", "undefined"
     ];
-    return noiseTerms.some(term => normalized === term || normalized === term.replace(/\s+/g, ""));
+    if (exactMatchTerms.some(term => normalized === term || normalized === term.replace(/\s+/g, ""))) {
+        return true;
+    }
+    
+    // Contains-based filtering for totals and aggregate rows
+    // These patterns indicate the row is a summary/total, not an individual employee
+    const containsTerms = [
+        "total",           // "~Report Totals", "Grand Total", "Subtotal"
+        "subtotal",
+        "summary",
+        "grand total",
+        "totals for department",  // "~Totals for DEPARTMENT : 10 - COGS Support"
+        "department total",
+        "dept total",
+        "report total"
+    ];
+    if (containsTerms.some(term => normalized.includes(term))) {
+        return true;
+    }
+    
+    // Starts-with patterns (payroll systems often use ~ or * for totals)
+    const startsWithPatterns = [
+        "~",              // Common payroll export prefix for totals
+        "*",              // Another common total indicator
+        "---",            // Separator rows
+        "==="
+    ];
+    if (startsWithPatterns.some(prefix => normalized.startsWith(prefix))) {
+        return true;
+    }
+    
+    return false;
 }
 
 function formatDateInput(value) {
