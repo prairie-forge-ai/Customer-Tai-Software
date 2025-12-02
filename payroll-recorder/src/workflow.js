@@ -5557,87 +5557,72 @@ async function handleArchiveRun() {
 }
 
 /**
- * Step 1: Create a copy of the current workbook for archiving
- * Uses getBase64() to clone the entire workbook, then opens in new window for user to save
+ * Step 1: Export payroll data to CSV files for archiving
+ * Downloads a CSV file containing all key payroll data
  */
 async function createArchiveWorkbook() {
     try {
         // Get current payroll date for filename
         const payrollDate = getPayrollDateValue() || new Date().toISOString().split("T")[0];
-        const suggestedName = `Payroll_Archive_${payrollDate}`;
+        const baseFilename = `Payroll_Archive_${payrollDate}`;
         
-        console.log("[Archive] Creating archive copy of workbook...");
+        console.log("[Archive] Exporting payroll data to CSV...");
         
         return await Excel.run(async (context) => {
-            // Get the current workbook as base64
-            // This creates a complete copy including all sheets, formatting, and data
             const workbook = context.workbook;
-            
-            // First, let's try the simple approach - just open a copy
-            // createWorkbook() with no args creates a blank workbook
-            // createWorkbook(base64) creates from template
-            
-            // Unfortunately, getBase64() requires SaveBehavior which may prompt
-            // Let's use a simpler approach: create blank workbook and copy sheet data
-            
             const sourceSheets = workbook.worksheets;
             sourceSheets.load("items/name");
             await context.sync();
             
-            // Sheets to archive
+            // Sheets to archive (in order of importance)
             const sheetsToArchive = [
-                SHEET_NAMES.DATA,
-                SHEET_NAMES.DATA_CLEAN,
-                SHEET_NAMES.EXPENSE_MAPPING,
-                SHEET_NAMES.EXPENSE_REVIEW,
-                SHEET_NAMES.JE_DRAFT
+                { name: SHEET_NAMES.JE_DRAFT, label: "Journal Entry" },
+                { name: SHEET_NAMES.DATA_CLEAN, label: "Payroll Detail" },
+                { name: SHEET_NAMES.DATA, label: "Raw Import" }
             ];
             
-            // Collect all data first
-            const sheetData = [];
-            for (const sheetName of sheetsToArchive) {
-                const sourceSheet = sourceSheets.items.find(s => s.name === sheetName);
+            // Collect all data
+            const allData = [];
+            
+            for (const sheet of sheetsToArchive) {
+                const sourceSheet = sourceSheets.items.find(s => s.name === sheet.name);
                 if (!sourceSheet) {
-                    console.log(`[Archive] Sheet not found: ${sheetName}`);
+                    console.log(`[Archive] Sheet not found: ${sheet.name}`);
                     continue;
                 }
                 
                 const usedRange = sourceSheet.getUsedRangeOrNullObject();
-                usedRange.load("values,rowCount,columnCount");
+                usedRange.load("values");
                 await context.sync();
                 
                 if (!usedRange.isNullObject && usedRange.values && usedRange.values.length > 0) {
-                    sheetData.push({
-                        name: sheetName,
-                        values: usedRange.values,
-                        rowCount: usedRange.rowCount,
-                        columnCount: usedRange.columnCount
+                    allData.push({
+                        sheetName: sheet.name,
+                        label: sheet.label,
+                        values: usedRange.values
                     });
-                    console.log(`[Archive] Collected data from: ${sheetName} (${usedRange.values.length} rows)`);
+                    console.log(`[Archive] Collected: ${sheet.name} (${usedRange.values.length} rows)`);
                 }
             }
             
-            if (sheetData.length === 0) {
+            if (allData.length === 0) {
                 window.alert("No data to archive. Please complete the payroll workflow first.");
                 return false;
             }
             
-            // Create new workbook - this opens in a new Excel window
-            console.log("[Archive] Creating new workbook...");
-            context.application.createWorkbook();
-            await context.sync();
+            // Download each sheet as separate CSV
+            for (const data of allData) {
+                const csv = convertToCSV(data.values);
+                const filename = `${baseFilename}_${data.sheetName}.csv`;
+                downloadCSV(csv, filename);
+                console.log(`[Archive] Downloaded: ${filename}`);
+            }
             
-            // Alert user with instructions
             window.alert(
-                `📁 Archive Workbook Created\n\n` +
-                `A new Excel window has been opened.\n\n` +
-                `IMPORTANT - Please save it now:\n` +
-                `1. Switch to the new Excel window\n` +
-                `2. Press Ctrl+Shift+S (Save As)\n` +
-                `3. Save as: "${suggestedName}"\n` +
-                `4. Choose your archive folder location\n\n` +
-                `After saving, you'll need to manually copy the data:\n` +
-                `• Copy PR_Data, PR_Data_Clean, PR_JE_Draft tabs\n\n` +
+                `📥 Archive Files Downloaded!\n\n` +
+                `${allData.length} CSV file(s) have been downloaded:\n\n` +
+                allData.map(d => `• ${baseFilename}_${d.sheetName}.csv`).join("\n") +
+                `\n\nPlease save these files to your archive folder.\n\n` +
                 `Click OK to continue clearing this workbook for the next period.`
             );
             
@@ -5645,10 +5630,9 @@ async function createArchiveWorkbook() {
         });
         
     } catch (error) {
-        console.error("[Archive] Error creating archive workbook:", error);
+        console.error("[Archive] Error exporting archive:", error);
         window.alert(
-            "Archive Error\n\n" +
-            "Could not create archive workbook:\n" +
+            "Archive Export Error\n\n" +
             error.message + "\n\n" +
             "Please manually save a copy of this workbook before continuing."
         );
@@ -5659,6 +5643,48 @@ async function createArchiveWorkbook() {
             "Make sure you have saved a backup first!"
         );
     }
+}
+
+/**
+ * Convert 2D array to CSV string
+ */
+function convertToCSV(data) {
+    return data.map(row => 
+        row.map(cell => {
+            // Handle null/undefined
+            if (cell == null) return "";
+            
+            // Convert to string
+            let str = String(cell);
+            
+            // Escape quotes and wrap in quotes if contains comma, quote, or newline
+            if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+                str = '"' + str.replace(/"/g, '""') + '"';
+            }
+            
+            return str;
+        }).join(",")
+    ).join("\n");
+}
+
+/**
+ * Trigger browser download of CSV file
+ */
+function downloadCSV(csvContent, filename) {
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up the URL object
+    setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
 /**
