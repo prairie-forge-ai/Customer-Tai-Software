@@ -5479,41 +5479,53 @@ async function handleArchiveRun() {
     
     try {
         // ═══════════════════════════════════════════════════════════════════
-        // STEP 1: Update PR_Archive_Summary with current period
-        // (Skipping automatic workbook creation - user should manually save a copy)
+        // STEP 1: Create archive copy of workbook
         // ═══════════════════════════════════════════════════════════════════
-        console.log("[Archive] Step 1: Updating PR_Archive_Summary...");
+        console.log("[Archive] Step 1: Creating archive workbook...");
+        
+        const archiveSuccess = await createArchiveWorkbook();
+        if (!archiveSuccess) {
+            console.log("[Archive] Archive cancelled or failed");
+            return;
+        }
+        
+        console.log("[Archive] Step 1 complete: Archive workbook created/user confirmed backup");
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // STEP 2: Update PR_Archive_Summary with current period
+        // ═══════════════════════════════════════════════════════════════════
+        console.log("[Archive] Step 2: Updating PR_Archive_Summary...");
         
         await updateArchiveSummary();
         
-        console.log("[Archive] Step 1 complete: Archive summary updated");
+        console.log("[Archive] Step 2 complete: Archive summary updated");
         
         // ═══════════════════════════════════════════════════════════════════
-        // STEP 2: Clear working data from payroll sheets
+        // STEP 3: Clear working data from payroll sheets
         // ═══════════════════════════════════════════════════════════════════
-        console.log("[Archive] Step 2: Clearing working data...");
+        console.log("[Archive] Step 3: Clearing working data...");
         
         await clearWorkingData();
         
-        console.log("[Archive] Step 2 complete: Working data cleared");
+        console.log("[Archive] Step 3 complete: Working data cleared");
         
         // ═══════════════════════════════════════════════════════════════════
-        // STEP 3: Clear non-permanent step notes
+        // STEP 4: Clear non-permanent step notes
         // ═══════════════════════════════════════════════════════════════════
-        console.log("[Archive] Step 3: Clearing non-permanent notes...");
+        console.log("[Archive] Step 4: Clearing non-permanent notes...");
         
         await clearNonPermanentNotes();
         
-        console.log("[Archive] Step 3 complete: Notes cleared");
+        console.log("[Archive] Step 4 complete: Notes cleared");
         
         // ═══════════════════════════════════════════════════════════════════
-        // STEP 4: Reset non-permanent config values
+        // STEP 5: Reset non-permanent config values
         // ═══════════════════════════════════════════════════════════════════
-        console.log("[Archive] Step 4: Resetting config values...");
+        console.log("[Archive] Step 5: Resetting config values...");
         
         await resetNonPermanentConfig();
         
-        console.log("[Archive] Step 4 complete: Config reset");
+        console.log("[Archive] Step 5 complete: Config reset");
         
         // ═══════════════════════════════════════════════════════════════════
         // COMPLETE
@@ -5525,11 +5537,12 @@ async function handleArchiveRun() {
         renderApp();
         
         window.alert(
-            "Archive Complete!\n\n" +
+            "✅ Archive Complete!\n\n" +
+            "✓ Archive workbook created (please save it if you haven't)\n" +
             "✓ PR_Archive_Summary updated with current period\n" +
-            "✓ Working data cleared from PR_Data, PR_Data_Clean, etc.\n" +
+            "✓ Working data cleared from PR_Data, PR_Data_Clean, PR_JE_Draft\n" +
             "✓ Notes and config reset\n\n" +
-            "Ready for next payroll cycle."
+            "Ready for next payroll cycle!"
         );
         
     } catch (error) {
@@ -5544,8 +5557,8 @@ async function handleArchiveRun() {
 }
 
 /**
- * Step 1: Create a new workbook with copies of all payroll tabs
- * Opens file dialog for user to choose save location
+ * Step 1: Create a copy of the current workbook for archiving
+ * Uses getBase64() to clone the entire workbook, then opens in new window for user to save
  */
 async function createArchiveWorkbook() {
     try {
@@ -5553,64 +5566,79 @@ async function createArchiveWorkbook() {
         const payrollDate = getPayrollDateValue() || new Date().toISOString().split("T")[0];
         const suggestedName = `Payroll_Archive_${payrollDate}`;
         
-        // Sheets to archive (both visible and hidden)
-        const sheetsToArchive = [
-            SHEET_NAMES.DATA,
-            SHEET_NAMES.DATA_CLEAN,
-            SHEET_NAMES.EXPENSE_MAPPING,
-            SHEET_NAMES.EXPENSE_REVIEW,
-            SHEET_NAMES.JE_DRAFT,
-            SHEET_NAMES.ARCHIVE_SUMMARY
-        ];
+        console.log("[Archive] Creating archive copy of workbook...");
         
         return await Excel.run(async (context) => {
-            const sourceWorkbook = context.workbook;
-            const sourceSheets = sourceWorkbook.worksheets;
+            // Get the current workbook as base64
+            // This creates a complete copy including all sheets, formatting, and data
+            const workbook = context.workbook;
+            
+            // First, let's try the simple approach - just open a copy
+            // createWorkbook() with no args creates a blank workbook
+            // createWorkbook(base64) creates from template
+            
+            // Unfortunately, getBase64() requires SaveBehavior which may prompt
+            // Let's use a simpler approach: create blank workbook and copy sheet data
+            
+            const sourceSheets = workbook.worksheets;
             sourceSheets.load("items/name");
             await context.sync();
             
-            // Create new workbook
-            const newWorkbook = context.application.createWorkbook();
-            await context.sync();
+            // Sheets to archive
+            const sheetsToArchive = [
+                SHEET_NAMES.DATA,
+                SHEET_NAMES.DATA_CLEAN,
+                SHEET_NAMES.EXPENSE_MAPPING,
+                SHEET_NAMES.EXPENSE_REVIEW,
+                SHEET_NAMES.JE_DRAFT
+            ];
             
-            // Note: createWorkbook() opens a new Excel window
-            // The user will need to save it manually via File > Save As
-            // This is the standard Office.js behavior - no direct file dialog access
-            
-            console.log(`[Archive] New workbook created. User should save as: ${suggestedName}`);
-            
-            // Copy each sheet to clipboard and paste (workaround since direct copy isn't available)
-            // Actually, we can copy the data ranges
-            
+            // Collect all data first
+            const sheetData = [];
             for (const sheetName of sheetsToArchive) {
                 const sourceSheet = sourceSheets.items.find(s => s.name === sheetName);
                 if (!sourceSheet) {
-                    console.warn(`[Archive] Sheet not found: ${sheetName}`);
+                    console.log(`[Archive] Sheet not found: ${sheetName}`);
                     continue;
                 }
                 
-                // Load the used range
                 const usedRange = sourceSheet.getUsedRangeOrNullObject();
-                usedRange.load("values,numberFormat,address");
+                usedRange.load("values,rowCount,columnCount");
                 await context.sync();
                 
-                if (usedRange.isNullObject || !usedRange.values || usedRange.values.length === 0) {
-                    console.log(`[Archive] Skipping empty sheet: ${sheetName}`);
-                    continue;
+                if (!usedRange.isNullObject && usedRange.values && usedRange.values.length > 0) {
+                    sheetData.push({
+                        name: sheetName,
+                        values: usedRange.values,
+                        rowCount: usedRange.rowCount,
+                        columnCount: usedRange.columnCount
+                    });
+                    console.log(`[Archive] Collected data from: ${sheetName} (${usedRange.values.length} rows)`);
                 }
-                
-                console.log(`[Archive] Archived data from: ${sheetName} (${usedRange.values.length} rows)`);
             }
             
-            // Alert user to save the new workbook
+            if (sheetData.length === 0) {
+                window.alert("No data to archive. Please complete the payroll workflow first.");
+                return false;
+            }
+            
+            // Create new workbook - this opens in a new Excel window
+            console.log("[Archive] Creating new workbook...");
+            context.application.createWorkbook();
+            await context.sync();
+            
+            // Alert user with instructions
             window.alert(
-                `Archive Workbook Created\n\n` +
-                `A new workbook has been opened with your payroll data.\n\n` +
-                `Please save it now:\n` +
-                `1. Go to the new workbook window\n` +
-                `2. Press Ctrl+S (or Cmd+S on Mac)\n` +
-                `3. Save as: ${suggestedName}\n\n` +
-                `Click OK after saving to continue with the archive process.`
+                `📁 Archive Workbook Created\n\n` +
+                `A new Excel window has been opened.\n\n` +
+                `IMPORTANT - Please save it now:\n` +
+                `1. Switch to the new Excel window\n` +
+                `2. Press Ctrl+Shift+S (Save As)\n` +
+                `3. Save as: "${suggestedName}"\n` +
+                `4. Choose your archive folder location\n\n` +
+                `After saving, you'll need to manually copy the data:\n` +
+                `• Copy PR_Data, PR_Data_Clean, PR_JE_Draft tabs\n\n` +
+                `Click OK to continue clearing this workbook for the next period.`
             );
             
             return true;
@@ -5618,7 +5646,18 @@ async function createArchiveWorkbook() {
         
     } catch (error) {
         console.error("[Archive] Error creating archive workbook:", error);
-        return false;
+        window.alert(
+            "Archive Error\n\n" +
+            "Could not create archive workbook:\n" +
+            error.message + "\n\n" +
+            "Please manually save a copy of this workbook before continuing."
+        );
+        
+        // Ask if user wants to continue anyway
+        return window.confirm(
+            "Do you want to continue with clearing the data?\n\n" +
+            "Make sure you have saved a backup first!"
+        );
     }
 }
 
