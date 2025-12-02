@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ACF ForgeSuite</title>
+    <title>TaiTools by Prairie Forge</title>
 
     <!-- Office.js Library -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
@@ -415,8 +415,63 @@
 
                         <!-- Utilities -->
                         <div class="settings-content" id="settings-utilities" hidden>
+                            <!-- Workbook Setup Section -->
                             <div class="admin-section">
-                                <h3>Utilities</h3>
+                                <h3>📋 Workbook Setup</h3>
+                                <p class="admin-hint">Initialize a new workbook with all required TaiTools tabs, or repair an existing workbook by adding missing tabs.</p>
+                                
+                                <div class="workbook-setup-options">
+                                    <div class="setup-option">
+                                        <h4>Initialize New Workbook</h4>
+                                        <p>Creates all 15 required tabs with proper headers and formatting.</p>
+                                        <div class="setup-module-select">
+                                            <label class="admin-field admin-field--inline">
+                                                <span>Module:</span>
+                                                <select id="initModuleSelect" class="admin-select">
+                                                    <option value="all">All Modules</option>
+                                                    <option value="payroll">Payroll Recorder Only</option>
+                                                    <option value="pto">PTO Accrual Only</option>
+                                                    <option value="shared">Shared Tabs Only</option>
+                                                </select>
+                                            </label>
+                                        </div>
+                                        <button type="button" class="admin-btn admin-btn--primary" id="initWorkbookBtn">
+                                            🚀 Initialize Workbook
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="setup-option">
+                                        <h4>Validate & Repair</h4>
+                                        <p>Check for missing tabs and create them if needed.</p>
+                                        <button type="button" class="admin-btn admin-btn--secondary" id="validateWorkbookBtn">
+                                            🔍 Validate Structure
+                                        </button>
+                                        <button type="button" class="admin-btn admin-btn--secondary" id="repairWorkbookBtn">
+                                            🔧 Repair Missing Tabs
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Progress Display -->
+                                <div class="workbook-setup-progress" id="workbookSetupProgress" hidden>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="workbookProgressFill"></div>
+                                    </div>
+                                    <p class="progress-text" id="workbookProgressText">Initializing...</p>
+                                </div>
+                                
+                                <!-- Results Display -->
+                                <div class="workbook-setup-results" id="workbookSetupResults" hidden>
+                                    <h4>Results</h4>
+                                    <div class="setup-results-content" id="setupResultsContent"></div>
+                                </div>
+                            </div>
+                            
+                            <hr class="admin-divider">
+                            
+                            <!-- Other Utilities -->
+                            <div class="admin-section">
+                                <h3>🛠️ Other Utilities</h3>
                                 <div class="admin-utilities">
                                     <button type="button" class="admin-btn admin-btn--secondary" id="validateConfigBtn">Validate Config</button>
                                     <button type="button" class="admin-btn admin-btn--secondary" id="generateFieldsBtn">Generate All Fields</button>

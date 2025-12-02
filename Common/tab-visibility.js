@@ -34,31 +34,31 @@ const DEFAULT_PREFIX_CONFIG = {
 };
 
 // Valid categories for SS_PF_Config
+// Structure: Category | Field | Value | Permanent (4 columns)
 export const VALID_CATEGORIES = {
     "module-prefix": {
         label: "Module Prefix",
-        description: "Maps tab prefixes to modules (e.g., PR_ → payroll-recorder)",
-        requiresValue2: false
+        description: "Maps tab prefixes to modules (e.g., PR_ → payroll-recorder)"
     },
     "run-settings": {
         label: "Run Settings",
-        description: "Per-period configuration values (payroll date, accounting period, etc.)",
-        requiresValue2: false
+        description: "Per-period configuration values (payroll date, accounting period, etc.)"
     },
     "step-notes": {
         label: "Step Notes",
-        description: "Notes and sign-off data for workflow steps",
-        requiresValue2: false
+        description: "Notes and sign-off data for workflow steps"
     },
     "shared": {
         label: "Shared",
-        description: "Global settings shared across all modules",
-        requiresValue2: false
+        description: "Global settings shared across all modules"
     },
     "column-mapping": {
         label: "Column Mapping",
-        description: "Maps source columns to target columns for data import",
-        requiresValue2: false
+        description: "Maps source columns to target columns for data import"
+    },
+    "tab-structure": {
+        label: "Tab Structure",
+        description: "Maps tabs to modules for visibility control"
     }
 };
 

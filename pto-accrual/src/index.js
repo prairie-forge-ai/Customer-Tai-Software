@@ -2146,10 +2146,10 @@ async function createJournalDraft() {
             }
             
             // Parse config values - SS_PF_Config structure:
-            // Column 0 = Category (e.g., "Tab Structure", "PTO")
+            // Column 0 = Category (e.g., "Tab Structure", "Run Settings")
             // Column 1 = Field name (e.g., "PTO_Journal_Entry_ID")
             // Column 2 = Value (the actual value we need)
-            // Column 3 = Value2 (used for tab structure)
+            // Column 3 = Permanent (Y/N flag for archive persistence)
             const configMap = {};
             configValues.forEach(row => {
                 const field = String(row[1] || "").trim(); // Column 1 = Field name

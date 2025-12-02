@@ -1,5 +1,6 @@
 import { applyModuleTabVisibility } from "../Common/tab-visibility.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab } from "../Common/homepage-sheet.js";
+import { initializeWorkbook, validateWorkbookStructure, repairWorkbook, getAllTabNames } from "../Common/workbook-init.js";
 
 /**
  * ACF ForgeSuite - Module Selector
@@ -4704,7 +4705,7 @@ async function addTabMapping() {
         return;
     }
     
-    // Validate and normalize the module key (Value2)
+    // Validate and normalize the module key
     if (!folder) {
         // Auto-populate folder based on module name
         const moduleKeyMap = {
@@ -4976,7 +4977,7 @@ async function validateConfig() {
                 const category = String(row[0] || "").toLowerCase().trim().replace(/[\s_]+/g, "-");
                 const field = String(row[1] || "").trim();
                 const value = String(row[2] || "").trim();
-                const value2 = String(row[3] || "").trim();
+                const permanent = String(row[3] || "").trim();
                 
                 // Check category is valid
                 if (!category) {
@@ -5205,5 +5206,211 @@ function logAdmin(message, type = "info") {
     log.scrollTop = log.scrollHeight;
 }
 
+// =============================================================================
+// WORKBOOK INITIALIZATION
+// =============================================================================
+
+function initWorkbookSetup() {
+    // Initialize Workbook button
+    document.getElementById("initWorkbookBtn")?.addEventListener("click", handleInitWorkbook);
+    
+    // Validate Structure button
+    document.getElementById("validateWorkbookBtn")?.addEventListener("click", handleValidateWorkbook);
+    
+    // Repair Missing Tabs button
+    document.getElementById("repairWorkbookBtn")?.addEventListener("click", handleRepairWorkbook);
+}
+
+async function handleInitWorkbook() {
+    const moduleSelect = document.getElementById("initModuleSelect");
+    const module = moduleSelect?.value || "all";
+    
+    const progressContainer = document.getElementById("workbookSetupProgress");
+    const progressFill = document.getElementById("workbookProgressFill");
+    const progressText = document.getElementById("workbookProgressText");
+    const resultsContainer = document.getElementById("workbookSetupResults");
+    const resultsContent = document.getElementById("setupResultsContent");
+    
+    // Show progress, hide results
+    if (progressContainer) progressContainer.hidden = false;
+    if (resultsContainer) resultsContainer.hidden = true;
+    if (progressFill) progressFill.style.width = "0%";
+    if (progressText) progressText.textContent = "Starting initialization...";
+    
+    try {
+        const results = await initializeWorkbook({
+            module,
+            skipExisting: true,
+            onProgress: (step, total, message) => {
+                const pct = Math.round((step / total) * 100);
+                if (progressFill) progressFill.style.width = `${pct}%`;
+                if (progressText) progressText.textContent = message;
+            }
+        });
+        
+        // Show results
+        if (progressContainer) progressContainer.hidden = true;
+        if (resultsContainer) resultsContainer.hidden = false;
+        
+        if (resultsContent) {
+            resultsContent.innerHTML = formatInitResults(results);
+        }
+        
+        logAdmin(`Workbook initialized: ${results.created.length} tabs created, ${results.skipped.length} skipped`, "success");
+        
+    } catch (error) {
+        console.error("Workbook initialization failed:", error);
+        if (progressText) {
+            progressText.textContent = `Error: ${error.message}`;
+        }
+        logAdmin(`Initialization failed: ${error.message}`, "error");
+    }
+}
+
+async function handleValidateWorkbook() {
+    const resultsContainer = document.getElementById("workbookSetupResults");
+    const resultsContent = document.getElementById("setupResultsContent");
+    
+    if (resultsContent) {
+        resultsContent.innerHTML = '<p>Validating workbook structure...</p>';
+    }
+    if (resultsContainer) resultsContainer.hidden = false;
+    
+    try {
+        const validation = await validateWorkbookStructure();
+        
+        if (resultsContent) {
+            resultsContent.innerHTML = formatValidationResults(validation);
+        }
+        
+        const status = validation.missing.length === 0 ? "success" : "warning";
+        logAdmin(`Validation complete: ${validation.present.length} present, ${validation.missing.length} missing`, status);
+        
+    } catch (error) {
+        console.error("Validation failed:", error);
+        if (resultsContent) {
+            resultsContent.innerHTML = `<p class="result-error">Error: ${error.message}</p>`;
+        }
+        logAdmin(`Validation failed: ${error.message}`, "error");
+    }
+}
+
+async function handleRepairWorkbook() {
+    const progressContainer = document.getElementById("workbookSetupProgress");
+    const progressFill = document.getElementById("workbookProgressFill");
+    const progressText = document.getElementById("workbookProgressText");
+    const resultsContainer = document.getElementById("workbookSetupResults");
+    const resultsContent = document.getElementById("setupResultsContent");
+    
+    // Show progress
+    if (progressContainer) progressContainer.hidden = false;
+    if (resultsContainer) resultsContainer.hidden = true;
+    if (progressFill) progressFill.style.width = "0%";
+    if (progressText) progressText.textContent = "Checking for missing tabs...";
+    
+    try {
+        const results = await repairWorkbook((step, total, message) => {
+            const pct = Math.round((step / total) * 100);
+            if (progressFill) progressFill.style.width = `${pct}%`;
+            if (progressText) progressText.textContent = message;
+        });
+        
+        // Show results
+        if (progressContainer) progressContainer.hidden = true;
+        if (resultsContainer) resultsContainer.hidden = false;
+        
+        if (resultsContent) {
+            if (results.created.length === 0) {
+                resultsContent.innerHTML = '<p class="result-success">✅ All tabs are present! No repair needed.</p>';
+            } else {
+                resultsContent.innerHTML = formatInitResults(results);
+            }
+        }
+        
+        logAdmin(`Repair complete: ${results.created.length} tabs created`, results.created.length > 0 ? "success" : "info");
+        
+    } catch (error) {
+        console.error("Repair failed:", error);
+        if (progressText) {
+            progressText.textContent = `Error: ${error.message}`;
+        }
+        logAdmin(`Repair failed: ${error.message}`, "error");
+    }
+}
+
+function formatInitResults(results) {
+    let html = '';
+    
+    if (results.created.length > 0) {
+        html += `
+            <div class="result-section">
+                <p class="result-label result-success">✅ Created (${results.created.length})</p>
+                <p class="result-items">${results.created.join(', ')}</p>
+            </div>
+        `;
+    }
+    
+    if (results.skipped.length > 0) {
+        html += `
+            <div class="result-section">
+                <p class="result-label result-warning">⏭️ Skipped - Already Exist (${results.skipped.length})</p>
+                <p class="result-items">${results.skipped.join(', ')}</p>
+            </div>
+        `;
+    }
+    
+    if (results.errors.length > 0) {
+        html += `
+            <div class="result-section">
+                <p class="result-label result-error">❌ Errors (${results.errors.length})</p>
+                <p class="result-items">${results.errors.map(e => `${e.name}: ${e.error}`).join('<br>')}</p>
+            </div>
+        `;
+    }
+    
+    return html || '<p>No changes made.</p>';
+}
+
+function formatValidationResults(validation) {
+    const allTabs = getAllTabNames();
+    let html = `<p style="margin-bottom: 12px;">Expected tabs: <strong>${allTabs.length}</strong></p>`;
+    
+    if (validation.present.length > 0) {
+        html += `
+            <div class="result-section">
+                <p class="result-label result-success">✅ Present (${validation.present.length})</p>
+                <p class="result-items">${validation.present.join(', ')}</p>
+            </div>
+        `;
+    }
+    
+    if (validation.missing.length > 0) {
+        html += `
+            <div class="result-section">
+                <p class="result-label result-error">❌ Missing (${validation.missing.length})</p>
+                <p class="result-items">${validation.missing.join(', ')}</p>
+            </div>
+        `;
+    }
+    
+    if (validation.extra.length > 0) {
+        html += `
+            <div class="result-section">
+                <p class="result-label result-warning">⚠️ Extra Tabs (${validation.extra.length})</p>
+                <p class="result-items">${validation.extra.join(', ')}</p>
+            </div>
+        `;
+    }
+    
+    if (validation.missing.length === 0) {
+        html += '<p class="result-success" style="margin-top: 12px; font-weight: 600;">✅ Workbook structure is complete!</p>';
+    } else {
+        html += '<p class="result-warning" style="margin-top: 12px;">Click "Repair Missing Tabs" to create the missing tabs.</p>';
+    }
+    
+    return html;
+}
+
 // Initialize admin on load
 initAdmin();
+initWorkbookSetup();

@@ -10,10 +10,10 @@
   <Version>1.0.0.0</Version>
   <ProviderName>Prairie Forge</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="ForgeSuite by Prairie.Forge" />
+  <DisplayName DefaultValue="TaiTools by Prairie Forge" />
   <Description DefaultValue="Launch the Prairie Forge module selector to open Payroll Recorder and future tools." />
-  <IconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_White.png" />
-  <HighResolutionIconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_White.png" />
+  <IconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/Excel_Addin_Logo.png" />
+  <HighResolutionIconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/Excel_Addin_Logo.png" />
   <SupportUrl DefaultValue="https://prairieforge.ai/support" />
   <AppDomains>
     <AppDomain>https://*.supabase.co</AppDomain>
@@ -68,23 +68,24 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="residIcon16" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_White.png" />
-        <bt:Image id="residIcon32" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_White.png" />
-        <bt:Image id="residIcon80" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_White.png" />
+        <bt:Image id="residIcon16" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/Excel_Addin_Logo.png" />
+        <bt:Image id="residIcon32" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/Excel_Addin_Logo.png" />
+        <bt:Image id="residIcon80" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/Excel_Addin_Logo.png" />
       </bt:Images>
       <bt:Urls>
         <bt:Url id="residTaskpaneUrl" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html" />
         <bt:Url id="residLearnMoreUrl" DefaultValue="https://prairieforge.ai/solutions/tai-software" />
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="residTaskpaneGroupLabel" DefaultValue="ForgeSuite" />
+        <bt:String id="residTaskpaneGroupLabel" DefaultValue="TaiTools" />
         <bt:String id="residLaunchButtonLabel" DefaultValue="Launch Modules" />
-        <bt:String id="residGetStartedTitle" DefaultValue="ForgeSuite by Prairie.Forge" />
+        <bt:String id="residGetStartedTitle" DefaultValue="TaiTools by Prairie Forge" />
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="residLaunchButtonDescription" DefaultValue="Open the Prairie Forge module selector hosted on GitHub Pages." />
-        <bt:String id="residGetStartedDescription" DefaultValue="Launch the ForgeSuite module selector to open Payroll Recorder, PTO Accrual, and future tools." />
+        <bt:String id="residGetStartedDescription" DefaultValue="Launch the TaiTools module selector to open Payroll Recorder, PTO Accrual, and future tools." />
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
 </OfficeApp>
+
