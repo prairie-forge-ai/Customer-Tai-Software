@@ -32,7 +32,6 @@ export const BRANDING = {
   COMPANY_NAME: 'Prairie Forge LLC',
   PRODUCT_NAME: 'Prairie Forge Tools',
   SUPPORT_URL: 'https://prairieforge.ai/support',
-  ICON_URL: 'https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/E27DCDDE-8E09-4DB6-A41B-E707317FA864.png',
   ADA_IMAGE_URL: 'https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Ada%20Image.png'
 };
 
