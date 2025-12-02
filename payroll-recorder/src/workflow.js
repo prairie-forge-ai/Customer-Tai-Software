@@ -2873,6 +2873,13 @@ function scheduleConfigWrite(fieldName, value, options = {}) {
     pendingWrites.set(normalizedField, timer);
 }
 
+// Fields that should be forced to Text format to prevent Excel auto-conversion
+const TEXT_FORMAT_FIELDS = [
+    "PR_Accounting_Period",
+    "PTO_Accounting_Period",
+    "Accounting_Period"
+];
+
 async function writeConfigValue(fieldName, value) {
     const normalizedField = normalizeFieldName(fieldName);
     configState.values[normalizedField] = value ?? "";
@@ -2881,6 +2888,12 @@ async function writeConfigValue(fieldName, value) {
         console.warn("[Payroll] Excel runtime not available - cannot write");
         return;
     }
+    
+    // Check if this field needs text formatting
+    const forceTextFormat = TEXT_FORMAT_FIELDS.some(f => 
+        normalizedField === f || normalizedField.toLowerCase() === f.toLowerCase()
+    );
+    
     try {
         await Excel.run(async (context) => {
             const table = await getConfigTable(context);
@@ -2918,12 +2931,34 @@ async function writeConfigValue(fieldName, value) {
                 console.log(`[Payroll] Adding NEW row:`, newRow);
                 table.rows.add(null, [newRow]);
                 await context.sync();
+                
+                // Force text format for specific fields to prevent Excel date conversion
+                if (forceTextFormat) {
+                    // Get the newly added row (last row in table)
+                    const tableRows = table.rows;
+                    tableRows.load("count");
+                    await context.sync();
+                    const lastRowIdx = tableRows.count - 1;
+                    const newRowRange = table.rows.getItemAt(lastRowIdx).getRange();
+                    const valueCell = newRowRange.getCell(0, CONFIG_COLUMNS.VALUE);
+                    valueCell.numberFormat = [["@"]]; // Text format
+                    valueCell.values = [[value ?? ""]]; // Re-write to apply format
+                    await context.sync();
+                    console.log(`[Payroll] ✓ Applied text format to ${normalizedField}`);
+                }
+                
                 console.log(`[Payroll] ✓ New row added for ${normalizedField}`);
             } else {
                 // Update the first matching row
                 const targetIndex = matchingIndices[0];
                 console.log(`[Payroll] Updating existing row ${targetIndex} for ${normalizedField}`);
-                body.getCell(targetIndex, CONFIG_COLUMNS.VALUE).values = [[value ?? ""]];
+                const targetCell = body.getCell(targetIndex, CONFIG_COLUMNS.VALUE);
+                
+                // Force text format for specific fields
+                if (forceTextFormat) {
+                    targetCell.numberFormat = [["@"]]; // Text format
+                }
+                targetCell.values = [[value ?? ""]];
                 await context.sync();
                 console.log(`[Payroll] ✓ Updated ${normalizedField}`);
 
