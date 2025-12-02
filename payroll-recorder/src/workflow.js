@@ -2085,22 +2085,30 @@ function bindConfigInteractions() {
         onChange: (value) => {
             // Always use the primary field name to avoid duplicate rows
             scheduleConfigWrite("PR_Payroll_Date", value);
+            
+            // Clear step completion when payroll date changes (user needs to re-confirm)
+            clearStepCompletion(0);
+            
             if (!value) return;
-            if (!configState.overrides.accountingPeriod) {
-                const derivedPeriod = deriveAccountingPeriod(value);
-                if (derivedPeriod) {
-                    const periodInput = document.getElementById("config-accounting-period");
-                    if (periodInput) periodInput.value = derivedPeriod;
-                    scheduleConfigWrite("PR_Accounting_Period", derivedPeriod);
-                }
+            
+            // Always derive and update Accounting Period and JE ID when payroll date changes
+            // This ensures they stay in sync even if user had previously set values
+            const derivedPeriod = deriveAccountingPeriod(value);
+            if (derivedPeriod) {
+                const periodInput = document.getElementById("config-accounting-period");
+                if (periodInput) periodInput.value = derivedPeriod;
+                scheduleConfigWrite("PR_Accounting_Period", derivedPeriod);
+                // Reset override flag so future date changes will also update
+                configState.overrides.accountingPeriod = false;
             }
-            if (!configState.overrides.jeId) {
-                const derivedJe = deriveJeId(value);
-                if (derivedJe) {
-                    const jeInput = document.getElementById("config-je-id");
-                    if (jeInput) jeInput.value = derivedJe;
-                    scheduleConfigWrite("PR_Journal_Entry_ID", derivedJe);
-                }
+            
+            const derivedJe = deriveJeId(value);
+            if (derivedJe) {
+                const jeInput = document.getElementById("config-je-id");
+                if (jeInput) jeInput.value = derivedJe;
+                scheduleConfigWrite("PR_Journal_Entry_ID", derivedJe);
+                // Reset override flag so future date changes will also update
+                configState.overrides.jeId = false;
             }
         }
     });
@@ -2111,12 +2119,14 @@ function bindConfigInteractions() {
     periodInput?.addEventListener("change", (event) => {
         configState.overrides.accountingPeriod = Boolean(event.target.value);
         scheduleConfigWrite("PR_Accounting_Period", event.target.value || "");
+        clearStepCompletion(0); // Clear "Done" when field changes
     });
 
     const jeInput = document.getElementById("config-je-id");
     jeInput?.addEventListener("change", (event) => {
         configState.overrides.jeId = Boolean(event.target.value);
         scheduleConfigWrite("PR_Journal_Entry_ID", event.target.value.trim());
+        clearStepCompletion(0); // Clear "Done" when field changes
     });
 
     document.getElementById("config-company-name")?.addEventListener("change", (event) => {
@@ -2540,6 +2550,44 @@ function markJeSaveState(isSaved) {
     const btn = document.getElementById("je-save-btn");
     if (!btn) return;
     btn.classList.toggle("is-saved", isSaved);
+}
+
+/**
+ * Clear step completion status when user makes changes
+ * Forces user to re-confirm "Done" after modifications
+ * @param {number} stepId - The step ID to clear (0-6)
+ */
+function clearStepCompletion(stepId) {
+    const fields = STEP_NOTES_FIELDS[stepId];
+    const completeField = STEP_COMPLETE_FIELDS[stepId];
+    
+    if (!fields || !completeField) return;
+    
+    // Check if step was previously complete
+    const signOffValue = getConfigValue(fields.signOff);
+    const completeValue = getConfigValue(completeField);
+    const wasComplete = Boolean(signOffValue) || completeValue === "Y" || completeValue === true;
+    
+    if (!wasComplete) return; // Nothing to clear
+    
+    console.log(`[Signoff] Clearing completion for step ${stepId} due to field change`);
+    
+    // Clear sign-off date and completion flag
+    scheduleConfigWrite(fields.signOff, "");
+    scheduleConfigWrite(completeField, "");
+    
+    // Update the button UI if visible
+    const button = document.querySelector(`[id$="-signoff-toggle"], [id$="-signoff-toggle-${stepId}"]`);
+    if (button) {
+        button.classList.remove("is-active");
+        button.setAttribute("aria-pressed", "false");
+    }
+    
+    // Update the signoff date input if visible
+    const signoffInput = document.querySelector(`[id^="config-signoff-"], [id^="step-signoff-"]`);
+    if (signoffInput) {
+        signoffInput.value = "";
+    }
 }
 
 /**

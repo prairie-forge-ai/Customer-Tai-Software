@@ -1,5 +1,5 @@
 (function () {
-    const bundleSrc = 'app.bundle.js?v=mip2rah6';
+    const bundleSrc = 'app.bundle.js?v=mip3062b';
     let bootStarted = false;
 
     function loadBundle() {

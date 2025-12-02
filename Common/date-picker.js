@@ -46,9 +46,9 @@ export function initDatePicker(inputId, options = {}) {
         wrapper.appendChild(input);
     }
     
-    // Hide native date picker
+    // Allow manual typing - don't set readonly
     input.type = 'text';
-    input.readOnly = true;
+    input.placeholder = 'YYYY-MM-DD or click calendar';
     input.classList.add('pf-datepicker-input');
     
     // Parse initial value
@@ -97,34 +97,39 @@ export function initDatePicker(inputId, options = {}) {
             </div>
         `;
         
-        // Bind navigation
-        dropdown.querySelector('.pf-datepicker-prev-year')?.addEventListener('click', (e) => {
+        // Bind navigation - use mousedown to prevent blur events
+        dropdown.querySelector('.pf-datepicker-prev-year')?.addEventListener('mousedown', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             viewDate.setFullYear(viewDate.getFullYear() - 1);
             renderCalendar();
         });
         
-        dropdown.querySelector('.pf-datepicker-prev')?.addEventListener('click', (e) => {
+        dropdown.querySelector('.pf-datepicker-prev')?.addEventListener('mousedown', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             viewDate.setMonth(viewDate.getMonth() - 1);
             renderCalendar();
         });
         
-        dropdown.querySelector('.pf-datepicker-next')?.addEventListener('click', (e) => {
+        dropdown.querySelector('.pf-datepicker-next')?.addEventListener('mousedown', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             viewDate.setMonth(viewDate.getMonth() + 1);
             renderCalendar();
         });
         
-        dropdown.querySelector('.pf-datepicker-next-year')?.addEventListener('click', (e) => {
+        dropdown.querySelector('.pf-datepicker-next-year')?.addEventListener('mousedown', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             viewDate.setFullYear(viewDate.getFullYear() + 1);
             renderCalendar();
         });
         
-        // Bind day clicks
+        // Bind day clicks - use mousedown to prevent blur
         dropdown.querySelectorAll('.pf-datepicker-day:not(.disabled)').forEach(dayEl => {
-            dayEl.addEventListener('click', (e) => {
+            dayEl.addEventListener('mousedown', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 const day = parseInt(dayEl.dataset.day);
                 const m = parseInt(dayEl.dataset.month);
@@ -134,13 +139,15 @@ export function initDatePicker(inputId, options = {}) {
         });
         
         // Today button
-        dropdown.querySelector('.pf-datepicker-today')?.addEventListener('click', (e) => {
+        dropdown.querySelector('.pf-datepicker-today')?.addEventListener('mousedown', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             selectDate(new Date());
         });
         
         // Clear button
-        dropdown.querySelector('.pf-datepicker-clear')?.addEventListener('click', (e) => {
+        dropdown.querySelector('.pf-datepicker-clear')?.addEventListener('mousedown', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             selectDate(null);
         });
@@ -236,16 +243,51 @@ export function initDatePicker(inputId, options = {}) {
         }
     }
     
-    // Event listeners
+    // Handle manual date entry
+    input.addEventListener('blur', (e) => {
+        // Don't process if clicking within the dropdown
+        if (dropdown.classList.contains('open')) return;
+        
+        const typed = input.value.trim();
+        if (!typed) return;
+        
+        const parsedDate = parseDate(typed);
+        if (parsedDate) {
+            selectedDate = parsedDate;
+            input.value = formatDisplayDate(parsedDate);
+            input.dataset.value = formatISODate(parsedDate);
+            viewDate = new Date(parsedDate);
+            
+            if (onChange) {
+                onChange(formatISODate(parsedDate));
+            }
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+    
+    // Allow typing and Enter to confirm
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const typed = input.value.trim();
+            const parsedDate = parseDate(typed);
+            if (parsedDate) {
+                selectDate(parsedDate);
+            }
+            closeDropdown();
+        }
+    });
+    
+    // Click on input opens dropdown (but allow typing too)
     input.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (dropdown.classList.contains('open')) {
-            closeDropdown();
-        } else {
+        // Only toggle if clicking the calendar icon area or input is focused
+        if (!dropdown.classList.contains('open')) {
             openDropdown();
         }
     });
     
+    // Calendar icon always toggles dropdown
     icon.addEventListener('click', (e) => {
         e.stopPropagation();
         if (dropdown.classList.contains('open')) {
@@ -255,11 +297,18 @@ export function initDatePicker(inputId, options = {}) {
         }
     });
     
-    // Close on outside click
+    // Close on outside click - but not when clicking nav buttons
     document.addEventListener('click', (e) => {
-        if (!wrapper.contains(e.target)) {
-            closeDropdown();
+        // Check if click is inside the wrapper (includes dropdown)
+        if (wrapper.contains(e.target)) {
+            return; // Don't close if clicking inside wrapper
         }
+        closeDropdown();
+    });
+    
+    // Prevent dropdown from closing when clicking inside it
+    dropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
     });
     
     // Close on escape
