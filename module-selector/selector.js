@@ -378,9 +378,8 @@ async function init() {
         initQuickAccess();
         console.log("initQuickAccess complete");
         
-        // Activate homepage sheet
-        const homepageConfig = getHomepageConfig("module-selector");
-        await activateHomepageSheet(homepageConfig.sheetName, homepageConfig.title, homepageConfig.subtitle);
+        // Activate homepage sheet (with retry for redirects)
+        await activateHomepageWithRetry();
         console.log("Homepage sheet activated");
         
         // Show Ada FAB on module selector
@@ -394,6 +393,32 @@ async function init() {
         const heroEl = document.getElementById("heroGreeting");
         if (heroEl) {
             heroEl.innerHTML = `<span style="color: #ef4444;">Error loading: ${err.message}</span>`;
+        }
+    }
+}
+
+/**
+ * Activates homepage sheet with retry mechanism for reliability after redirects
+ */
+async function activateHomepageWithRetry(maxRetries = 3) {
+    const homepageConfig = getHomepageConfig("module-selector");
+    
+    // Initial delay to ensure Excel context is ready (especially after page redirect)
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            await activateHomepageSheet(homepageConfig.sheetName, homepageConfig.title, homepageConfig.subtitle);
+            console.log(`Homepage sheet activated on attempt ${attempt}`);
+            return; // Success, exit
+        } catch (err) {
+            console.warn(`Homepage activation attempt ${attempt} failed:`, err);
+            if (attempt < maxRetries) {
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } else {
+                console.error("All homepage activation attempts failed");
+            }
         }
     }
 }
