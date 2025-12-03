@@ -24,7 +24,7 @@ export async function activateHomepageSheet(sheetName, title, subtitle) {
         await Excel.run(async (context) => {
             // Check if sheet exists
             const sheet = context.workbook.worksheets.getItemOrNullObject(sheetName);
-            sheet.load("isNullObject, name");
+            sheet.load("isNullObject, name, visibility");
             await context.sync();
             
             let targetSheet;
@@ -38,6 +38,13 @@ export async function activateHomepageSheet(sheetName, title, subtitle) {
                 await setupHomepageContent(context, targetSheet, title, subtitle);
             } else {
                 targetSheet = sheet;
+                
+                // Make sure sheet is visible before activating (SS_ sheets may be hidden)
+                if (targetSheet.visibility !== Excel.SheetVisibility.visible) {
+                    targetSheet.visibility = Excel.SheetVisibility.visible;
+                    await context.sync();
+                }
+                
                 // Update content in case title/subtitle changed
                 await setupHomepageContent(context, targetSheet, title, subtitle);
             }
