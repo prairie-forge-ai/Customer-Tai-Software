@@ -1517,7 +1517,7 @@ function bindStepView(stepId) {
     });
     if (stepId === 6) {
         document.getElementById("archive-run-btn")?.addEventListener("click", () => {
-            // Archive flow coming soon
+            archiveAndReset();
         });
     }
     // Step 1: Import PTO Data
