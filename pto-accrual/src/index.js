@@ -856,7 +856,6 @@ function renderApp() {
                 <div class="pf-brand-text">
                     <div class="pf-brand-label">prairie.forge</div>
                     <div class="pf-brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version ${MODULE_VERSION}</div>
-                    <button type="button" class="pf-config-link" id="showConfigSheets">CONFIGURATION</button>
                 </div>
             </footer>
         </div>
@@ -1443,11 +1442,6 @@ function bindInteractions() {
         await openConfigModal();
     });
     
-    // CONFIGURATION link - unhides SS_* sheets for config access
-    document.getElementById("showConfigSheets")?.addEventListener("click", async () => {
-        await openConfigModal();
-    });
-
     document.querySelectorAll("[data-step-card]").forEach((card) => {
         const index = Number(card.getAttribute("data-step-index"));
         const stepId = Number(card.getAttribute("data-step-id"));

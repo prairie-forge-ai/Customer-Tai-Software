@@ -2474,7 +2474,6 @@ function renderFooter() {
             <div class="pf-brand-text">
                 <div class="pf-brand-label">prairie.forge</div>
                 <div class="pf-brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version ${VERSION}</div>
-                <button type="button" class="pf-config-link" id="showConfigSheets">CONFIGURATION</button>
             </div>
         </footer>
     `;
@@ -2527,10 +2526,6 @@ function bindSharedInteractions() {
         await openConfigModal();
     });
     
-    // CONFIGURATION link - unhides SS_* sheets for config access
-    document.getElementById("showConfigSheets")?.addEventListener("click", async () => {
-        await openConfigModal();
-    });
 }
 
 /**

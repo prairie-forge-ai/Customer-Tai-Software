@@ -666,9 +666,48 @@ function initModuleBuilder() {
         const existingInput = btn.parentElement.querySelector('.inline-field-input');
         if (existingInput) {
             existingInput.focus();
-            return;
-        }
-        
+    return;
+}
+
+/**
+ * Open configuration sheets (SS_* and any *mapping*) from selector
+ */
+async function openConfigQuickAccess() {
+    if (typeof Excel === "undefined") return;
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            worksheets.load("items/name,visibility");
+            await context.sync();
+
+            const targets = worksheets.items.filter((sheet) => {
+                const name = (sheet.name || "").toUpperCase();
+                return name.startsWith("SS_") || name.includes("MAPPING");
+            });
+
+            if (!targets.length) {
+                console.log("[Config] No configuration sheets found");
+                return;
+            }
+
+            // Unhide all targets
+            targets.forEach((sheet) => {
+                sheet.visibility = Excel.SheetVisibility.visible;
+            });
+            await context.sync();
+
+            // Activate SS_PF_Config if present, otherwise first target
+            let target = targets.find((s) => s.name === "SS_PF_Config") || targets[0];
+            target.activate();
+            target.getRange("A1").select();
+            await context.sync();
+            console.log("[Config] Opened config sheet:", target.name);
+        });
+    } catch (error) {
+        console.error("Error opening configuration sheets from selector:", error);
+    }
+}
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'admin-input inline-field-input';
@@ -2012,6 +2051,7 @@ async function registerTabInConfig(tabName, moduleName, folder) {
 function initQuickAccess() {
     document.getElementById("quickRosterBtn")?.addEventListener("click", () => openRefData("roster"));
     document.getElementById("quickAccountsBtn")?.addEventListener("click", () => openRefData("accounts"));
+    document.getElementById("quickConfigBtn")?.addEventListener("click", openConfigQuickAccess);
     
     // Modal close handlers
     document.getElementById("refDataClose")?.addEventListener("click", closeRefData);
