@@ -1575,6 +1575,9 @@ function bindConfigView() {
         onChange: (value) => {
             scheduleConfigWrite(PTO_CONFIG_FIELDS.payrollDate, value);
             if (!value) return;
+            // Reset overrides so derived values follow the analysis date
+            configState.overrides.accountingPeriod = false;
+            configState.overrides.journalId = false;
             if (!configState.overrides.accountingPeriod) {
                 const derivedPeriod = deriveAccountingPeriod(value);
                 if (derivedPeriod) {
@@ -1768,7 +1771,9 @@ function scrollFocusedIntoView() {
 }
 
 function isStepComplete(stepId) {
-    return parseBooleanFlag(configState.completes[stepId]);
+    const completeFlag = parseBooleanFlag(configState.completes[stepId]);
+    const hasSignoff = Boolean(configState.steps[stepId]?.signOffDate);
+    return completeFlag || hasSignoff;
 }
 
 function handleStepAction(stepId) {
