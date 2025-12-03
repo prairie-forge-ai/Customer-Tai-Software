@@ -77,7 +77,7 @@
         <bt:Url id="residLearnMoreUrl" DefaultValue="https://prairieforge.ai/solutions/tai-software" />
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="residGroupLabel" DefaultValue="TaiTools" />
+        <bt:String id="residGroupLabel" DefaultValue="ForgeSuite" />
         <bt:String id="residButtonLabel" DefaultValue="Launch TaiTools" />
         <bt:String id="residGetStartedTitle" DefaultValue="TaiTools by PrairieForge" />
       </bt:ShortStrings>
