@@ -269,7 +269,7 @@ function showArchiveSuccessToast() {
     document.body.appendChild(backdrop);
     document.body.appendChild(toast);
     
-    // After 3 seconds, close and redirect
+    // After 3 seconds, close and redirect to Module Selector
     setTimeout(() => {
         toast.classList.add("closing");
         backdrop.style.opacity = "0";
@@ -278,8 +278,8 @@ function showArchiveSuccessToast() {
         setTimeout(() => {
             toast.remove();
             backdrop.remove();
-            // Return to homepage
-            returnHome();
+            // Navigate to Module Selector homepage
+            navigateToModuleSelector();
         }, 300);
     }, 3000);
 }
@@ -3045,6 +3045,14 @@ async function returnHome() {
     await activateHomepageSheet(homepageConfig.sheetName, homepageConfig.title, homepageConfig.subtitle);
     
     setState({ activeView: "home", activeStepId: null });
+}
+
+/**
+ * Navigate to the Module Selector (used after archive completes)
+ */
+function navigateToModuleSelector() {
+    // Navigate to Module Selector page
+    window.location.href = "/module-selector/index.html";
 }
 
 function setState(partial) {
@@ -6253,8 +6261,11 @@ async function handleArchiveRun() {
         await loadConfigurationValues();
         renderApp();
         
-        // Show celebratory toast and redirect to home
-        showArchiveSuccessToast();
+        // Delay toast to let file save dialog appear first
+        // This gives the user time to save the file before seeing the success message
+        setTimeout(() => {
+            showArchiveSuccessToast();
+        }, 1500);
         
     } catch (error) {
         console.error("[Archive] Error during archive:", error);

@@ -3045,7 +3045,7 @@ function showArchiveSuccessToast() {
     document.body.appendChild(backdrop);
     document.body.appendChild(toast);
     
-    // After 3 seconds, close and redirect
+    // After 3 seconds, close and redirect to Module Selector
     setTimeout(() => {
         toast.classList.add("closing");
         backdrop.style.opacity = "0";
@@ -3054,8 +3054,8 @@ function showArchiveSuccessToast() {
         setTimeout(() => {
             toast.remove();
             backdrop.remove();
-            // Return to homepage
-            returnHome();
+            // Navigate to Module Selector homepage
+            navigateToModuleSelector();
         }, 300);
     }, 3000);
 }
@@ -3067,6 +3067,13 @@ async function returnHome() {
     const homepageConfig = getHomepageConfig(MODULE_KEY);
     await activateHomepageSheet(homepageConfig.sheetName, homepageConfig.title, homepageConfig.subtitle);
     setState({ activeView: "home", activeStepId: null });
+}
+
+/**
+ * Navigate to the Module Selector (used after archive completes)
+ */
+function navigateToModuleSelector() {
+    window.location.href = "/module-selector/index.html";
 }
 
 async function openSheet(sheetName) {
