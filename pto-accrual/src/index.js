@@ -843,13 +843,9 @@ function renderApp() {
                         </button>
                         <div id="quick-access-dropdown" class="pf-quick-dropdown hidden">
                             <div class="pf-quick-dropdown-header">Quick Access</div>
-                            <button id="nav-roster" class="pf-quick-item pf-clickable" type="button">
-                                ${USERS_ICON_SVG}
-                                <span>Employee Roster</span>
-                            </button>
-                            <button id="nav-accounts" class="pf-quick-item pf-clickable" type="button">
-                                ${BOOK_ICON_SVG}
-                                <span>Chart of Accounts</span>
+                            <button id="nav-config" class="pf-quick-item pf-clickable" type="button">
+                                ${TABLE_ICON_SVG}
+                                <span>Configuration</span>
                             </button>
                         </div>
                     </div>
@@ -1440,21 +1436,16 @@ function bindInteractions() {
         }
     });
     
-    // Quick Access buttons - open reference data sheets
-    document.getElementById("nav-roster")?.addEventListener("click", () => {
-        openReferenceSheet("SS_Employee_Roster");
+    // Quick Access - Configuration modal
+    document.getElementById("nav-config")?.addEventListener("click", async () => {
         quickDropdown?.classList.add("hidden");
         quickToggle?.classList.remove("is-active");
-    });
-    document.getElementById("nav-accounts")?.addEventListener("click", () => {
-        openReferenceSheet("SS_Chart_of_Accounts");
-        quickDropdown?.classList.add("hidden");
-        quickToggle?.classList.remove("is-active");
+        await openConfigModal();
     });
     
     // CONFIGURATION link - unhides SS_* sheets for config access
     document.getElementById("showConfigSheets")?.addEventListener("click", async () => {
-        await unhideSystemSheets();
+        await openConfigModal();
     });
 
     document.querySelectorAll("[data-step-card]").forEach((card) => {
@@ -3297,46 +3288,125 @@ async function openReferenceSheet(sheetName) {
 }
 
 /**
- * Unhide system sheets (SS_* prefix) for configuration access
+ * Fetch configuration sheets (SS_* and any with "mapping" in name)
  */
-async function unhideSystemSheets() {
-    if (!hasExcel()) {
-        console.log("Excel not available");
-        return;
-    }
-    
+async function getConfigurationSheets() {
+    if (!hasExcel()) return [];
     try {
-        await Excel.run(async (context) => {
+        return await Excel.run(async (context) => {
             const worksheets = context.workbook.worksheets;
             worksheets.load("items/name,visibility");
             await context.sync();
-            
-            let unhiddenCount = 0;
-            worksheets.items.forEach((sheet) => {
-                if (sheet.name.toUpperCase().startsWith("SS_")) {
-                    sheet.visibility = Excel.SheetVisibility.visible;
-                    console.log(`[Config] Made visible: ${sheet.name}`);
-                    unhiddenCount++;
-                }
+            const matches = worksheets.items.filter((sheet) => {
+                const name = sheet.name || "";
+                const upper = name.toUpperCase();
+                return upper.startsWith("SS_") || upper.includes("MAPPING");
             });
-            
-            await context.sync();
-            
-            // Activate SS_PF_Config if it exists
-            const configSheet = context.workbook.worksheets.getItemOrNullObject("SS_PF_Config");
-            configSheet.load("isNullObject");
-            await context.sync();
-            
-            if (!configSheet.isNullObject) {
-                configSheet.activate();
-                configSheet.getRange("A1").select();
-                await context.sync();
-            }
-            
-            console.log(`[Config] ${unhiddenCount} system sheets now visible`);
+            return matches.map((sheet) => ({
+                name: sheet.name,
+                visible: sheet.visibility === Excel.SheetVisibility.visible
+            }));
         });
     } catch (error) {
-        console.error("[Config] Error unhiding system sheets:", error);
+        console.error("[Config] Error reading configuration sheets:", error);
+        return [];
+    }
+}
+
+function ensureConfigModal() {
+    if (document.getElementById("config-sheet-modal")) return;
+    const modal = document.createElement("div");
+    modal.id = "config-sheet-modal";
+    modal.className = "pf-config-modal hidden";
+    modal.innerHTML = `
+        <div class="pf-config-modal-backdrop" data-close></div>
+        <div class="pf-config-modal-card">
+            <div class="pf-config-modal-head">
+                <h3>Configuration Sheets</h3>
+                <button type="button" class="pf-config-close" data-close aria-label="Close">×</button>
+            </div>
+            <div class="pf-config-modal-body">
+                <p class="pf-config-hint">Choose a configuration or mapping sheet to unhide and open.</p>
+                <div id="config-sheet-list" class="pf-config-sheet-list">Loading…</div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    if (!document.getElementById("pf-config-modal-styles")) {
+        const style = document.createElement("style");
+        style.id = "pf-config-modal-styles";
+        style.textContent = `
+            .pf-config-modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10000; }
+            .pf-config-modal.hidden { display: none; }
+            .pf-config-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+            .pf-config-modal-card { position: relative; background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 20px; width: min(420px, 90%); box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+            .pf-config-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+            .pf-config-close { background: transparent; border: none; color: #e2e8f0; font-size: 20px; cursor: pointer; }
+            .pf-config-hint { margin: 0 0 12px 0; color: #94a3b8; font-size: 14px; }
+            .pf-config-sheet-list { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
+            .pf-config-sheet { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; }
+            .pf-config-sheet:hover { background: rgba(255,255,255,0.08); }
+            .pf-config-pill { font-size: 12px; color: #a5b4fc; }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+async function openConfigModal() {
+    ensureConfigModal();
+    const modal = document.getElementById("config-sheet-modal");
+    const list = document.getElementById("config-sheet-list");
+    if (!modal || !list) return;
+
+    list.textContent = "Loading…";
+    modal.classList.remove("hidden");
+
+    const sheets = await getConfigurationSheets();
+    if (!sheets.length) {
+        list.textContent = "No configuration sheets found.";
+    } else {
+        list.innerHTML = "";
+        sheets.forEach((sheet) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "pf-config-sheet";
+            btn.innerHTML = `<span>${sheet.name}</span><span class="pf-config-pill">${sheet.visible ? "Visible" : "Hidden"}</span>`;
+            btn.addEventListener("click", async () => {
+                await openConfigSheet(sheet.name);
+                modal.classList.add("hidden");
+            });
+            list.appendChild(btn);
+        });
+    }
+
+    modal.querySelectorAll("[data-close]").forEach((el) =>
+        el.addEventListener("click", () => modal.classList.add("hidden"))
+    );
+}
+
+async function openConfigSheet(sheetName) {
+    if (!sheetName || !hasExcel()) return;
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            let sheet = worksheets.getItemOrNullObject(sheetName);
+            sheet.load("isNullObject,visibility");
+            await context.sync();
+
+            if (sheet.isNullObject) {
+                sheet = worksheets.add(sheetName);
+            }
+            sheet.visibility = Excel.SheetVisibility.visible;
+            await context.sync();
+
+            sheet.activate();
+            sheet.getRange("A1").select();
+            await context.sync();
+            console.log(`[Config] Opened sheet: ${sheetName}`);
+        });
+    } catch (error) {
+        console.error("[Config] Error opening sheet", sheetName, error);
     }
 }
 
