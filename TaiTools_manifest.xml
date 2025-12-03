@@ -6,7 +6,7 @@
            xsi:type="TaskPaneApp">
 
   <Id>16b2f680-b42c-4f45-ab67-af2d2c3c9d15</Id>
-  <Version>1.7.0.0</Version>
+  <Version>1.8.0.0</Version>
   <ProviderName>Prairie Forge</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="TaiTools"/>
@@ -39,7 +39,13 @@
         <DesktopFormFactor>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
             <OfficeTab id="TabHome">
-              <Group id="TaiTools.Group" label="ForgeSuite">
+              <Group id="TaiTools.Group">
+                <Label resid="Group.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon16"/>
+                  <bt:Image size="32" resid="Icon32"/>
+                  <bt:Image size="80" resid="Icon80"/>
+                </Icon>
                 <Control xsi:type="Button" id="TaiTools.Button.OpenPane">
                   <Label resid="Button.Label"/>
                   <Supertip>
@@ -73,6 +79,7 @@
         <bt:Url id="Taskpane.Url" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
       </bt:Urls>
       <bt:ShortStrings>
+        <bt:String id="Group.Label" DefaultValue="ForgeSuite"/>
         <bt:String id="Button.Label" DefaultValue="Launch TaiTools"/>
       </bt:ShortStrings>
       <bt:LongStrings>
