@@ -3263,11 +3263,13 @@ function moveFocus(delta) {
     // When on home view, forward should go to step 0 (Config) first
     if (appState.activeView === "home" && delta > 0) {
         focusStep(0);
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
     }
     const next = appState.focusedIndex + delta;
     const clamped = Math.max(0, Math.min(WORKFLOW_STEPS.length - 1, next));
     focusStep(clamped);
+    window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function bindSignoffNavButtons(prevButtonId, nextButtonId) {

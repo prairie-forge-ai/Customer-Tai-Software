@@ -18,6 +18,7 @@ import {
     LINK_ICON_SVG,
     SAVE_ICON_SVG,
     TABLE_ICON_SVG,
+    UPLOAD_ICON_SVG,
     DOWNLOAD_ICON_SVG,
     REFRESH_ICON_SVG,
     TRASH_ICON_SVG,
@@ -1564,6 +1565,7 @@ function bindStepView(stepId) {
         document.getElementById("je-create-btn")?.addEventListener("click", () => createJournalDraft());
         document.getElementById("je-run-btn")?.addEventListener("click", () => runJournalSummary());
         document.getElementById("je-export-btn")?.addEventListener("click", () => exportJournalDraft());
+        document.getElementById("je-upload-btn")?.addEventListener("click", () => openAccountingSoftware());
     }
 }
 
@@ -1750,6 +1752,7 @@ function moveFocus(delta) {
     const next = appState.focusedIndex + delta;
     const target = Math.max(0, Math.min(WORKFLOW_STEPS.length - 1, next));
     focusStep(target, WORKFLOW_STEPS[target].id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function bindSignoffNavButtons(prevButtonId, nextButtonId) {
@@ -2817,6 +2820,37 @@ async function exportJournalDraft() {
     } finally {
         toggleLoader(false);
     }
+}
+
+/**
+ * Open the accounting software URL from SS_PF_Config (SS_Accounting_Software)
+ */
+async function openAccountingSoftware() {
+    let accountingUrl = getConfigValue(PTO_CONFIG_FIELDS.accountingSoftware) || getConfigValue("SS_Accounting_Software");
+
+    if (!accountingUrl && hasExcelRuntime()) {
+        try {
+            const configValues = await loadConfigFromTable(CONFIG_TABLES);
+            accountingUrl =
+                configValues["SS_Accounting_Software"] ||
+                configValues["Accounting_Software"] ||
+                configValues[PTO_CONFIG_FIELDS.accountingSoftware];
+        } catch (error) {
+            console.warn("Error reading accounting software URL:", error);
+        }
+    }
+
+    if (!accountingUrl) {
+        showToast("No accounting software URL configured. Add SS_Accounting_Software to SS_PF_Config.", "info", 5000);
+        return;
+    }
+
+    if (!accountingUrl.startsWith("http://") && !accountingUrl.startsWith("https://")) {
+        accountingUrl = "https://" + accountingUrl;
+    }
+
+    window.open(accountingUrl, "_blank");
+    showToast("Opening accounting software...", "success", 2000);
 }
 
 async function archiveAndReset() {
@@ -4495,6 +4529,10 @@ function renderJournalStep(detail) {
                     ${renderLabeledButton(
                         `<button type="button" class="pf-action-toggle pf-clickable" id="je-export-btn" title="Export journal draft as CSV">${DOWNLOAD_ICON_SVG}</button>`,
                         "Export"
+                    )}
+                    ${renderLabeledButton(
+                        `<button type="button" class="pf-action-toggle pf-clickable" id="je-upload-btn" title="Open accounting software upload">${UPLOAD_ICON_SVG}</button>`,
+                        "Upload"
                     )}
                 </div>
             </article>
