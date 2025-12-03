@@ -2324,8 +2324,9 @@ body {
 
 .quick-access-buttons {
     display: flex;
-    justify-content: flex-start;
-    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 18px;
 }
 
 .quick-access-btn {
@@ -2333,33 +2334,29 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    width: 120px;
-    height: 100px;
-    padding: 16px;
-    border-radius: 16px;
-    border: 1px solid var(--pf-border);
-    background: rgba(255, 255, 255, 0.04);
+    gap: 8px;
+    min-width: 110px;
+    padding: 12px;
+    border-radius: 14px;
+    border: none;
+    background: transparent;
     color: var(--pf-text-primary);
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
 .quick-access-btn:hover {
-    background: rgba(53, 51, 205, 0.15);
-    border-color: rgba(53, 51, 205, 0.4);
-    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
 }
 
 .quick-access-icon {
-    width: 32px;
-    height: 32px;
-    padding: 7px;
-    border-radius: 50%;
-    background: rgba(53, 51, 205, 0.2);
+    width: 40px;
+    height: 40px;
     color: var(--pf-accent);
+    padding: 0;
 }
 
 /* =============================================================================
