@@ -176,14 +176,14 @@ const MODULES = [
     },
     {
         key: "credit-card-expense",
-        name: "Credit Card Expense Review",
-        available: true,
+        name: "Reserved for Future Module",
+        available: false,
         url: "#"
     },
     {
         key: "commission-calc",
-        name: "Commission Calculation",
-        available: true,
+        name: "Reserved for Future Module",
+        available: false,
         url: "#"
     }
 ];

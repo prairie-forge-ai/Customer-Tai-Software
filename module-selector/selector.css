@@ -181,9 +181,22 @@ body {
 }
 
 .module-card.disabled {
-    opacity: 0.4;
+    position: relative;
+    opacity: 0.6;
     cursor: not-allowed;
     pointer-events: none;
+    overflow: hidden;
+}
+
+.module-card.disabled::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
+}
+
+.module-card.disabled .module-name {
+    color: rgba(245, 245, 247, 0.7);
 }
 
 .module-name {
