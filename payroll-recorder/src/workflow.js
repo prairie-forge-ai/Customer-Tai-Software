@@ -1641,7 +1641,9 @@ function renderConfigView() {
                           signoffValue: signOffDate,
                           isComplete: isStepComplete,
                           saveButtonId: "config-signoff-save",
-                          completeButtonId: "config-signoff-toggle"
+                          completeButtonId: "config-signoff-toggle",
+                          prevButtonId: "config-signoff-prev",
+                          nextButtonId: "config-signoff-next"
                       })
                     : ""
             }
@@ -2954,6 +2956,7 @@ function bindConfigInteractions() {
             stepId: 0, // Step 0 has no prerequisites
             onComplete: getStepCompleteHandler(0)
         });
+        bindSignoffNavButtons("config-signoff-toggle-prev", "config-signoff-toggle-next");
     }
 }
 
@@ -3209,6 +3212,7 @@ When asked about readiness, be specific about what passes and what needs attenti
             stepId, // Pass stepId for sequential validation
             onComplete: getStepCompleteHandler(stepId)
         });
+        bindSignoffNavButtons(`${toggleButtonId}-prev`, `${toggleButtonId}-next`);
     }
 
     if (stepId === 2) {
@@ -3264,6 +3268,11 @@ function moveFocus(delta) {
     const next = appState.focusedIndex + delta;
     const clamped = Math.max(0, Math.min(WORKFLOW_STEPS.length - 1, next));
     focusStep(clamped);
+}
+
+function bindSignoffNavButtons(prevButtonId, nextButtonId) {
+    document.getElementById(prevButtonId)?.addEventListener("click", () => moveFocus(-1));
+    document.getElementById(nextButtonId)?.addEventListener("click", () => moveFocus(1));
 }
 
 function scrollFocusedIntoView() {

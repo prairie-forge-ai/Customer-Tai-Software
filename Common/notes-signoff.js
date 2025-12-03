@@ -1,4 +1,4 @@
-import { LOCK_CLOSED_SVG, LOCK_OPEN_SVG, CHECK_ICON_SVG, SAVE_ICON_SVG } from "./icons.js";
+import { LOCK_CLOSED_SVG, LOCK_OPEN_SVG, CHECK_ICON_SVG, SAVE_ICON_SVG, ARROW_LEFT_SVG, ARROW_RIGHT_SVG } from "./icons.js";
 
 /**
  * Escape HTML special characters
@@ -95,6 +95,8 @@ export function renderInlineNotes({
  * @param {boolean} options.isSaved - Whether sign-off is currently saved (optional)
  * @param {string} options.completeButtonId - ID for complete toggle button
  * @param {string} options.subtext - Subtext description (optional)
+ * @param {string} options.prevButtonId - ID for previous navigation button (optional)
+ * @param {string} options.nextButtonId - ID for next navigation button (optional)
  * @returns {string} HTML string
  */
 export function renderSignoff({
@@ -106,9 +108,15 @@ export function renderSignoff({
     saveButtonId, // retained for compatibility; no separate save button rendered
     isSaved = false, // retained for compatibility
     completeButtonId,
-    subtext = "Sign-off below. Click checkmark icon. Done."
+    subtext = "Sign-off below. Click checkmark icon. Done.",
+    prevButtonId = null,
+    nextButtonId = null
 }) {
+    const resolvedPrevId = prevButtonId || `${completeButtonId}-prev`;
+    const resolvedNextId = nextButtonId || `${completeButtonId}-next`;
     const completeButton = `<button type="button" class="pf-action-toggle ${isComplete ? "is-active" : ""}" id="${completeButtonId}" aria-pressed="${Boolean(isComplete)}" title="Mark step complete">${CHECK_ICON_SVG}</button>`;
+    const prevButton = `<button type="button" class="pf-action-toggle pf-nav-toggle" id="${resolvedPrevId}" title="Previous step">${ARROW_LEFT_SVG}</button>`;
+    const nextButton = `<button type="button" class="pf-action-toggle pf-nav-toggle" id="${resolvedNextId}" title="Next step">${ARROW_RIGHT_SVG}</button>`;
 
     return `
         <article class="pf-step-card pf-step-detail pf-config-card">
@@ -129,7 +137,9 @@ export function renderSignoff({
                 </label>
             </div>
             <div class="pf-signoff-action">
+                ${prevButton ? renderLabeledButton(prevButton, "Prev") : ""}
                 ${renderLabeledButton(completeButton, "Done")}
+                ${nextButton ? renderLabeledButton(nextButton, "Next") : ""}
             </div>
         </article>
     `;

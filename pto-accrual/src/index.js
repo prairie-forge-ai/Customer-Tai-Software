@@ -1485,6 +1485,8 @@ function bindStepView(stepId) {
     initSaveTracking();
 
     const signoffButtonId = stepId === 2 ? "headcount-signoff-toggle" : `step-signoff-toggle-${stepId}`;
+    const signoffPrevId = `${signoffButtonId}-prev`;
+    const signoffNextId = `${signoffButtonId}-next`;
     const signoffInputId = stepId === 2 ? "step-signoff-date" : `step-signoff-${stepId}`;
     bindSignoffToggle(stepId, {
         buttonId: signoffButtonId,
@@ -1501,6 +1503,7 @@ function bindStepView(stepId) {
                 : null,
         onComplete: getStepCompleteHandler(stepId)
     });
+    bindSignoffNavButtons(signoffPrevId, signoffNextId);
     backBtn?.addEventListener("click", async () => {
         const homepageConfig = getHomepageConfig(MODULE_KEY);
         await activateHomepageSheet(homepageConfig.sheetName, homepageConfig.title, homepageConfig.subtitle);
@@ -1671,6 +1674,7 @@ function bindConfigView() {
             scrollPanelToTop();
         }
     });
+    bindSignoffNavButtons("config-signoff-toggle-prev", "config-signoff-toggle-next");
 }
 
 function focusStep(index, stepId = null) {
@@ -1746,6 +1750,11 @@ function moveFocus(delta) {
     const next = appState.focusedIndex + delta;
     const target = Math.max(0, Math.min(WORKFLOW_STEPS.length - 1, next));
     focusStep(target, WORKFLOW_STEPS[target].id);
+}
+
+function bindSignoffNavButtons(prevButtonId, nextButtonId) {
+    document.getElementById(prevButtonId)?.addEventListener("click", () => moveFocus(-1));
+    document.getElementById(nextButtonId)?.addEventListener("click", () => moveFocus(1));
 }
 
 function scrollFocusedIntoView() {
