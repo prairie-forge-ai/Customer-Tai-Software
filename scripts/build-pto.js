@@ -13,6 +13,7 @@ const PROJECT_ROOT = path.resolve(__dirname, "..");
 const ENTRY_POINT = path.resolve(PROJECT_ROOT, "pto-accrual", "src", "index.js");
 const OUT_FILE = path.resolve(PROJECT_ROOT, "pto-accrual", "app.bundle.js");
 const INDEX_HTML = path.resolve(PROJECT_ROOT, "pto-accrual", "index.html");
+const SELECTOR_HTML = path.resolve(PROJECT_ROOT, "module-selector", "index.html");
 
 // Generate build timestamp for cache busting
 const BUILD_VERSION = Date.now().toString(36);
@@ -42,6 +43,8 @@ async function main() {
 
         // Update index.html with new build version
         updateHtmlVersion(INDEX_HTML, BUILD_VERSION);
+        // Update module selector footer version
+        updateModuleSelectorVersion(SELECTOR_HTML, COMMIT_HASH);
     } catch (error) {
         console.error("PTO Accrual build failed:", error);
         process.exit(1);
@@ -60,6 +63,17 @@ function updateHtmlVersion(filePath, version) {
         console.log(`Updated index.html with build version: ${version}`);
     } catch (error) {
         console.warn("Could not update index.html version:", error.message);
+    }
+}
+
+function updateModuleSelectorVersion(filePath, version) {
+    try {
+        let content = fs.readFileSync(filePath, "utf8");
+        content = content.replace(/Version [^<]+/, `Version ${version}`);
+        fs.writeFileSync(filePath, content, "utf8");
+        console.log(`Updated module selector version: ${version}`);
+    } catch (error) {
+        console.warn("Could not update module selector version:", error.message);
     }
 }
 

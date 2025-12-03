@@ -14,6 +14,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const ENTRY_POINT = path.resolve(PROJECT_ROOT, 'payroll-recorder', 'src', 'workflow.js');
 const OUT_FILE = path.resolve(PROJECT_ROOT, 'payroll-recorder', 'app.bundle.js');
 const APP_JS_FILE = path.resolve(PROJECT_ROOT, 'payroll-recorder', 'app.js');
+const SELECTOR_HTML = path.resolve(PROJECT_ROOT, 'module-selector', 'index.html');
 
 // Generate build timestamp for cache busting
 const BUILD_VERSION = Date.now().toString(36);
@@ -43,6 +44,8 @@ async function main() {
 
         // Update app.js with new build version
         updateAppJsVersion(APP_JS_FILE, BUILD_VERSION);
+        // Update module selector footer version
+        updateModuleSelectorVersion(SELECTOR_HTML, COMMIT_HASH);
     } catch (error) {
         console.error('Payroll Recorder build failed:', error);
         process.exit(1);
@@ -61,6 +64,17 @@ function updateAppJsVersion(filePath, version) {
         console.log(`Updated app.js with build version: ${version}`);
     } catch (error) {
         console.warn('Could not update app.js version:', error.message);
+    }
+}
+
+function updateModuleSelectorVersion(filePath, version) {
+    try {
+        let content = fs.readFileSync(filePath, 'utf8');
+        content = content.replace(/Version [^<]+/, `Version ${version}`);
+        fs.writeFileSync(filePath, content, 'utf8');
+        console.log(`Updated module selector version: ${version}`);
+    } catch (error) {
+        console.warn('Could not update module selector version:', error.message);
     }
 }
 
