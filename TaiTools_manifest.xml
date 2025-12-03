@@ -6,7 +6,7 @@
   xsi:type="TaskPaneApp">
 
   <Id>16b2f680-b42c-4f45-ab67-af2d2c3c9d15</Id>
-  <Version>1.3.0.0</Version>
+  <Version>1.4.0.0</Version>
   <ProviderName>Prairie Forge</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="TaiTools"/>
@@ -14,15 +14,29 @@
   <IconUrl DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-80.png"/>
   <HighResolutionIconUrl DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-80.png"/>
   <SupportUrl DefaultValue="https://prairieforge.ai"/>
+
+  <Requirements>
+    <Sets>
+      <Set Name="ExcelApi" MinVersion="1.1"/>
+    </Sets>
+  </Requirements>
+
   <Hosts>
     <Host Name="Workbook"/>
   </Hosts>
+
   <DefaultSettings>
     <SourceLocation DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
   </DefaultSettings>
+
   <Permissions>ReadWriteDocument</Permissions>
 
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Requirements>
+      <Sets DefaultMinVersion="1.1">
+        <Set Name="ExcelApi" MinVersion="1.1"/>
+      </Sets>
+    </Requirements>
     <Hosts>
       <Host xsi:type="Workbook">
         <DesktopFormFactor>
