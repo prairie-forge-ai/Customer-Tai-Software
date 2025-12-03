@@ -3167,7 +3167,8 @@ async function returnHome() {
  */
 function navigateToModuleSelector() {
     // Navigate to Module Selector page
-    window.location.href = "/module-selector/index.html";
+    // Use relative path from current location (payroll-recorder/ -> module-selector/)
+    window.location.href = "../module-selector/index.html";
 }
 
 function setState(partial) {

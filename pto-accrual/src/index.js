@@ -3188,7 +3188,8 @@ async function returnHome() {
  * Navigate to the Module Selector (used after archive completes)
  */
 function navigateToModuleSelector() {
-    window.location.href = "/module-selector/index.html";
+    // Use relative path from current location (pto-accrual/ -> module-selector/)
+    window.location.href = "../module-selector/index.html";
 }
 
 async function openSheet(sheetName) {
