@@ -2871,14 +2871,158 @@ async function archiveAndReset() {
             }
         });
         
-        // Show celebratory toast and return to home
-        showArchiveSuccessToast();
+        // Show "save complete" prompt - waits for user to confirm they've saved
+        showSaveCompletePrompt();
     } catch (error) {
         console.error(error);
         showToast("Archive failed: " + error.message, "error");
     } finally {
         toggleLoader(false);
     }
+}
+
+/**
+ * Show a prompt asking user to save their file and click when done
+ * Positioned in bottom-right corner so it doesn't block the save dialog
+ */
+function showSaveCompletePrompt() {
+    // Remove any existing prompts
+    document.querySelectorAll(".pf-save-prompt").forEach(p => p.remove());
+    
+    const prompt = document.createElement("div");
+    prompt.className = "pf-save-prompt";
+    prompt.innerHTML = `
+        <div class="pf-save-prompt-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" x2="12" y1="15" y2="3"/>
+            </svg>
+        </div>
+        <div class="pf-save-prompt-text">
+            <div class="pf-save-prompt-title">Save your archive file</div>
+            <div class="pf-save-prompt-subtitle">Click below when you're done</div>
+        </div>
+        <button type="button" class="pf-save-prompt-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Done
+        </button>
+    `;
+    
+    // Add styles
+    if (!document.getElementById("pf-save-prompt-styles")) {
+        const style = document.createElement("style");
+        style.id = "pf-save-prompt-styles";
+        style.textContent = `
+            .pf-save-prompt {
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                background: linear-gradient(145deg, rgba(30, 30, 50, 0.98), rgba(20, 20, 35, 0.99));
+                border: 1px solid rgba(99, 102, 241, 0.3);
+                color: white;
+                padding: 20px 24px;
+                border-radius: 16px;
+                box-shadow: 
+                    0 16px 48px rgba(0, 0, 0, 0.4),
+                    0 0 0 1px rgba(99, 102, 241, 0.2) inset;
+                z-index: 10002;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                animation: pf-prompt-slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                max-width: 320px;
+            }
+            @keyframes pf-prompt-slide-in {
+                from { 
+                    opacity: 0; 
+                    transform: translateY(20px) scale(0.95);
+                }
+                to { 
+                    opacity: 1; 
+                    transform: translateY(0) scale(1);
+                }
+            }
+            .pf-save-prompt-icon {
+                width: 48px;
+                height: 48px;
+                background: linear-gradient(145deg, #6366f1, #4f46e5);
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                flex-shrink: 0;
+                animation: pf-download-bounce 1.5s ease-in-out infinite;
+            }
+            @keyframes pf-download-bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-4px); }
+            }
+            .pf-save-prompt-text {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                flex: 1;
+            }
+            .pf-save-prompt-title {
+                font-size: 15px;
+                font-weight: 600;
+                color: #fff;
+            }
+            .pf-save-prompt-subtitle {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.5);
+            }
+            .pf-save-prompt-btn {
+                background: linear-gradient(145deg, #6366f1, #4f46e5);
+                border: none;
+                color: white;
+                padding: 10px 16px;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                transition: all 0.2s ease;
+                flex-shrink: 0;
+            }
+            .pf-save-prompt-btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            }
+            .pf-save-prompt-btn:active {
+                transform: translateY(0);
+            }
+            .pf-save-prompt.closing {
+                animation: pf-prompt-slide-out 0.3s ease forwards;
+            }
+            @keyframes pf-prompt-slide-out {
+                to { 
+                    opacity: 0; 
+                    transform: translateY(10px) scale(0.95);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(prompt);
+    
+    // Handle "Done" button click
+    const doneBtn = prompt.querySelector(".pf-save-prompt-btn");
+    doneBtn.addEventListener("click", () => {
+        prompt.classList.add("closing");
+        setTimeout(() => {
+            prompt.remove();
+            // Now show the celebratory toast
+            showArchiveSuccessToast();
+        }, 300);
+    });
 }
 
 /**
