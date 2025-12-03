@@ -6499,6 +6499,43 @@ function downloadFile(blob, filename) {
 }
 
 /**
+ * Parse a period date from various formats (ISO, Excel serial, MM/DD/YYYY, etc.)
+ */
+function parsePeriodDate(value) {
+    if (!value) return null;
+    
+    // If it's already a Date
+    if (value instanceof Date) {
+        return isNaN(value.getTime()) ? null : value;
+    }
+    
+    // If it's an Excel serial number (a number like 45678)
+    if (typeof value === 'number' && value > 1000 && value < 100000) {
+        const date = convertExcelDate(value);
+        return date;
+    }
+    
+    const str = String(value).trim();
+    if (!str) return null;
+    
+    // ISO format: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [y, m, d] = str.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
+    
+    // MM/DD/YYYY format
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+        const [m, d, y] = str.split('/').map(Number);
+        return new Date(y, m - 1, d);
+    }
+    
+    // Try standard Date parsing as fallback
+    const parsed = new Date(str);
+    return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
  * Step 2: Update PR_Archive_Summary
  * - Copy all rows from PR_Data_Clean to PR_Archive_Summary
  * - Remove oldest period's rows if more than 5 distinct periods exist
@@ -6543,11 +6580,15 @@ async function updateArchiveSummary() {
             (h.includes("payroll") && h.includes("date")) || h.includes("pay period") || h === "date"
         );
         
-        // Get current period date
-        const currentPeriodDate = getPayrollDateValue() || 
-            (cleanDateIdx >= 0 && cleanData[0] ? String(cleanData[0][cleanDateIdx]) : "");
+        // Get current period date and normalize to ISO format
+        const rawCurrentDate = getPayrollDateValue() || 
+            (cleanDateIdx >= 0 && cleanData[0] ? cleanData[0][cleanDateIdx] : "");
+        const parsedCurrentDate = parsePeriodDate(rawCurrentDate);
+        const currentPeriodDate = parsedCurrentDate 
+            ? formatDateFromDate(Object.assign(parsedCurrentDate, {_isUTC: false}))
+            : String(rawCurrentDate || "").trim();
         
-        console.log(`[Archive] Current period date: ${currentPeriodDate}`);
+        console.log(`[Archive] Current period date (raw): ${rawCurrentDate}, normalized: ${currentPeriodDate}`);
         
         // Get existing archive data
         const archiveRange = archiveSheet.getUsedRangeOrNullObject();
@@ -6583,15 +6624,19 @@ async function updateArchiveSummary() {
             (h.includes("payroll") && h.includes("date")) || h.includes("pay period") || h === "date"
         );
         
-        // Group existing archive data by period date
+        // Group existing archive data by period date (normalize to ISO format for consistent keys)
         const periodMap = new Map();
         archiveData.forEach(row => {
-            const periodDate = archiveDateIdx >= 0 ? String(row[archiveDateIdx] || "").trim() : "";
-            if (periodDate) {
-                if (!periodMap.has(periodDate)) {
-                    periodMap.set(periodDate, []);
+            const rawDate = archiveDateIdx >= 0 ? row[archiveDateIdx] : "";
+            const parsedDate = parsePeriodDate(rawDate);
+            // Normalize to ISO format for consistent map keys
+            const periodKey = parsedDate ? formatDateFromDate(Object.assign(parsedDate, {_isUTC: false})) : String(rawDate || "").trim();
+            
+            if (periodKey) {
+                if (!periodMap.has(periodKey)) {
+                    periodMap.set(periodKey, []);
                 }
-                periodMap.get(periodDate).push(row);
+                periodMap.get(periodKey).push(row);
             }
         });
         
@@ -6608,23 +6653,33 @@ async function updateArchiveSummary() {
         
         // If more than 5 periods, remove oldest
         const MAX_PERIODS = 5;
+        console.log(`[Archive] Current period count: ${periodMap.size}, max allowed: ${MAX_PERIODS}`);
+        console.log(`[Archive] All periods: ${Array.from(periodMap.keys()).join(', ')}`);
+        
         if (periodMap.size > MAX_PERIODS) {
             // Sort periods by date (oldest first) and remove oldest
             const sortedPeriods = Array.from(periodMap.keys()).sort((a, b) => {
-                // Parse dates for comparison
-                const dateA = new Date(a);
-                const dateB = new Date(b);
-                if (!isNaN(dateA) && !isNaN(dateB)) {
-                    return dateA - dateB;
+                // Parse dates for comparison - handle ISO format and Excel serial
+                const dateA = parsePeriodDate(a);
+                const dateB = parsePeriodDate(b);
+                
+                console.log(`[Archive] Comparing dates: "${a}" (${dateA?.getTime()}) vs "${b}" (${dateB?.getTime()})`);
+                
+                if (dateA && dateB) {
+                    return dateA.getTime() - dateB.getTime(); // Oldest first
                 }
-                return a.localeCompare(b);
+                return String(a).localeCompare(String(b));
             });
+            
+            console.log(`[Archive] Sorted periods (oldest first): ${sortedPeriods.join(', ')}`);
             
             const periodsToRemove = sortedPeriods.slice(0, periodMap.size - MAX_PERIODS);
             periodsToRemove.forEach(period => {
                 console.log(`[Archive] Removing oldest period: ${period}`);
                 periodMap.delete(period);
             });
+            
+            console.log(`[Archive] Remaining periods after removal: ${Array.from(periodMap.keys()).join(', ')}`);
         }
         
         // Flatten all periods back into rows (newest periods first)
