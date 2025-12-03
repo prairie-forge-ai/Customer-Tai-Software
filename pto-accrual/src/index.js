@@ -29,7 +29,7 @@ import { loadConfigFromTable, saveConfigValue, hasExcelRuntime } from "../../Com
 import { formatSheetHeaders, formatCurrencyColumn, formatNumberColumn, formatDateColumn, NUMBER_FORMATS } from "../../Common/sheet-formatting.js";
 
 // Build script injects the current commit hash at bundle time
-const MODULE_VERSION = "__BUILD_COMMIT__";
+const MODULE_VERSION = __BUILD_COMMIT__;
 const MODULE_KEY = "pto-accrual";
 const MODULE_ALIAS_TOKENS = ["pto", "pto-accrual", "pto review", "accrual"];
 const MODULE_NAME = "PTO Accrual";

@@ -1,5 +1,5 @@
 // Build script injects the current commit hash at bundle time
-export const VERSION = "__BUILD_COMMIT__";
+export const VERSION = __BUILD_COMMIT__;
 
 export const SHEET_NAMES = {
     CONFIG: "SS_PF_Config",
