@@ -3454,6 +3454,9 @@ function bindSignoffToggle({
             console.log(`[Signoff] Writing ${completeField} = "${completeValue}"`);
             scheduleConfigWrite(completeField, completeValue);
         }
+        if (nextActive) {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
         if (nextActive && typeof onComplete === "function") {
             onComplete();
         }

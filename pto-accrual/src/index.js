@@ -3871,6 +3871,9 @@ function bindSignoffToggle(stepId, { buttonId, inputId, canActivate = null, onCo
             saveStepField(stepId, "signOffDate", input.value);
         }
         saveCompletionFlag(stepId, next);
+        if (next) {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
         if (next && typeof onComplete === "function") {
             onComplete();
         }
