@@ -170,6 +170,7 @@ body {
 
 .pf-root {
   min-height: 100vh;
+  min-width: 420px;
   background: var(--pf-bg);
   padding-bottom: var(--spacing-lg);
   display: flex;
