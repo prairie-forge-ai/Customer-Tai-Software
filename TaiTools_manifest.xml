@@ -1,65 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<OfficeApp
-  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
-  xsi:type="TaskPaneApp">
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.0"
+           xsi:type="TaskPaneApp">
 
   <Id>16b2f680-b42c-4f45-ab67-af2d2c3c9d15</Id>
-  <Version>1.5.0.0</Version>
+  <Version>1.7.0.0</Version>
   <ProviderName>Prairie Forge</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="TaiTools"/>
-  <Description DefaultValue="Launch TaiTools to access Payroll Recorder and PTO Accrual."/>
-  <IconUrl DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-80.png"/>
-  <HighResolutionIconUrl DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-80.png"/>
-  <SupportUrl DefaultValue="https://prairieforge.ai"/>
-  <PrivacyUrl DefaultValue="https://prairieforge.ai/privacy"/>
+  <Description DefaultValue="TaiTools Excel add-in"/>
+  <IconUrl DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-64.png"/>
+  <HighResolutionIconUrl DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-128.png"/>
 
-  <Requirements>
-    <Sets>
-      <Set Name="ExcelApi" MinVersion="1.1"/>
-    </Sets>
-  </Requirements>
+  <SupportUrl DefaultValue="https://prairieforge.ai/support"/>
+  <PrivacyUrl DefaultValue="https://prairieforge.ai/privacy"/>
 
   <Hosts>
     <Host Name="Workbook"/>
   </Hosts>
 
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <Requirements>
+    <Sets DefaultMinVersion="1.1">
+      <Set Name="ExcelApi" MinVersion="1.1"/>
+    </Sets>
+  </Requirements>
+
   <DefaultSettings>
     <SourceLocation DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
   </DefaultSettings>
 
-  <Permissions>ReadWriteDocument</Permissions>
-
-  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
-    <Requirements>
-      <Sets DefaultMinVersion="1.1">
-        <Set Name="ExcelApi" MinVersion="1.1"/>
-      </Sets>
-    </Requirements>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.0" xsi:type="VersionOverridesV1_0">
     <Hosts>
       <Host xsi:type="Workbook">
         <DesktopFormFactor>
-          <GetStarted>
-            <Title resid="GetStartedTitle"/>
-            <Description resid="GetStartedDesc"/>
-            <LearnMoreUrl resid="LearnMoreUrl"/>
-          </GetStarted>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
             <OfficeTab id="TabHome">
-              <Group id="ForgeSuiteGroup">
-                <Label resid="GroupLabel"/>
-                <Icon>
-                  <bt:Image size="16" resid="Icon16"/>
-                  <bt:Image size="32" resid="Icon32"/>
-                  <bt:Image size="80" resid="Icon80"/>
-                </Icon>
-                <Control xsi:type="Button" id="LaunchButton">
-                  <Label resid="ButtonLabel"/>
+              <Group id="TaiTools.Group" label="ForgeSuite">
+                <Control xsi:type="Button" id="TaiTools.Button.OpenPane">
+                  <Label resid="Button.Label"/>
                   <Supertip>
-                    <Title resid="ButtonLabel"/>
-                    <Description resid="ButtonDesc"/>
+                    <Title resid="Button.Label"/>
+                    <Description resid="Button.Desc"/>
                   </Supertip>
                   <Icon>
                     <bt:Image size="16" resid="Icon16"/>
@@ -67,8 +52,8 @@
                     <bt:Image size="80" resid="Icon80"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>Taskpane</TaskpaneId>
-                    <SourceLocation resid="TaskpaneUrl"/>
+                    <TaskpaneId>ButtonTaskPane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
                   </Action>
                 </Control>
               </Group>
@@ -77,6 +62,7 @@
         </DesktopFormFactor>
       </Host>
     </Hosts>
+
     <Resources>
       <bt:Images>
         <bt:Image id="Icon16" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-16.png"/>
@@ -84,17 +70,13 @@
         <bt:Image id="Icon80" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="TaskpaneUrl" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
-        <bt:Url id="LearnMoreUrl" DefaultValue="https://prairieforge.ai"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="ForgeSuite"/>
-        <bt:String id="ButtonLabel" DefaultValue="Launch TaiTools"/>
-        <bt:String id="GetStartedTitle" DefaultValue="TaiTools"/>
+        <bt:String id="Button.Label" DefaultValue="Launch TaiTools"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="ButtonDesc" DefaultValue="Open TaiTools to access Payroll Recorder and PTO Accrual."/>
-        <bt:String id="GetStartedDesc" DefaultValue="Launch TaiTools modules."/>
+        <bt:String id="Button.Desc" DefaultValue="Open TaiTools to access Payroll Recorder and PTO Accrual."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
