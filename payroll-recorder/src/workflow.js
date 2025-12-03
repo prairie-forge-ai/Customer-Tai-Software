@@ -4572,7 +4572,9 @@ function buildExpenseReviewPeriods(cleanValues, archiveValues) {
         combined.push(currentPeriods[0]);
         archiveMap.delete(currentPeriods[0].key);
     }
-    archivePeriods.forEach((period) => {
+    // Pick archive periods starting from the second most recent so we compare to prior month, not the latest pay period
+    const archiveStartIndex = archivePeriods.length > 1 ? 1 : 0;
+    archivePeriods.slice(archiveStartIndex).forEach((period) => {
         if (combined.length >= 6) return;
         if (!combined.some((existing) => existing.key === period.key)) {
             combined.push(period);
