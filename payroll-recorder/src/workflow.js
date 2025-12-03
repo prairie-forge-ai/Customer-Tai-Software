@@ -21,6 +21,7 @@ import {
     CALCULATOR_ICON_SVG,
     SAVE_ICON_SVG,
     DOWNLOAD_ICON_SVG,
+    UPLOAD_ICON_SVG,
     REFRESH_ICON_SVG,
     TRASH_ICON_SVG,
     getStepIconSvg
@@ -2237,6 +2238,10 @@ function renderJournalStep(detail) {
                         `<button type="button" class="pf-action-toggle pf-clickable" id="je-export-btn" title="Export as CSV">${DOWNLOAD_ICON_SVG}</button>`,
                         "Export"
                     )}
+                    ${renderLabeledButton(
+                        `<button type="button" class="pf-action-toggle pf-clickable" id="je-upload-btn" title="Open accounting software">${UPLOAD_ICON_SVG}</button>`,
+                        "Upload"
+                    )}
                 </div>
             </article>
             <article class="pf-step-card pf-step-detail pf-config-card">
@@ -2904,6 +2909,7 @@ function bindStepInteractions(stepId) {
         document.getElementById("je-save-btn")?.addEventListener("click", () => saveJournalSummary());
         document.getElementById("je-create-btn")?.addEventListener("click", () => createJournalDraft());
         document.getElementById("je-export-btn")?.addEventListener("click", () => exportJournalDraft());
+        document.getElementById("je-upload-btn")?.addEventListener("click", () => openAccountingSoftware());
     }
     if (stepId === 4) {
         const container = document.querySelector(".pf-step-guide");
@@ -7169,5 +7175,54 @@ async function exportJournalDraft() {
         console.warn("JE export:", error);
         showToast("Unable to export the JE draft. Confirm the sheet has data.", "error");
     }
+}
+
+/**
+ * Open the accounting software URL from SS_PF_Config
+ * Reads SS_Accounting_Software field and opens in new window
+ */
+async function openAccountingSoftware() {
+    // First check if we have the URL in cached config
+    let accountingUrl = getConfigValue("SS_Accounting_Software");
+    
+    // If not in cache, try reading from Excel
+    if (!accountingUrl && hasExcelRuntime()) {
+        try {
+            await Excel.run(async (context) => {
+                const table = await getConfigTable(context);
+                if (!table) return;
+                
+                const body = table.getDataBodyRange();
+                body.load("values");
+                await context.sync();
+                
+                const rows = body.values || [];
+                for (const row of rows) {
+                    const fieldName = String(row[CONFIG_COLUMNS.FIELD] || "").trim();
+                    if (fieldName === "SS_Accounting_Software" || 
+                        normalizeFieldName(fieldName) === normalizeFieldName("SS_Accounting_Software")) {
+                        accountingUrl = String(row[CONFIG_COLUMNS.VALUE] || "").trim();
+                        break;
+                    }
+                }
+            });
+        } catch (error) {
+            console.warn("Error reading accounting software URL:", error);
+        }
+    }
+    
+    if (!accountingUrl) {
+        showToast("No accounting software URL configured. Add SS_Accounting_Software to SS_PF_Config.", "info", 5000);
+        return;
+    }
+    
+    // Ensure URL has protocol
+    if (!accountingUrl.startsWith("http://") && !accountingUrl.startsWith("https://")) {
+        accountingUrl = "https://" + accountingUrl;
+    }
+    
+    // Open in new window/tab
+    window.open(accountingUrl, "_blank");
+    showToast("Opening accounting software...", "success", 2000);
 }
 
