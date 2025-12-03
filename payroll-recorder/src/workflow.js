@@ -618,13 +618,13 @@ const STEP_SHEET_MAP = {
 // Reverse map: sheet name → step ID (for tab-to-panel sync)
 // Use -1 for homepage (special case - goes to home view, not config)
 const SHEET_TO_STEP_MAP = {
-    "PR_Homepage": 0,                   // Homepage → Configuration (Step 0)
+    "PR_Homepage": null,                // Homepage → Home view
     [SHEET_NAMES.DATA]: 1,              // PR_Data → Import
     [SHEET_NAMES.DATA_CLEAN]: 2,        // PR_Data_Clean → Headcount Review
     [SHEET_NAMES.EXPENSE_REVIEW]: 4,    // PR_Expense_Review → Expense Review
     [SHEET_NAMES.JE_DRAFT]: 5,          // PR_JE_Draft → Journal Entry
     [SHEET_NAMES.ARCHIVE_SUMMARY]: 6,   // PR_Archive_Summary → Archive
-    "SS_PF_Config": 0,                  // Config sheet → Configuration
+    "SS_PF_Config": null,               // Treat as home to avoid forced config view
     "SS_Employee_Roster": 2,            // Roster → Headcount Review
     "PR_Expense_Mapping": 4             // Expense Mapping → Expense Review
 };
@@ -1396,6 +1396,12 @@ async function handleWorksheetActivated(event) {
             
             console.log(`[Payroll] Tab changed to: ${sheetName} → Step ${stepId}`);
             
+            // Homepage/unmapped should go to home view
+            if (stepId === null || stepId === undefined) {
+                setState({ focusedIndex: 0, activeView: "home", activeStepId: null });
+                return;
+            }
+
             // Only sync if we have a mapped step and it's different from current
             if (stepId !== undefined && stepId !== appState.activeStepId) {
                 // Find the index in WORKFLOW_STEPS
