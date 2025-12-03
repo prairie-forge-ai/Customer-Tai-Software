@@ -2882,8 +2882,8 @@ async function archiveAndReset() {
 }
 
 /**
- * Show a prompt asking user to save their file and click when done
- * Positioned in bottom-right corner so it doesn't block the save dialog
+ * Show a simple finalize prompt centered in the side panel
+ * Appears after file download - stays until user clicks
  */
 function showSaveCompletePrompt() {
     // Remove any existing prompts
@@ -2892,23 +2892,16 @@ function showSaveCompletePrompt() {
     const prompt = document.createElement("div");
     prompt.className = "pf-save-prompt";
     prompt.innerHTML = `
-        <div class="pf-save-prompt-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" x2="12" y1="15" y2="3"/>
-            </svg>
+        <div class="pf-save-prompt-content">
+            <div class="pf-save-prompt-title">Good work!</div>
+            <div class="pf-save-prompt-subtitle">Ready to finalize?</div>
+            <button type="button" class="pf-save-prompt-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Finalize
+            </button>
         </div>
-        <div class="pf-save-prompt-text">
-            <div class="pf-save-prompt-title">Save your archive file</div>
-            <div class="pf-save-prompt-subtitle">Click below when you're done</div>
-        </div>
-        <button type="button" class="pf-save-prompt-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            Done
-        </button>
     `;
     
     // Add styles
@@ -2918,94 +2911,68 @@ function showSaveCompletePrompt() {
         style.textContent = `
             .pf-save-prompt {
                 position: fixed;
-                bottom: 24px;
-                right: 24px;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
                 background: linear-gradient(145deg, rgba(30, 30, 50, 0.98), rgba(20, 20, 35, 0.99));
                 border: 1px solid rgba(99, 102, 241, 0.3);
                 color: white;
-                padding: 20px 24px;
-                border-radius: 16px;
+                padding: 32px 40px;
+                border-radius: 20px;
                 box-shadow: 
-                    0 16px 48px rgba(0, 0, 0, 0.4),
-                    0 0 0 1px rgba(99, 102, 241, 0.2) inset;
+                    0 24px 64px rgba(0, 0, 0, 0.5),
+                    0 0 0 1px rgba(99, 102, 241, 0.2) inset,
+                    0 0 60px rgba(99, 102, 241, 0.1);
                 z-index: 10002;
-                display: flex;
-                align-items: center;
-                gap: 16px;
-                animation: pf-prompt-slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-                max-width: 320px;
+                text-align: center;
+                animation: pf-prompt-fade-in 0.3s ease;
             }
-            @keyframes pf-prompt-slide-in {
-                from { 
-                    opacity: 0; 
-                    transform: translateY(20px) scale(0.95);
-                }
-                to { 
-                    opacity: 1; 
-                    transform: translateY(0) scale(1);
-                }
+            @keyframes pf-prompt-fade-in {
+                from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+                to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
             }
-            .pf-save-prompt-icon {
-                width: 48px;
-                height: 48px;
-                background: linear-gradient(145deg, #6366f1, #4f46e5);
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                flex-shrink: 0;
-                animation: pf-download-bounce 1.5s ease-in-out infinite;
-            }
-            @keyframes pf-download-bounce {
-                0%, 100% { transform: translateY(0); }
-                50% { transform: translateY(-4px); }
-            }
-            .pf-save-prompt-text {
+            .pf-save-prompt-content {
                 display: flex;
                 flex-direction: column;
-                gap: 2px;
-                flex: 1;
+                align-items: center;
+                gap: 8px;
             }
             .pf-save-prompt-title {
-                font-size: 15px;
-                font-weight: 600;
+                font-size: 20px;
+                font-weight: 700;
                 color: #fff;
             }
             .pf-save-prompt-subtitle {
-                font-size: 13px;
-                color: rgba(255, 255, 255, 0.5);
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.6);
+                margin-bottom: 12px;
             }
             .pf-save-prompt-btn {
                 background: linear-gradient(145deg, #6366f1, #4f46e5);
                 border: none;
                 color: white;
-                padding: 10px 16px;
-                border-radius: 10px;
-                font-size: 14px;
+                padding: 12px 28px;
+                border-radius: 12px;
+                font-size: 15px;
                 font-weight: 600;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 8px;
                 transition: all 0.2s ease;
-                flex-shrink: 0;
             }
             .pf-save-prompt-btn:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
             }
             .pf-save-prompt-btn:active {
                 transform: translateY(0);
             }
             .pf-save-prompt.closing {
-                animation: pf-prompt-slide-out 0.3s ease forwards;
+                animation: pf-prompt-fade-out 0.2s ease forwards;
             }
-            @keyframes pf-prompt-slide-out {
-                to { 
-                    opacity: 0; 
-                    transform: translateY(10px) scale(0.95);
-                }
+            @keyframes pf-prompt-fade-out {
+                to { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
             }
         `;
         document.head.appendChild(style);
@@ -3013,7 +2980,7 @@ function showSaveCompletePrompt() {
     
     document.body.appendChild(prompt);
     
-    // Handle "Done" button click
+    // Handle "Finalize" button click
     const doneBtn = prompt.querySelector(".pf-save-prompt-btn");
     doneBtn.addEventListener("click", () => {
         prompt.classList.add("closing");
@@ -3021,13 +2988,13 @@ function showSaveCompletePrompt() {
             prompt.remove();
             // Now show the celebratory toast
             showArchiveSuccessToast();
-        }, 300);
+        }, 200);
     });
 }
 
 /**
  * Show celebratory archive success toast with rotating messages
- * Displays for 3 seconds then redirects to homepage
+ * Displays for 5 seconds then redirects to Module Selector
  */
 function showArchiveSuccessToast() {
     // Remove existing toasts
@@ -3036,22 +3003,22 @@ function showArchiveSuccessToast() {
     // Lucide icon SVGs with Prairie Forge purple
     const messages = [
         {
-            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>`,
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>`,
             title: "Done.",
             subtitle: "Efficiency unlocked."
         },
         {
-            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m9 12 2 2 4-4"/></svg>`,
             title: "Locked in.",
             subtitle: "You're good to go."
         },
         {
-            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z"/><path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5Z"/></svg>`,
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z"/><path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5Z"/></svg>`,
             title: "Stored.",
             subtitle: "Everything stays aligned."
         },
         {
-            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
             title: "PTO archived.",
             subtitle: "Flow restored."
         }
@@ -3084,7 +3051,7 @@ function showArchiveSuccessToast() {
                 background: linear-gradient(145deg, rgba(30, 30, 50, 0.98), rgba(20, 20, 35, 0.99));
                 border: 1px solid rgba(99, 102, 241, 0.3);
                 color: white;
-                padding: 32px 48px;
+                padding: 36px 48px 24px;
                 border-radius: 24px;
                 box-shadow: 
                     0 32px 64px rgba(0, 0, 0, 0.5),
@@ -3092,10 +3059,13 @@ function showArchiveSuccessToast() {
                     0 0 80px rgba(99, 102, 241, 0.15);
                 z-index: 10002;
                 display: flex;
+                flex-direction: column;
                 align-items: center;
-                gap: 20px;
+                gap: 16px;
                 animation: pf-success-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
                 overflow: hidden;
+                text-align: center;
+                min-width: 220px;
             }
             @keyframes pf-success-in {
                 from { 
@@ -3118,10 +3088,10 @@ function showArchiveSuccessToast() {
                 }
             }
             .pf-success-toast-icon {
-                width: 56px;
-                height: 56px;
+                width: 64px;
+                height: 64px;
                 background: linear-gradient(145deg, #6366f1, #4f46e5);
-                border-radius: 16px;
+                border-radius: 18px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -3136,6 +3106,7 @@ function showArchiveSuccessToast() {
             .pf-success-toast-text {
                 display: flex;
                 flex-direction: column;
+                align-items: center;
                 gap: 4px;
             }
             .pf-success-toast-title {
@@ -3153,10 +3124,10 @@ function showArchiveSuccessToast() {
                 position: absolute;
                 bottom: 0;
                 left: 0;
-                height: 3px;
+                height: 4px;
                 background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1);
                 background-size: 200% 100%;
-                animation: pf-progress-shrink 3s linear forwards, pf-progress-shimmer 1s linear infinite;
+                animation: pf-progress-shrink 5s linear forwards, pf-progress-shimmer 1s linear infinite;
                 border-radius: 0 0 24px 24px;
             }
             @keyframes pf-progress-shrink {
@@ -3189,7 +3160,7 @@ function showArchiveSuccessToast() {
     document.body.appendChild(backdrop);
     document.body.appendChild(toast);
     
-    // After 3 seconds, close and redirect to Module Selector
+    // After 5 seconds, close and redirect to Module Selector
     setTimeout(() => {
         toast.classList.add("closing");
         backdrop.style.opacity = "0";
@@ -3201,7 +3172,7 @@ function showArchiveSuccessToast() {
             // Navigate to Module Selector homepage
             navigateToModuleSelector();
         }, 300);
-    }, 3000);
+    }, 5000);
 }
 
 /**
