@@ -7,6 +7,7 @@
 const esbuild = require("esbuild");
 const path = require("path");
 const fs = require("fs");
+const { execSync } = require("child_process");
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 const ENTRY_POINT = path.resolve(PROJECT_ROOT, "pto-accrual", "src", "index.js");
@@ -15,6 +16,7 @@ const INDEX_HTML = path.resolve(PROJECT_ROOT, "pto-accrual", "index.html");
 
 // Generate build timestamp for cache busting
 const BUILD_VERSION = Date.now().toString(36);
+const COMMIT_HASH = getCommitHash();
 
 async function main() {
     try {
@@ -30,9 +32,13 @@ async function main() {
             banner: {
                 js: "/* Prairie Forge PTO Accrual */"
             },
-            logLevel: "info"
+            logLevel: "info",
+            define: {
+                __BUILD_COMMIT__: JSON.stringify(COMMIT_HASH)
+            }
         });
         console.log(`Generated ${path.relative(PROJECT_ROOT, OUT_FILE)} with esbuild.`);
+        console.log(`Embedded commit hash: ${COMMIT_HASH}`);
 
         // Update index.html with new build version
         updateHtmlVersion(INDEX_HTML, BUILD_VERSION);
@@ -54,6 +60,16 @@ function updateHtmlVersion(filePath, version) {
         console.log(`Updated index.html with build version: ${version}`);
     } catch (error) {
         console.warn("Could not update index.html version:", error.message);
+    }
+}
+
+function getCommitHash() {
+    try {
+        return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+            .toString()
+            .trim();
+    } catch {
+        return "unknown";
     }
 }
 
