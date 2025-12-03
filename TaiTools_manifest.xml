@@ -3,87 +3,85 @@
   xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
-  xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
-  xsi:type="TaskPaneApp"
->
+  xsi:type="TaskPaneApp">
   <Id>16b2f680-b42c-4f45-ab67-af2d2c3c9d15</Id>
-  <Version>1.1.0.0</Version>
+  <Version>1.2.0.0</Version>
   <ProviderName>Prairie Forge</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="TaiTools by PrairieForge" />
-  <Description DefaultValue="Launch TaiTools to access Payroll Recorder, PTO Accrual, and more." />
-  <IconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png" />
-  <HighResolutionIconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png" />
-  <SupportUrl DefaultValue="https://prairieforge.ai/support" />
+  <DisplayName DefaultValue="TaiTools by PrairieForge"/>
+  <Description DefaultValue="Launch TaiTools to access Payroll Recorder, PTO Accrual, and more."/>
+  <IconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png"/>
+  <HighResolutionIconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png"/>
+  <SupportUrl DefaultValue="https://prairieforge.ai/support"/>
   <AppDomains>
-    <AppDomain>https://*.supabase.co</AppDomain>
-    <AppDomain>https://appsforoffice.microsoft.com</AppDomain>
+    <AppDomain>https://prairie-forge-ai.github.io</AppDomain>
+    <AppDomain>https://assets.prairieforge.ai</AppDomain>
   </AppDomains>
   <Hosts>
-    <Host Name="Workbook" />
+    <Host Name="Workbook"/>
   </Hosts>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html" />
+    <SourceLocation DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
-  <VersionOverrides xsi:type="ov:VersionOverridesV1_0">
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
     <Hosts>
-      <Host xsi:type="ov:Workbook">
-        <ov:DesktopFormFactor>
-          <ov:GetStarted>
-            <ov:Title resid="residGetStartedTitle" />
-            <ov:Description resid="residGetStartedDescription" />
-            <ov:LearnMoreUrl resid="residLearnMoreUrl" />
-          </ov:GetStarted>
-          <ov:ExtensionPoint xsi:type="ov:PrimaryCommandSurface">
-            <ov:OfficeTab id="TabHome">
-              <ov:Group id="TaiToolsGroup">
-                <ov:Label resid="residGroupLabel" />
-                <ov:Icon>
-                  <bt:Image size="16" resid="residIcon16" />
-                  <bt:Image size="32" resid="residIcon32" />
-                  <bt:Image size="80" resid="residIcon80" />
-                </ov:Icon>
-                <ov:Control xsi:type="ov:Button" id="LaunchTaiToolsBtn">
-                  <ov:Label resid="residButtonLabel" />
-                  <ov:Supertip>
-                    <ov:Title resid="residButtonLabel" />
-                    <ov:Description resid="residButtonDescription" />
-                  </ov:Supertip>
-                  <ov:Icon>
-                    <bt:Image size="16" resid="residIcon16" />
-                    <bt:Image size="32" resid="residIcon32" />
-                    <bt:Image size="80" resid="residIcon80" />
-                  </ov:Icon>
-                  <ov:Action xsi:type="ov:ShowTaskpane">
-                    <ov:TaskpaneId>TaskpaneModuleSelector</ov:TaskpaneId>
-                    <ov:SourceLocation resid="residTaskpaneUrl" />
-                  </ov:Action>
-                </ov:Control>
-              </ov:Group>
-            </ov:OfficeTab>
-          </ov:ExtensionPoint>
-        </ov:DesktopFormFactor>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStartedTitle"/>
+            <Description resid="GetStartedDesc"/>
+            <LearnMoreUrl resid="LearnMoreUrl"/>
+          </GetStarted>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="TaiToolsGroup">
+                <Label resid="GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon16"/>
+                  <bt:Image size="32" resid="Icon32"/>
+                  <bt:Image size="80" resid="Icon80"/>
+                </Icon>
+                <Control xsi:type="Button" id="LaunchBtn">
+                  <Label resid="ButtonLabel"/>
+                  <Supertip>
+                    <Title resid="ButtonLabel"/>
+                    <Description resid="ButtonDesc"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16"/>
+                    <bt:Image size="32" resid="Icon32"/>
+                    <bt:Image size="80" resid="Icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>MainTaskpane</TaskpaneId>
+                    <SourceLocation resid="TaskpaneUrl"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
       </Host>
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="residIcon16" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png" />
-        <bt:Image id="residIcon32" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png" />
-        <bt:Image id="residIcon80" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png" />
+        <bt:Image id="Icon16" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png"/>
+        <bt:Image id="Icon32" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png"/>
+        <bt:Image id="Icon80" DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Company%20Logos/New_Short_PF_Logo_Black.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="residTaskpaneUrl" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html" />
-        <bt:Url id="residLearnMoreUrl" DefaultValue="https://prairieforge.ai/solutions/tai-software" />
+        <bt:Url id="TaskpaneUrl" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
+        <bt:Url id="LearnMoreUrl" DefaultValue="https://prairieforge.ai"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="residGroupLabel" DefaultValue="ForgeSuite" />
-        <bt:String id="residButtonLabel" DefaultValue="Launch TaiTools" />
-        <bt:String id="residGetStartedTitle" DefaultValue="TaiTools by PrairieForge" />
+        <bt:String id="GroupLabel" DefaultValue="ForgeSuite"/>
+        <bt:String id="ButtonLabel" DefaultValue="Launch TaiTools"/>
+        <bt:String id="GetStartedTitle" DefaultValue="TaiTools by PrairieForge"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="residButtonDescription" DefaultValue="Open TaiTools to access Payroll Recorder, PTO Accrual, and more." />
-        <bt:String id="residGetStartedDescription" DefaultValue="Launch TaiTools to open Payroll Recorder, PTO Accrual, and future modules." />
+        <bt:String id="ButtonDesc" DefaultValue="Open TaiTools to access Payroll Recorder, PTO Accrual, and more."/>
+        <bt:String id="GetStartedDesc" DefaultValue="Launch TaiTools modules."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
