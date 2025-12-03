@@ -23,8 +23,6 @@
     <Host Name="Workbook"/>
   </Hosts>
 
-  <Permissions>ReadWriteDocument</Permissions>
-
   <Requirements>
     <Sets DefaultMinVersion="1.1">
       <Set Name="ExcelApi" MinVersion="1.1"/>
@@ -34,6 +32,8 @@
   <DefaultSettings>
     <SourceLocation DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
   </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
 
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
     <Hosts>

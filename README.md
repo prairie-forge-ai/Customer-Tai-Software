@@ -57,6 +57,16 @@ npm run build:pto
 
 If you change files under `Common/`, run at least the module builds that import those helpers so the task pane picks up the new code. When debugging an Office runtime issue, open the `app.bundle.js.map` emitted beside each bundle so stack traces point back to the ES module source lines.
 
+## Validating the TaiTools manifest
+
+Before uploading to the Microsoft 365 admin center, run the manifest through Microsoft’s validator so schema issues get caught locally:
+
+```bash
+npx office-addin-manifest validate TaiTools_manifest.xml
+```
+
+This is the same check Microsoft runs during submission, so a passing result here should also unblock Admin 365 ingestion.
+
 ## Adding new modules
 
 1. Create `<module-name>/src/…` with ES modules.
