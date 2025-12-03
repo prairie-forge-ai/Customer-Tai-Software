@@ -1,6 +1,6 @@
 /**
  * Prairie Forge Custom Date Picker
- * A modern, dark-themed date picker for the TaiTools add-in
+ * A modern, modal-style date picker for the TaiTools add-in
  * 
  * © 2025 Prairie Forge LLC
  */
@@ -18,8 +18,9 @@ const MONTH_NAMES_SHORT = [
 
 const DAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-// Track active picker for closing on outside click
-let activePickerId = null;
+// Single modal instance for all date pickers
+let modalEl = null;
+let currentPickerState = null;
 
 /**
  * Initialize a date picker on an input element
@@ -46,297 +47,321 @@ export function initDatePicker(inputId, options = {}) {
         wrapper.appendChild(input);
     }
     
-    // Allow manual typing - don't set readonly
+    // Configure input
     input.type = 'text';
-    input.placeholder = 'YYYY-MM-DD or click calendar';
+    input.placeholder = 'Select date...';
     input.classList.add('pf-datepicker-input');
+    input.readOnly = true; // Prevent keyboard on mobile, use modal only
     
     // Parse initial value
     let selectedDate = input.value ? parseDate(input.value) : null;
-    let viewDate = selectedDate ? new Date(selectedDate) : new Date();
     
     // Format display value
     if (selectedDate) {
         input.value = formatDisplayDate(selectedDate);
+        input.dataset.value = formatISODate(selectedDate);
     }
     
     // Create calendar icon
-    const icon = document.createElement('span');
-    icon.className = 'pf-datepicker-icon';
-    icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>`;
-    wrapper.appendChild(icon);
+    let icon = wrapper.querySelector('.pf-datepicker-icon');
+    if (!icon) {
+        icon = document.createElement('span');
+        icon.className = 'pf-datepicker-icon';
+        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>`;
+        wrapper.appendChild(icon);
+    }
     
-    // Create dropdown calendar
-    const dropdown = document.createElement('div');
-    dropdown.className = 'pf-datepicker-dropdown';
-    dropdown.id = `${inputId}-dropdown`;
-    wrapper.appendChild(dropdown);
+    // Picker state
+    const pickerState = {
+        inputId,
+        input,
+        selectedDate,
+        viewDate: selectedDate ? new Date(selectedDate) : new Date(),
+        onChange,
+        minDate,
+        maxDate
+    };
     
-    // Render calendar
-    function renderCalendar() {
-        const year = viewDate.getFullYear();
-        const month = viewDate.getMonth();
-        
-        dropdown.innerHTML = `
+    // Open modal on click
+    function openModal() {
+        if (readonly) return;
+        currentPickerState = pickerState;
+        showDatePickerModal();
+    }
+    
+    // Click handlers
+    input.addEventListener('click', openModal);
+    icon.addEventListener('click', openModal);
+    
+    // Return API
+    return {
+        getValue: () => pickerState.selectedDate ? formatISODate(pickerState.selectedDate) : '',
+        setValue: (dateStr) => {
+            const date = parseDate(dateStr);
+            pickerState.selectedDate = date;
+            pickerState.viewDate = date ? new Date(date) : new Date();
+            if (date) {
+                input.value = formatDisplayDate(date);
+                input.dataset.value = formatISODate(date);
+            } else {
+                input.value = '';
+                input.dataset.value = '';
+            }
+        },
+        open: openModal,
+        close: closeDatePickerModal
+    };
+}
+
+/**
+ * Show the date picker modal
+ */
+function showDatePickerModal() {
+    if (!currentPickerState) return;
+    
+    // Create modal if doesn't exist
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.className = 'pf-datepicker-modal';
+        modalEl.id = 'pf-datepicker-modal';
+        document.body.appendChild(modalEl);
+    }
+    
+    renderModal();
+    
+    // Show with animation
+    requestAnimationFrame(() => {
+        modalEl.classList.add('is-open');
+    });
+    
+    // Close on escape
+    document.addEventListener('keydown', handleEscapeKey);
+}
+
+/**
+ * Close the date picker modal
+ */
+function closeDatePickerModal() {
+    if (modalEl) {
+        modalEl.classList.remove('is-open');
+    }
+    document.removeEventListener('keydown', handleEscapeKey);
+    currentPickerState = null;
+}
+
+function handleEscapeKey(e) {
+    if (e.key === 'Escape') {
+        closeDatePickerModal();
+    }
+}
+
+/**
+ * Render the modal content
+ */
+function renderModal() {
+    if (!modalEl || !currentPickerState) return;
+    
+    const { viewDate, selectedDate, minDate, maxDate } = currentPickerState;
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    
+    modalEl.innerHTML = `
+        <div class="pf-datepicker-backdrop"></div>
+        <div class="pf-datepicker-container">
             <div class="pf-datepicker-header">
-                <button type="button" class="pf-datepicker-nav pf-datepicker-prev-year" title="Previous Year">«</button>
-                <button type="button" class="pf-datepicker-nav pf-datepicker-prev" title="Previous Month">‹</button>
+                <div class="pf-datepicker-nav-group">
+                    <button type="button" class="pf-datepicker-nav" data-action="prev-year" title="Previous Year">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+                    </button>
+                    <button type="button" class="pf-datepicker-nav" data-action="prev-month" title="Previous Month">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                </div>
                 <span class="pf-datepicker-title">${MONTH_NAMES[month]} ${year}</span>
-                <button type="button" class="pf-datepicker-nav pf-datepicker-next" title="Next Month">›</button>
-                <button type="button" class="pf-datepicker-nav pf-datepicker-next-year" title="Next Year">»</button>
-                <button type="button" class="pf-datepicker-nav pf-datepicker-close" title="Close">×</button>
+                <div class="pf-datepicker-nav-group">
+                    <button type="button" class="pf-datepicker-nav" data-action="next-month" title="Next Month">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                    <button type="button" class="pf-datepicker-nav" data-action="next-year" title="Next Year">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                    </button>
+                </div>
             </div>
             <div class="pf-datepicker-weekdays">
                 ${DAY_NAMES.map(d => `<span>${d}</span>`).join('')}
             </div>
             <div class="pf-datepicker-days">
-                ${generateDays(year, month, selectedDate)}
+                ${generateDays(year, month, selectedDate, minDate, maxDate)}
             </div>
             <div class="pf-datepicker-footer">
-                <button type="button" class="pf-datepicker-today">Today</button>
-                <button type="button" class="pf-datepicker-clear">Clear</button>
+                <button type="button" class="pf-datepicker-btn pf-datepicker-today" data-action="today">Today</button>
+                <button type="button" class="pf-datepicker-btn pf-datepicker-clear" data-action="clear">Clear</button>
             </div>
-        `;
-        
-        // Bind navigation - use mousedown to prevent blur events
-        dropdown.querySelector('.pf-datepicker-prev-year')?.addEventListener('mousedown', (e) => {
+        </div>
+    `;
+    
+    // Bind all events
+    bindModalEvents();
+}
+
+/**
+ * Bind modal event handlers
+ */
+function bindModalEvents() {
+    if (!modalEl) return;
+    
+    // Backdrop click to close
+    modalEl.querySelector('.pf-datepicker-backdrop')?.addEventListener('click', closeDatePickerModal);
+    
+    // Navigation buttons
+    modalEl.querySelectorAll('.pf-datepicker-nav').forEach(btn => {
+        btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            const action = btn.dataset.action;
+            handleNavigation(action);
+        });
+    });
+    
+    // Day clicks
+    modalEl.querySelectorAll('.pf-datepicker-day:not(.disabled)').forEach(dayEl => {
+        dayEl.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const day = parseInt(dayEl.dataset.day);
+            const month = parseInt(dayEl.dataset.month);
+            const year = parseInt(dayEl.dataset.year);
+            selectDate(new Date(year, month, day));
+        });
+    });
+    
+    // Footer buttons
+    modalEl.querySelectorAll('.pf-datepicker-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const action = btn.dataset.action;
+            if (action === 'today') {
+                selectDate(new Date());
+            } else if (action === 'clear') {
+                selectDate(null);
+            }
+        });
+    });
+}
+
+/**
+ * Handle navigation actions
+ */
+function handleNavigation(action) {
+    if (!currentPickerState) return;
+    
+    const viewDate = currentPickerState.viewDate;
+    
+    switch (action) {
+        case 'prev-year':
             viewDate.setFullYear(viewDate.getFullYear() - 1);
-            renderCalendar();
-        });
-        
-        dropdown.querySelector('.pf-datepicker-prev')?.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            break;
+        case 'prev-month':
             viewDate.setMonth(viewDate.getMonth() - 1);
-            renderCalendar();
-        });
-        
-        dropdown.querySelector('.pf-datepicker-next')?.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            break;
+        case 'next-month':
             viewDate.setMonth(viewDate.getMonth() + 1);
-            renderCalendar();
-        });
-        
-        dropdown.querySelector('.pf-datepicker-next-year')?.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            break;
+        case 'next-year':
             viewDate.setFullYear(viewDate.getFullYear() + 1);
-            renderCalendar();
-        });
-        
-        // Close button
-        dropdown.querySelector('.pf-datepicker-close')?.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeDropdown();
-        });
-        
-        // Bind day clicks - use mousedown to prevent blur
-        dropdown.querySelectorAll('.pf-datepicker-day:not(.disabled)').forEach(dayEl => {
-            dayEl.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const day = parseInt(dayEl.dataset.day);
-                const m = parseInt(dayEl.dataset.month);
-                const y = parseInt(dayEl.dataset.year);
-                selectDate(new Date(y, m, day));
-            });
-        });
-        
-        // Today button
-        dropdown.querySelector('.pf-datepicker-today')?.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            selectDate(new Date());
-        });
-        
-        // Clear button
-        dropdown.querySelector('.pf-datepicker-clear')?.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            selectDate(null);
-        });
+            break;
     }
     
-    function generateDays(year, month, selected) {
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const daysInPrevMonth = new Date(year, month, 0).getDate();
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        let html = '';
-        
-        // Previous month days
-        for (let i = firstDay - 1; i >= 0; i--) {
-            const day = daysInPrevMonth - i;
-            const prevMonth = month === 0 ? 11 : month - 1;
-            const prevYear = month === 0 ? year - 1 : year;
-            html += `<span class="pf-datepicker-day other-month" data-day="${day}" data-month="${prevMonth}" data-year="${prevYear}">${day}</span>`;
-        }
-        
-        // Current month days
-        for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, month, day);
-            const isToday = date.getTime() === today.getTime();
-            const isSelected = selected && date.getTime() === selected.getTime();
-            
-            let classes = 'pf-datepicker-day';
-            if (isToday) classes += ' today';
-            if (isSelected) classes += ' selected';
-            
-            // Check min/max constraints
-            if (minDate && date < minDate) classes += ' disabled';
-            if (maxDate && date > maxDate) classes += ' disabled';
-            
-            html += `<span class="${classes}" data-day="${day}" data-month="${month}" data-year="${year}">${day}</span>`;
-        }
-        
-        // Next month days - ALWAYS fill to 42 cells (6 rows × 7 days) for consistent height
-        const totalCells = 42;
-        const currentCells = firstDay + daysInMonth;
-        const nextMonthDays = totalCells - currentCells;
-        for (let day = 1; day <= nextMonthDays; day++) {
-            const nextMonth = month === 11 ? 0 : month + 1;
-            const nextYear = month === 11 ? year + 1 : year;
-            html += `<span class="pf-datepicker-day other-month" data-day="${day}" data-month="${nextMonth}" data-year="${nextYear}">${day}</span>`;
-        }
-        
-        return html;
+    renderModal();
+}
+
+/**
+ * Select a date and close modal
+ */
+function selectDate(date) {
+    if (!currentPickerState) return;
+    
+    const { input, onChange } = currentPickerState;
+    
+    currentPickerState.selectedDate = date;
+    
+    if (date) {
+        input.value = formatDisplayDate(date);
+        input.dataset.value = formatISODate(date);
+        currentPickerState.viewDate = new Date(date);
+    } else {
+        input.value = '';
+        input.dataset.value = '';
     }
     
-    function selectDate(date) {
-        selectedDate = date;
-        if (date) {
-            input.value = formatDisplayDate(date);
-            input.dataset.value = formatISODate(date);
-            viewDate = new Date(date);
-        } else {
-            input.value = '';
-            input.dataset.value = '';
-        }
-        closeDropdown();
-        
-        if (onChange) {
-            onChange(date ? formatISODate(date) : '');
-        }
-        
-        // Trigger change event
-        input.dispatchEvent(new Event('change', { bubbles: true }));
+    // Trigger callbacks
+    if (onChange) {
+        onChange(date ? formatISODate(date) : '');
+    }
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // Close modal
+    closeDatePickerModal();
+}
+
+/**
+ * Generate day cells
+ */
+function generateDays(year, month, selected, minDate, maxDate) {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selected) {
+        selected = new Date(selected);
+        selected.setHours(0, 0, 0, 0);
     }
     
-    function openDropdown() {
-        if (readonly) return;
-        
-        // Close any other open picker
-        if (activePickerId && activePickerId !== inputId) {
-            const otherDropdown = document.getElementById(`${activePickerId}-dropdown`);
-            otherDropdown?.classList.remove('open');
-        }
-        
-        activePickerId = inputId;
-        renderCalendar();
-        dropdown.classList.add('open');
-        wrapper.classList.add('open');
+    let html = '';
+    
+    // Previous month days
+    for (let i = firstDay - 1; i >= 0; i--) {
+        const day = daysInPrevMonth - i;
+        const prevMonth = month === 0 ? 11 : month - 1;
+        const prevYear = month === 0 ? year - 1 : year;
+        html += `<button type="button" class="pf-datepicker-day other-month" data-day="${day}" data-month="${prevMonth}" data-year="${prevYear}">${day}</button>`;
     }
     
-    function closeDropdown() {
-        dropdown.classList.remove('open');
-        wrapper.classList.remove('open');
-        if (activePickerId === inputId) {
-            activePickerId = null;
-        }
+    // Current month days
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        date.setHours(0, 0, 0, 0);
+        const isToday = date.getTime() === today.getTime();
+        const isSelected = selected && date.getTime() === selected.getTime();
+        
+        let classes = 'pf-datepicker-day';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+        
+        // Check min/max constraints
+        let disabled = false;
+        if (minDate && date < minDate) disabled = true;
+        if (maxDate && date > maxDate) disabled = true;
+        if (disabled) classes += ' disabled';
+        
+        html += `<button type="button" class="${classes}" data-day="${day}" data-month="${month}" data-year="${year}" ${disabled ? 'disabled' : ''}>${day}</button>`;
     }
     
-    // Handle manual date entry
-    input.addEventListener('blur', (e) => {
-        // Don't process if clicking within the dropdown
-        if (dropdown.classList.contains('open')) return;
-        
-        const typed = input.value.trim();
-        if (!typed) return;
-        
-        const parsedDate = parseDate(typed);
-        if (parsedDate) {
-            selectedDate = parsedDate;
-            input.value = formatDisplayDate(parsedDate);
-            input.dataset.value = formatISODate(parsedDate);
-            viewDate = new Date(parsedDate);
-            
-            if (onChange) {
-                onChange(formatISODate(parsedDate));
-            }
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-    });
+    // Next month days - fill to 42 cells (6 rows)
+    const totalCells = 42;
+    const currentCells = firstDay + daysInMonth;
+    const nextMonthDays = totalCells - currentCells;
+    for (let day = 1; day <= nextMonthDays; day++) {
+        const nextMonth = month === 11 ? 0 : month + 1;
+        const nextYear = month === 11 ? year + 1 : year;
+        html += `<button type="button" class="pf-datepicker-day other-month" data-day="${day}" data-month="${nextMonth}" data-year="${nextYear}">${day}</button>`;
+    }
     
-    // Allow typing and Enter to confirm
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const typed = input.value.trim();
-            const parsedDate = parseDate(typed);
-            if (parsedDate) {
-                selectDate(parsedDate);
-            }
-            closeDropdown();
-        }
-    });
-    
-    // Click on input opens dropdown (but allow typing too)
-    input.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Only toggle if clicking the calendar icon area or input is focused
-        if (!dropdown.classList.contains('open')) {
-            openDropdown();
-        }
-    });
-    
-    // Calendar icon always toggles dropdown
-    icon.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (dropdown.classList.contains('open')) {
-            closeDropdown();
-        } else {
-            openDropdown();
-        }
-    });
-    
-    // Close on outside click - but not when clicking nav buttons
-    document.addEventListener('click', (e) => {
-        // Check if click is inside the wrapper (includes dropdown)
-        if (wrapper.contains(e.target)) {
-            return; // Don't close if clicking inside wrapper
-        }
-        closeDropdown();
-    });
-    
-    // Prevent dropdown from closing when clicking inside it
-    dropdown.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-    
-    // Close on escape
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeDropdown();
-        }
-    });
-    
-    // Return API
-    return {
-        getValue: () => selectedDate ? formatISODate(selectedDate) : '',
-        setValue: (dateStr) => {
-            const date = parseDate(dateStr);
-            selectDate(date);
-        },
-        open: openDropdown,
-        close: closeDropdown
-    };
+    return html;
 }
 
 /**
@@ -394,4 +419,3 @@ function formatISODate(date) {
 
 // Export utilities
 export { parseDate, formatDisplayDate, formatISODate };
-
