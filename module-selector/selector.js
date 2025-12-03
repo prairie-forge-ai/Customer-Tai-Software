@@ -2156,6 +2156,45 @@ function resetAllEditStates() {
 }
 
 /**
+ * Quick Access: open configuration-related sheets (SS_* or *mapping* or *homepage*)
+ * Unhides matched sheets and activates SS_PF_Config if present.
+ */
+async function openConfigQuickAccess() {
+    if (typeof Excel === "undefined") return;
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            worksheets.load("items/name,visibility");
+            await context.sync();
+
+            const matches = worksheets.items.filter((sheet) => {
+                const name = sheet.name || "";
+                const upper = name.toUpperCase();
+                return upper.startsWith("SS_") || upper.includes("MAPPING") || upper.includes("HOMEPAGE");
+            });
+
+            if (!matches.length) {
+                console.log("[Config] No configuration sheets found");
+                return;
+            }
+
+            matches.forEach((sheet) => {
+                sheet.visibility = Excel.SheetVisibility.visible;
+            });
+            await context.sync();
+
+            let target = matches.find((s) => s.name === "SS_PF_Config") || matches[0];
+            target.activate();
+            target.getRange("A1").select();
+            await context.sync();
+            console.log("[Config] Opened config sheet:", target.name);
+        });
+    } catch (error) {
+        console.error("Error opening configuration sheets from selector:", error);
+    }
+}
+
+/**
  * Close Reference Data modal
  */
 function closeRefData() {

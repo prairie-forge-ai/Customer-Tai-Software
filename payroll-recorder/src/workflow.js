@@ -2543,12 +2543,19 @@ async function getConfigurationSheets() {
             const matches = worksheets.items.filter((sheet) => {
                 const name = sheet.name || "";
                 const upper = name.toUpperCase();
-                return upper.startsWith("SS_") || upper.includes("MAPPING");
+                return upper.startsWith("SS_") || upper.includes("MAPPING") || upper.includes("HOMEPAGE");
             });
-            return matches.map((sheet) => ({
-                name: sheet.name,
-                visible: sheet.visibility === Excel.SheetVisibility.visible
-            }));
+            return matches
+                .map((sheet) => ({
+                    name: sheet.name,
+                    visible: sheet.visibility === Excel.SheetVisibility.visible,
+                    isHomepage: (sheet.name || "").toUpperCase().includes("HOMEPAGE")
+                }))
+                .sort((a, b) => {
+                    if (a.isHomepage && !b.isHomepage) return 1;
+                    if (!a.isHomepage && b.isHomepage) return -1;
+                    return a.name.localeCompare(b.name);
+                });
         });
     } catch (error) {
         console.error("[Config] Error reading configuration sheets:", error);
@@ -2586,14 +2593,14 @@ function ensureConfigModal() {
             .pf-config-modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10000; }
             .pf-config-modal.hidden { display: none; }
             .pf-config-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
-            .pf-config-modal-card { position: relative; background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 20px; width: min(420px, 90%); box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
-            .pf-config-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-            .pf-config-close { background: transparent; border: none; color: #e2e8f0; font-size: 20px; cursor: pointer; }
-            .pf-config-hint { margin: 0 0 12px 0; color: #94a3b8; font-size: 14px; }
-            .pf-config-sheet-list { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
-            .pf-config-sheet { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; }
-            .pf-config-sheet:hover { background: rgba(255,255,255,0.08); }
-            .pf-config-pill { font-size: 12px; color: #a5b4fc; }
+            .pf-config-modal-card { position: relative; background: #0f172a; color: #f8fafc; border-radius: 12px; padding: 22px; width: min(440px, 90%); box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+            .pf-config-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+            .pf-config-close { background: transparent; border: none; color: #f8fafc; font-size: 20px; cursor: pointer; }
+            .pf-config-hint { margin: 0 0 12px 0; color: #cbd5e1; font-size: 14px; }
+            .pf-config-sheet-list { display: flex; flex-direction: column; gap: 10px; max-height: 260px; overflow-y: auto; }
+            .pf-config-sheet { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; cursor: pointer; color: #e2e8f0; font-weight: 600; }
+            .pf-config-sheet:hover { background: rgba(255,255,255,0.16); }
+            .pf-config-pill { font-size: 12px; color: #c7d2fe; }
         `;
         document.head.appendChild(style);
     }
