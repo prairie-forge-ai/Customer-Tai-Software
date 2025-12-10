@@ -42,6 +42,3 @@ enable_confirmations = false
 [analytics]
 enabled = false
 
-[functions]
-enabled = true
-

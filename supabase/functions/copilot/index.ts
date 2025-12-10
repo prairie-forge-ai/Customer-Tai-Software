@@ -2,7 +2,10 @@
  * Ada - Prairie Forge AI Assistant
  * Supabase Edge Function powered by ChatGPT
  * 
- * Simple, no-frills AI backend for payroll analysis.
+ * Features:
+ * - Fetches system prompts from database (admin-editable)
+ * - Logs all conversations for debugging and improvement
+ * - Supports multiple prompt personalities
  * 
  * COST ESTIMATES (GPT-4 Turbo):
  * - Typical question: ~$0.02-0.05
@@ -10,13 +13,17 @@
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Configuration
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://jgciqwzwacaesqjaoadc.supabase.co";
+const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-// Model configuration - GPT-4 Turbo for best quality
+// Default model configuration (can be overridden by database)
 const DEFAULT_MODEL = "gpt-4-turbo-preview";
-const MAX_TOKENS = 1500;
+const DEFAULT_MAX_TOKENS = 1500;
+const DEFAULT_TEMPERATURE = 0.7;
 
 // CORS headers for Excel add-in
 const corsHeaders = {
@@ -29,14 +36,95 @@ interface AdaRequest {
   prompt: string;
   context?: Record<string, unknown>;
   systemPrompt?: string;
+  promptName?: string; // Name of the system prompt to use from database
   history?: Array<{ role: string; content: string }>;
+  sessionId?: string;
+  customerId?: string;
+}
+
+interface SystemPromptConfig {
+  prompt_text: string;
+  model: string;
+  max_tokens: number;
+  temperature: number;
+}
+
+// Create Supabase client for database operations
+function getSupabaseClient() {
+  if (!SUPABASE_SERVICE_KEY) {
+    console.warn("SUPABASE_SERVICE_ROLE_KEY not set, database features disabled");
+    return null;
+  }
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+}
+
+// Fetch system prompt from database
+async function fetchSystemPrompt(promptName: string = "default"): Promise<SystemPromptConfig | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('ada_system_prompts')
+      .select('prompt_text, model, max_tokens, temperature')
+      .eq('name', promptName)
+      .eq('is_active', true)
+      .single();
+
+    if (error) {
+      console.error('Error fetching system prompt:', error);
+      return null;
+    }
+
+    return data;
+  } catch (e) {
+    console.error('Failed to fetch system prompt:', e);
+    return null;
+  }
+}
+
+// Log conversation to database
+async function logConversation(
+  request: AdaRequest,
+  response: string | null,
+  tokensUsed: number | null,
+  latencyMs: number,
+  error: string | null,
+  model: string
+) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  try {
+    await supabase
+      .from('ada_conversations')
+      .insert({
+        session_id: request.sessionId || null,
+        customer_id: request.customerId || null,
+        prompt_name: request.promptName || 'default',
+        user_prompt: request.prompt,
+        context: request.context || null,
+        ai_response: response,
+        model: model,
+        tokens_used: tokensUsed,
+        latency_ms: latencyMs,
+        error: error,
+      });
+  } catch (e) {
+    console.error('Failed to log conversation:', e);
+  }
 }
 
 serve(async (req) => {
+  const startTime = Date.now();
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  let body: AdaRequest | null = null;
+  let model = DEFAULT_MODEL;
 
   try {
     // Validate API key is configured
@@ -52,8 +140,8 @@ serve(async (req) => {
     }
 
     // Parse request
-    const body: AdaRequest = await req.json();
-    const { prompt, context, systemPrompt, history } = body;
+    body = await req.json();
+    const { prompt, context, systemPrompt, promptName, history } = body;
 
     if (!prompt?.trim()) {
       return new Response(
@@ -62,8 +150,24 @@ serve(async (req) => {
       );
     }
 
+    // Try to fetch system prompt from database
+    let promptConfig: SystemPromptConfig | null = null;
+    let effectiveSystemPrompt = systemPrompt;
+    let maxTokens = DEFAULT_MAX_TOKENS;
+    let temperature = DEFAULT_TEMPERATURE;
+
+    if (!systemPrompt) {
+      promptConfig = await fetchSystemPrompt(promptName || 'default');
+      if (promptConfig) {
+        effectiveSystemPrompt = promptConfig.prompt_text;
+        model = promptConfig.model || DEFAULT_MODEL;
+        maxTokens = promptConfig.max_tokens || DEFAULT_MAX_TOKENS;
+        temperature = promptConfig.temperature || DEFAULT_TEMPERATURE;
+      }
+    }
+
     // Build messages for OpenAI
-    const messages = buildMessages(prompt, context, systemPrompt, history);
+    const messages = buildMessages(prompt, context, effectiveSystemPrompt, history);
 
     // Call OpenAI
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -73,16 +177,19 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: DEFAULT_MODEL,
+        model,
         messages,
-        max_tokens: MAX_TOKENS,
-        temperature: 0.7,
+        max_tokens: maxTokens,
+        temperature,
       }),
     });
 
     if (!openaiResponse.ok) {
       const errorData = await openaiResponse.json();
       console.error("OpenAI API error:", errorData);
+      
+      const latencyMs = Date.now() - startTime;
+      await logConversation(body, null, null, latencyMs, `OpenAI error: ${openaiResponse.status}`, model);
       
       if (openaiResponse.status === 429) {
         return new Response(
@@ -106,8 +213,12 @@ serve(async (req) => {
     const completion = await openaiResponse.json();
     const responseMessage = completion.choices?.[0]?.message?.content || "I couldn't generate a response. Please try rephrasing your question.";
     const tokensUsed = completion.usage?.total_tokens || 0;
+    const latencyMs = Date.now() - startTime;
 
-    console.log(`Ada responded: ${tokensUsed} tokens used`);
+    // Log successful conversation
+    await logConversation(body, responseMessage, tokensUsed, latencyMs, null, model);
+
+    console.log(`Ada responded: ${tokensUsed} tokens used, ${latencyMs}ms`);
 
     // Return successful response
     return new Response(
@@ -115,7 +226,8 @@ serve(async (req) => {
         message: responseMessage,
         usage: {
           tokens: tokensUsed,
-          model: DEFAULT_MODEL
+          model: model,
+          latencyMs: latencyMs
         }
       }),
       { 
@@ -126,6 +238,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Ada function error:", error);
+    
+    const latencyMs = Date.now() - startTime;
+    if (body) {
+      await logConversation(body, null, null, latencyMs, String(error), model);
+    }
+    
     return new Response(
       JSON.stringify({ 
         error: "Something went wrong. Please try again!",
@@ -147,7 +265,7 @@ function buildMessages(
 ): Array<{ role: string; content: string }> {
   const messages: Array<{ role: string; content: string }> = [];
 
-  // Ada's personality and expertise
+  // Ada's default personality (fallback if no database prompt)
   const defaultSystemPrompt = `You are Ada, Prairie Forge's expert financial analyst assistant. You're embedded in an Excel add-in helping accountants and CFOs review payroll data.
 
 Your personality:
