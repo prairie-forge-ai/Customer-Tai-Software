@@ -3437,3 +3437,19 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================
+   HIDE MODULE BUILDER (non-functional, kept for compatibility)
+   ============================================ */
+.admin-mode-selector {
+    display: none !important;
+}
+
+#mode-builder {
+    display: none !important;
+}
+
+/* Make Settings & Tools the default visible panel */
+#mode-manage {
+    display: block !important;
+}
