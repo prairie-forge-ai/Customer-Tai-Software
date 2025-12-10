@@ -1,6 +1,13 @@
 import { applyModuleTabVisibility } from "../Common/tab-visibility.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab } from "../Common/homepage-sheet.js";
 import { initializeWorkbook, validateWorkbookStructure, repairWorkbook, getAllTabNames } from "../Common/workbook-init.js";
+import { 
+    loadColumnAliases, 
+    saveColumnAlias, 
+    getModuleColumnAliases,
+    DEFAULT_COLUMN_ALIASES,
+    clearColumnAliasCache
+} from "../Common/gateway.js";
 
 /**
  * ACF ForgeSuite - Module Selector
@@ -582,6 +589,11 @@ function initAdmin() {
     document.getElementById("tabModuleFilter")?.addEventListener("change", renderTabMappings);
     document.getElementById("addTabMappingBtn")?.addEventListener("click", addTabMapping);
     
+    // Column Mapping
+    document.getElementById("columnMappingModule")?.addEventListener("change", renderColumnMappings);
+    document.getElementById("addColumnAliasBtn")?.addEventListener("click", addColumnAlias);
+    document.getElementById("resetColumnAliasesBtn")?.addEventListener("click", resetColumnAliases);
+    
     // Shared config save
     document.getElementById("saveSharedConfig")?.addEventListener("click", saveSharedConfig);
     
@@ -764,6 +776,209 @@ function switchSettingsTab(tabId) {
     document.querySelectorAll(".settings-content").forEach(content => {
         content.classList.toggle("active", content.id === `settings-${tabId}`);
     });
+    
+    // Initialize column mappings when that tab is selected
+    if (tabId === "columns") {
+        renderColumnMappings();
+    }
+}
+
+// =============================================================================
+// COLUMN MAPPING UI
+// =============================================================================
+
+/**
+ * Render the column mappings for the selected module
+ */
+async function renderColumnMappings() {
+    const moduleSelect = document.getElementById("columnMappingModule");
+    const listEl = document.getElementById("columnMappingList");
+    const columnSelect = document.getElementById("newAliasColumn");
+    
+    if (!moduleSelect || !listEl) return;
+    
+    const module = moduleSelect.value || "PR";
+    
+    // Load current aliases
+    const aliases = await loadColumnAliases(true); // Force reload
+    const moduleAliases = aliases[module] || {};
+    const defaultAliases = DEFAULT_COLUMN_ALIASES[module] || {};
+    
+    // Get all system columns for this module
+    const systemColumns = Object.keys(defaultAliases);
+    
+    // Populate the "Add Alias" dropdown
+    if (columnSelect) {
+        columnSelect.innerHTML = '<option value="">Select System Column...</option>' +
+            systemColumns.map(col => `<option value="${col}">${formatColumnName(col)}</option>`).join('');
+    }
+    
+    // Build the mapping list HTML
+    let html = `<div class="column-mapping-table">
+        <div class="column-mapping-header">
+            <span class="col-system">System Column</span>
+            <span class="col-aliases">Recognized Names</span>
+            <span class="col-actions">Actions</span>
+        </div>`;
+    
+    for (const col of systemColumns) {
+        const currentAliases = moduleAliases[col] || defaultAliases[col] || [];
+        const defaultList = defaultAliases[col] || [];
+        const isCustomized = JSON.stringify(currentAliases.sort()) !== JSON.stringify(defaultList.sort());
+        
+        html += `
+        <div class="column-mapping-row${isCustomized ? ' customized' : ''}" data-column="${col}">
+            <span class="col-system">
+                <strong>${formatColumnName(col)}</strong>
+                ${isCustomized ? '<span class="custom-badge">Custom</span>' : ''}
+            </span>
+            <span class="col-aliases">
+                ${currentAliases.map(a => `<span class="alias-chip">${escapeHtml(a)}</span>`).join('')}
+            </span>
+            <span class="col-actions">
+                <button type="button" class="alias-edit-btn" data-module="${module}" data-column="${col}" title="Edit aliases">✏️</button>
+                ${isCustomized ? `<button type="button" class="alias-reset-btn" data-module="${module}" data-column="${col}" title="Reset to default">↩️</button>` : ''}
+            </span>
+        </div>`;
+    }
+    
+    html += '</div>';
+    listEl.innerHTML = html;
+    
+    // Wire up edit buttons
+    listEl.querySelectorAll(".alias-edit-btn").forEach(btn => {
+        btn.addEventListener("click", () => editColumnAlias(btn.dataset.module, btn.dataset.column));
+    });
+    
+    // Wire up reset buttons
+    listEl.querySelectorAll(".alias-reset-btn").forEach(btn => {
+        btn.addEventListener("click", () => resetSingleColumnAlias(btn.dataset.module, btn.dataset.column));
+    });
+}
+
+/**
+ * Format a column name for display (e.g., "amount" -> "Amount")
+ */
+function formatColumnName(name) {
+    return name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ');
+}
+
+/**
+ * Add a new alias for a column
+ */
+async function addColumnAlias() {
+    const moduleSelect = document.getElementById("columnMappingModule");
+    const columnSelect = document.getElementById("newAliasColumn");
+    const aliasInput = document.getElementById("newAliasName");
+    
+    const module = moduleSelect?.value;
+    const column = columnSelect?.value;
+    const newAlias = aliasInput?.value?.trim();
+    
+    if (!module || !column || !newAlias) {
+        logAdmin("Please select a column and enter an alias name", "error");
+        return;
+    }
+    
+    // Load current aliases
+    const aliases = await loadColumnAliases(true);
+    const currentAliases = aliases[module]?.[column] || DEFAULT_COLUMN_ALIASES[module]?.[column] || [];
+    
+    // Check if alias already exists
+    const normalizedNew = newAlias.toLowerCase();
+    if (currentAliases.some(a => a.toLowerCase() === normalizedNew)) {
+        logAdmin(`Alias "${newAlias}" already exists for ${formatColumnName(column)}`, "warning");
+        return;
+    }
+    
+    // Add the new alias
+    const updatedAliases = [newAlias.toLowerCase(), ...currentAliases];
+    const success = await saveColumnAlias(module, column, updatedAliases);
+    
+    if (success) {
+        logAdmin(`Added alias "${newAlias}" for ${formatColumnName(column)}`, "success");
+        aliasInput.value = "";
+        columnSelect.value = "";
+        await renderColumnMappings();
+    } else {
+        logAdmin("Failed to save alias", "error");
+    }
+}
+
+/**
+ * Edit aliases for a specific column
+ */
+async function editColumnAlias(module, column) {
+    const aliases = await loadColumnAliases(true);
+    const currentAliases = aliases[module]?.[column] || DEFAULT_COLUMN_ALIASES[module]?.[column] || [];
+    
+    // Create a simple prompt dialog
+    const newValue = prompt(
+        `Edit aliases for ${formatColumnName(column)}:\n\nEnter pipe-separated values (e.g., "gross pay|total pay|earnings")`,
+        currentAliases.join("|")
+    );
+    
+    if (newValue === null) return; // Cancelled
+    
+    const updatedAliases = newValue.split("|").map(a => a.trim().toLowerCase()).filter(a => a);
+    
+    if (updatedAliases.length === 0) {
+        logAdmin("At least one alias is required", "error");
+        return;
+    }
+    
+    const success = await saveColumnAlias(module, column, updatedAliases);
+    
+    if (success) {
+        logAdmin(`Updated aliases for ${formatColumnName(column)}`, "success");
+        await renderColumnMappings();
+    } else {
+        logAdmin("Failed to save aliases", "error");
+    }
+}
+
+/**
+ * Reset a single column's aliases to defaults
+ */
+async function resetSingleColumnAlias(module, column) {
+    const defaults = DEFAULT_COLUMN_ALIASES[module]?.[column] || [];
+    
+    if (!confirm(`Reset "${formatColumnName(column)}" to default aliases?\n\nDefaults: ${defaults.join(", ")}`)) {
+        return;
+    }
+    
+    const success = await saveColumnAlias(module, column, defaults);
+    
+    if (success) {
+        logAdmin(`Reset ${formatColumnName(column)} to defaults`, "success");
+        await renderColumnMappings();
+    } else {
+        logAdmin("Failed to reset aliases", "error");
+    }
+}
+
+/**
+ * Reset all column aliases to defaults for the current module
+ */
+async function resetColumnAliases() {
+    const moduleSelect = document.getElementById("columnMappingModule");
+    const module = moduleSelect?.value || "PR";
+    
+    if (!confirm(`Reset ALL column aliases for ${module === "PR" ? "Payroll Recorder" : "PTO Accrual"} to defaults?`)) {
+        return;
+    }
+    
+    const defaults = DEFAULT_COLUMN_ALIASES[module] || {};
+    let successCount = 0;
+    
+    for (const [column, aliases] of Object.entries(defaults)) {
+        const success = await saveColumnAlias(module, column, aliases);
+        if (success) successCount++;
+    }
+    
+    clearColumnAliasCache();
+    logAdmin(`Reset ${successCount} column mappings to defaults`, "success");
+    await renderColumnMappings();
 }
 
 function goToBuilderStep(step) {

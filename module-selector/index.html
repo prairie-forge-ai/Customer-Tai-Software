@@ -11,7 +11,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="../Common/styles.css?v=20251202g" />
-    <link rel="stylesheet" href="selector.css?v=20251210b" />
+    <link rel="stylesheet" href="selector.css?v=20251210c" />
 </head>
 
 <body>
@@ -73,7 +73,7 @@
         <section class="glass-card brand-card">
             <div class="brand-text">
                 <div class="brand-label">prairie.forge</div>
-                <div class="brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version d4db70a</div>
+                <div class="brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version ee6f9e7</div>
                 <button type="button" class="admin-link" id="adminLink">Admin</button>
             </div>
         </section>
@@ -355,6 +355,7 @@
                         <!-- Settings Tabs -->
                         <div class="settings-tabs">
                             <button type="button" class="settings-tab active" data-settings="tabs">Tab Management</button>
+                            <button type="button" class="settings-tab" data-settings="columns">Column Mapping</button>
                             <button type="button" class="settings-tab" data-settings="config">Shared Config</button>
                             <button type="button" class="settings-tab" data-settings="utilities">Utilities</button>
                         </div>
@@ -389,6 +390,44 @@
                                         <input type="text" id="newTabFolder" class="admin-input" placeholder="Module Key (e.g. payroll-recorder)" title="Valid: payroll-recorder, pto-accrual, employee-roster, shared, all">
                                         <button type="button" class="admin-btn" id="addTabMappingBtn">Add</button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Column Mapping -->
+                        <div class="settings-content" id="settings-columns" hidden>
+                            <div class="admin-section">
+                                <h3>Column Mapping</h3>
+                                <p class="admin-hint">Define custom column names for your data imports. The system will recognize these aliases when matching columns.</p>
+                                
+                                <div class="column-mapping-module-select">
+                                    <label class="admin-field admin-field--inline">
+                                        <span>Module:</span>
+                                        <select id="columnMappingModule" class="admin-select">
+                                            <option value="PR">Payroll Recorder</option>
+                                            <option value="PTO">PTO Accrual</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                
+                                <div class="column-mapping-list" id="columnMappingList">
+                                    <!-- Populated by JS -->
+                                </div>
+                                
+                                <div class="column-mapping-add">
+                                    <h4>Add Custom Alias</h4>
+                                    <p class="admin-hint">Add a new column name that should be recognized as an existing system column.</p>
+                                    <div class="column-mapping-add-form">
+                                        <select id="newAliasColumn" class="admin-select" required>
+                                            <option value="">Select System Column...</option>
+                                        </select>
+                                        <input type="text" id="newAliasName" class="admin-input" placeholder="Your column name (e.g., Gross Pay)">
+                                        <button type="button" class="admin-btn" id="addColumnAliasBtn">Add Alias</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="column-mapping-actions">
+                                    <button type="button" class="admin-btn admin-btn--secondary" id="resetColumnAliasesBtn">Reset to Defaults</button>
                                 </div>
                             </div>
                         </div>
@@ -691,6 +730,6 @@
     <script src="../Common/common.js"></script>
     
     <!-- Application script -->
-    <script type="module" src="selector.js?v=20251202g"></script>
+    <script type="module" src="selector.js?v=20251210c"></script>
 </body>
 </html>
