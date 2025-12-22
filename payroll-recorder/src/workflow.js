@@ -5073,10 +5073,6 @@ function renderJournalStep(detail) {
                         `<button type="button" class="pf-action-toggle pf-clickable" id="je-run-btn" title="Refresh validation checks">${REFRESH_ICON_SVG}</button>`,
                         "Refresh"
                     )}
-                    ${renderLabeledButton(
-                        `<button type="button" class="pf-action-toggle pf-clickable" id="je-export-btn" title="Export journal draft as CSV">${DOWNLOAD_ICON_SVG}</button>`,
-                        "Export"
-                    )}
                 </div>
             </article>
             <article class="pf-step-card pf-step-detail pf-config-card">
@@ -5091,6 +5087,18 @@ function renderJournalStep(detail) {
             </article>
             ${issuesCard}
             ${unmappedPanelHtml}
+            <article class="pf-step-card pf-step-detail pf-config-card">
+                <div class="pf-config-head">
+                    <h3>Export Journal Entry</h3>
+                    <p class="pf-config-subtext">Download journal entry as CSV for QuickBooks import.</p>
+                </div>
+                <div class="pf-signoff-action">
+                    ${renderLabeledButton(
+                        `<button type="button" class="pf-action-toggle pf-clickable" id="je-export-btn" title="Export journal draft as CSV">${DOWNLOAD_ICON_SVG}</button>`,
+                        "Export CSV"
+                    )}
+                </div>
+            </article>
             ${stepFields ? `
                 ${renderInlineNotes({
                     textareaId: "step-notes-input",
