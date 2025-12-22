@@ -10693,16 +10693,35 @@ async function applyRosterUpdates() {
                 idx[col] = headersLower.indexOf(col.toLowerCase());
             });
             
-            const joinKeyIdx = idx.Employee_ID >= 0 ? idx.Employee_ID : idx.Employee_Name;
             const periodKey = rosterUpdateState.periodKey;
             
             // Read current data
             const dataRows = rosterRange.values.slice(1);
+            
+            // ========================================================================
+            // CRITICAL: Use the SAME join key that extractCurrentEmployeeSet() uses
+            // This ensures roster and payroll are compared with matching keys
+            // The joinKeyUsed was determined by computeRosterDeltas() based on whether
+            // BOTH datasets have Employee_ID with actual values
+            // ========================================================================
+            const joinKeyUsed = rosterUpdateState.joinKeyUsed || "Employee_Name";
+            let joinKeyIdx;
+            if (joinKeyUsed === "Employee_ID" && idx.Employee_ID >= 0) {
+                joinKeyIdx = idx.Employee_ID;
+            } else {
+                joinKeyIdx = idx.Employee_Name;
+            }
+            
+            console.log(`[RosterUpdate] Using join key: ${joinKeyUsed} (roster column index: ${joinKeyIdx})`);
+            
+            // Build roster map using the SAME join key type as payroll
             const rosterMap = new Map();
             dataRows.forEach((row, i) => {
                 const key = normalizeJoinKey(row[joinKeyIdx]);
                 if (key) rosterMap.set(key, { rowIndex: i, row });
             });
+            
+            console.log(`[RosterUpdate] Built rosterMap with ${rosterMap.size} entries using ${joinKeyUsed}`);
             
             // Track updates
             const rowUpdates = []; // [{rowIndex, colIndex, value}]
@@ -10802,7 +10821,7 @@ async function applyRosterUpdates() {
             }
             
             // 2. Add new hires
-            const { newHires, overrides, joinKeyUsed } = rosterUpdateState;
+            const { newHires, overrides } = rosterUpdateState;
             for (const hire of newHires) {
                 const override = overrides.get(hire.key);
                 if (override?.action === "ignore") continue;
