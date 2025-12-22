@@ -5102,19 +5102,30 @@ function renderJournalStep(detail) {
                             </svg>
                         </button>
                         <div class="pf-info-tooltip">
-                            <strong>Quick Reminder:</strong>
-                            <ol style="margin: 8px 0 8px 16px; padding: 0;">
-                                <li style="margin-bottom: 6px;"><strong>Step 1:</strong> Assign the bank feed transaction to uncategorized expense (no need to separate this out like in the past)</li>
-                                <li style="margin-bottom: 6px;"><strong>Step 2:</strong> Export this .csv file and save to your desktop (or other temporary folder)</li>
-                                <li style="margin-bottom: 6px;"><strong>Step 3:</strong> Upload to QuickBooks. Click the <span style="font-size: 14px;">⚙️</span> icon → Import Data → Journal Entry → Upload a file to import data. Map any fields that don't automap.</li>
+                            <div style="font-size: 14px; font-weight: 600; color: #a5b4fc; margin-bottom: 12px;">📋 Quick Reminder</div>
+                            <ol style="margin: 0 0 0 20px; padding: 0; list-style-type: decimal;">
+                                <li style="margin-bottom: 10px; padding-left: 4px;">
+                                    <strong>Assign bank feed</strong><br>
+                                    <span style="color: #d1d5db;">Assign the bank feed transaction to uncategorized expense (no need to separate this out like in the past)</span>
+                                </li>
+                                <li style="margin-bottom: 10px; padding-left: 4px;">
+                                    <strong>Export CSV</strong><br>
+                                    <span style="color: #d1d5db;">Export this .csv file and save to your desktop (or other temporary folder)</span>
+                                </li>
+                                <li style="margin-bottom: 10px; padding-left: 4px;">
+                                    <strong>Upload to QuickBooks</strong><br>
+                                    <span style="color: #d1d5db;">Click the <span style="font-size: 15px;">⚙️</span> icon → Import Data → Journal Entry → Upload a file to import data. Map any fields that don't automap.</span>
+                                </li>
                             </ol>
-                            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 10px 0;">
-                            <p style="font-size: 11px; color: #a1a1aa; margin: 0;">
-                                <em>Note: The journal entry will also be booked to uncategorized expense. If everything goes as planned, uncategorized expense should be zero after recording the bank transaction and this journal entry to that account.</em>
-                            </p>
-                            <p style="font-size: 11px; color: #a1a1aa; margin: 8px 0 0 0;">
-                                <em>If there are differences they may indicate a fee that was charged, but not presented in the payroll report. This should be a separate journal entry.</em>
-                            </p>
+                            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 14px 0;">
+                            <div style="font-size: 12px; color: #9ca3af; line-height: 1.5;">
+                                <p style="margin: 0 0 10px 0;">
+                                    <strong style="color: #fbbf24;">💡 Note:</strong> The journal entry will also be booked to uncategorized expense. If everything goes as planned, uncategorized expense should be zero after recording the bank transaction and this journal entry.
+                                </p>
+                                <p style="margin: 0;">
+                                    If there are differences, they may indicate a fee that was charged but not presented in the payroll report. This should be a separate journal entry.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
