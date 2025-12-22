@@ -8635,25 +8635,56 @@ function normalizeJoinKey(value) {
 }
 
 /**
+ * Check if a column has actual values (not just headers with empty data)
+ * @param {Array<Array>} dataRows - Data rows (excluding header)
+ * @param {number} colIdx - Column index to check
+ * @returns {boolean} True if at least some rows have non-empty values
+ */
+function columnHasValues(dataRows, colIdx) {
+    if (colIdx < 0 || !dataRows || dataRows.length === 0) return false;
+    
+    // Check if at least 10% of rows have values (or at least 1 row)
+    const minRows = Math.max(1, Math.floor(dataRows.length * 0.1));
+    let foundCount = 0;
+    
+    for (const row of dataRows) {
+        const val = String(row[colIdx] || "").trim();
+        // Must be non-empty AND not look like a name (IDs don't have spaces typically)
+        if (val.length > 0 && !val.includes(" ")) {
+            foundCount++;
+            if (foundCount >= minRows) return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Find the best join key column index in headers
  * Priority: Employee_ID > Employee_Name
+ * BUT only use Employee_ID if it actually has values!
+ * @param {Array<string>} headers - Normalized header names
+ * @param {Array<Array>} dataRows - Optional data rows to check for values
  * @returns {{ index: number, type: "Employee_ID" | "Employee_Name" | null }}
  */
-function findEmployeeJoinKeyColumn(headers) {
-    // Priority 1: Employee_ID
+function findEmployeeJoinKeyColumn(headers, dataRows = null) {
+    // Priority 1: Employee_ID (but only if it has actual values)
     const idIdx = headers.findIndex(h => 
         h.includes("employee") && h.includes("id") && !h.includes("name")
     );
-    if (idIdx >= 0) {
-        return { index: idIdx, type: "Employee_ID" };
-    }
     
     // Fallback for "emp_id", "empid", etc.
     const altIdIdx = headers.findIndex(h => 
         (h.includes("emp") && h.includes("id")) || h === "empid" || h === "emp_id"
     );
-    if (altIdIdx >= 0) {
-        return { index: altIdIdx, type: "Employee_ID" };
+    
+    const employeeIdIdx = idIdx >= 0 ? idIdx : altIdIdx;
+    
+    // Only use Employee_ID if we have data rows AND the column has values
+    if (employeeIdIdx >= 0) {
+        if (!dataRows || columnHasValues(dataRows, employeeIdIdx)) {
+            return { index: employeeIdIdx, type: "Employee_ID" };
+        }
+        console.log(`[JoinKey] Employee_ID column found at index ${employeeIdIdx} but has no values - falling back to Employee_Name`);
     }
     
     // Priority 2: Employee_Name
@@ -8731,39 +8762,22 @@ async function refreshPayrollCoverage() {
             const rosterHeaders = (rosterHeaderRange.values[0] || []).map(h => normalizeHeader(String(h || "")));
             const cleanHeaders = (cleanHeaderRange.values[0] || []).map(h => normalizeHeader(String(h || "")));
             
-            // Find join key columns in both datasets
-            const rosterJoinKey = findEmployeeJoinKeyColumn(rosterHeaders);
-            const cleanJoinKey = findEmployeeJoinKeyColumn(cleanHeaders);
+            // Find potential join key column indices (will verify with data later)
+            const rosterIdIdx = rosterHeaders.findIndex(h => h.includes("employee") && h.includes("id") && !h.includes("name"));
+            const cleanIdIdx = cleanHeaders.findIndex(h => h.includes("employee") && h.includes("id") && !h.includes("name"));
+            const rosterNameIdx = rosterHeaders.findIndex(h => h.includes("employee") && (h.includes("name") || !h.includes("id")));
+            const cleanNameIdx = cleanHeaders.findIndex(h => h.includes("employee") && (h.includes("name") || !h.includes("id")));
             
-            // Determine which join key to use (must exist in both)
-            let effectiveJoinKey = null;
-            let rosterKeyIdx = -1;
-            let cleanKeyIdx = -1;
-            
-            // Priority 1: Both have Employee_ID
-            if (rosterJoinKey.type === "Employee_ID" && cleanJoinKey.type === "Employee_ID") {
-                effectiveJoinKey = "Employee_ID";
-                rosterKeyIdx = rosterJoinKey.index;
-                cleanKeyIdx = cleanJoinKey.index;
-            }
-            // Priority 2: Use Employee_Name (at least one dataset has it)
-            else if (rosterJoinKey.index >= 0 && cleanJoinKey.index >= 0) {
-                effectiveJoinKey = "Employee_Name";
-                rosterKeyIdx = rosterJoinKey.index;
-                cleanKeyIdx = cleanJoinKey.index;
-            }
-            
-            if (!effectiveJoinKey || rosterKeyIdx === -1 || cleanKeyIdx === -1) {
+            // We need at least Employee_Name in both
+            if (rosterNameIdx < 0 || cleanNameIdx < 0) {
                 const missingIn = [];
-                if (rosterJoinKey.index === -1) missingIn.push("roster");
-                if (cleanJoinKey.index === -1) missingIn.push("PR_Data_Clean");
+                if (rosterNameIdx < 0) missingIn.push("roster");
+                if (cleanNameIdx < 0) missingIn.push("PR_Data_Clean");
                 return { 
                     error: `Employee identifier column not found in ${missingIn.join(" and ")}. Check your column mappings.`,
                     status: "unavailable"
                 };
             }
-            
-            console.log(`[PayrollCoverage] Using join key: ${effectiveJoinKey} (roster col ${rosterKeyIdx}, clean col ${cleanKeyIdx})`);
             
             // Find department column indices
             const rosterDeptIdx = pickDepartmentIndex(rosterHeaders);
@@ -8791,6 +8805,25 @@ async function refreshPayrollCoverage() {
             
             const rosterValues = rosterRange.values || [];
             const cleanValues = cleanRange.values || [];
+            const rosterDataRows = rosterValues.slice(1);
+            const cleanDataRows = cleanValues.slice(1);
+            
+            // ============================================================================
+            // DETERMINE JOIN KEY - Check if BOTH datasets have Employee_ID with VALUES
+            // ============================================================================
+            const rosterIdHasValues = rosterIdIdx >= 0 && columnHasValues(rosterDataRows, rosterIdIdx);
+            const cleanIdHasValues = cleanIdIdx >= 0 && columnHasValues(cleanDataRows, cleanIdIdx);
+            
+            // Only use Employee_ID if BOTH datasets have the column AND have actual values
+            const useEmployeeId = rosterIdHasValues && cleanIdHasValues;
+            const effectiveJoinKey = useEmployeeId ? "Employee_ID" : "Employee_Name";
+            const rosterKeyIdx = useEmployeeId ? rosterIdIdx : rosterNameIdx;
+            const cleanKeyIdx = useEmployeeId ? cleanIdIdx : cleanNameIdx;
+            
+            console.log(`[PayrollCoverage] Join key determination:`);
+            console.log(`  - Roster has Employee_ID column: ${rosterIdIdx >= 0}, with values: ${rosterIdHasValues}`);
+            console.log(`  - Payroll has Employee_ID column: ${cleanIdIdx >= 0}, with values: ${cleanIdHasValues}`);
+            console.log(`  - Using join key: ${effectiveJoinKey}`);
             
             // Build employee maps using the effective join key
             const rosterEmployees = new Map();
@@ -10311,11 +10344,13 @@ async function extractCurrentEmployeeSet() {
             const headers = cleanRange.values[0].map(h => normalizeHeader(String(h || "")));
             const dataRows = cleanRange.values.slice(1);
             
-            // Find join key column
-            const joinKeyInfo = findEmployeeJoinKeyColumn(headers);
+            // Find join key column - pass dataRows so we can check if Employee_ID has actual values
+            const joinKeyInfo = findEmployeeJoinKeyColumn(headers, dataRows);
             if (joinKeyInfo.index < 0) {
                 return { ok: false, error: "No employee identifier column found in PR_Data_Clean." };
             }
+            
+            console.log(`[RosterUpdate] Using join key: ${joinKeyInfo.type} (column index ${joinKeyInfo.index})`);
             
             // Find department column
             const deptIdx = pickDepartmentIndex(headers);
@@ -10403,17 +10438,30 @@ async function readCurrentRoster() {
                 headerIndexes[col] = idx;
             });
             
-            // Find join key column (prefer Employee_ID, fallback to Employee_Name)
-            const joinKeyIdx = headerIndexes.Employee_ID >= 0 ? headerIndexes.Employee_ID : headerIndexes.Employee_Name;
-            const joinKeyType = headerIndexes.Employee_ID >= 0 ? "Employee_ID" : "Employee_Name";
+            const dataRows = rosterRange.values.slice(1);
+            
+            // Find join key column - prefer Employee_ID only if it has actual values
+            let joinKeyIdx = headerIndexes.Employee_Name;
+            let joinKeyType = "Employee_Name";
+            
+            if (headerIndexes.Employee_ID >= 0) {
+                // Check if Employee_ID column actually has values
+                if (columnHasValues(dataRows, headerIndexes.Employee_ID)) {
+                    joinKeyIdx = headerIndexes.Employee_ID;
+                    joinKeyType = "Employee_ID";
+                } else {
+                    console.log(`[RosterUpdate] Roster has Employee_ID column but no values - using Employee_Name`);
+                }
+            }
             
             if (joinKeyIdx < 0) {
                 return { ok: false, error: "No employee identifier column in roster." };
             }
             
+            console.log(`[RosterUpdate] Reading roster with join key: ${joinKeyType} (column index ${joinKeyIdx})`);
+            
             // Build employee map with row data
             const employees = new Map();
-            const dataRows = rosterRange.values.slice(1);
             
             for (let i = 0; i < dataRows.length; i++) {
                 const row = dataRows[i];
