@@ -7757,7 +7757,7 @@ async function buildRosterContext(currentPeriodKey, priorPeriodKey) {
                 return;
             }
             
-            // Parse roster
+            // Parse roster headers and data
             const rosterHeaders = rosterRange.values[0].map(h => String(h || "").toLowerCase().trim());
             const rosterData = rosterRange.values.slice(1);
             
@@ -7772,11 +7772,62 @@ async function buildRosterContext(currentPeriodKey, priorPeriodKey) {
                 is_manual: rosterHeaders.findIndex(h => h === "is_manually_managed")
             };
             
-            // Determine join key (prefer ID)
-            const useEmployeeId = rosterIdxMap.employee_id >= 0;
-            rosterContext.join_key_used = useEmployeeId ? "Employee_ID" : "Employee_Name";
+            // ============================================================================
+            // Parse PR_Data_Clean FIRST - need this to determine correct join key
+            // ============================================================================
+            let cleanHeaders = [];
+            let cleanData = [];
+            let cleanIdxMap = { employee_id: -1, employee_name: -1, department: -1 };
             
-            // Build roster map
+            if (!cleanRange.isNullObject && cleanRange.values && cleanRange.values.length > 1) {
+                cleanHeaders = cleanRange.values[0].map(h => String(h || "").toLowerCase().trim());
+                cleanData = cleanRange.values.slice(1);
+                
+                cleanIdxMap = {
+                    employee_id: cleanHeaders.findIndex(h => h === "employee_id" || h === "emp_id"),
+                    employee_name: cleanHeaders.findIndex(h => h === "employee_name" || h === "employee"),
+                    department: cleanHeaders.findIndex(h => h === "department_name" || h === "department")
+                };
+            }
+            
+            // ============================================================================
+            // DETERMINE JOIN KEY TYPE - Check if BOTH datasets have Employee_ID with VALUES
+            // Must happen BEFORE building rosterMap!
+            // ============================================================================
+            const rosterHasIdColumn = rosterIdxMap.employee_id >= 0;
+            const cleanHasIdColumn = cleanIdxMap.employee_id >= 0;
+            
+            let rosterIdHasValues = false;
+            let cleanIdHasValues = false;
+            
+            if (rosterHasIdColumn) {
+                rosterIdHasValues = rosterData.some(row => {
+                    const val = String(row[rosterIdxMap.employee_id] || "").trim();
+                    // Check it's not empty AND not just a name (names contain spaces)
+                    return val.length > 0 && !val.includes(" ");
+                });
+            }
+            
+            if (cleanHasIdColumn) {
+                cleanIdHasValues = cleanData.some(row => {
+                    const val = String(row[cleanIdxMap.employee_id] || "").trim();
+                    return val.length > 0 && !val.includes(" ");
+                });
+            }
+            
+            // Only use Employee_ID if BOTH datasets have the column AND have actual ID values
+            const useEmployeeId = rosterHasIdColumn && cleanHasIdColumn && rosterIdHasValues && cleanIdHasValues;
+            const joinKeyType = useEmployeeId ? "Employee_ID" : "Employee_Name";
+            rosterContext.join_key_used = joinKeyType;
+            
+            console.log(`[RosterContext] Join key determination:`);
+            console.log(`  - Roster has Employee_ID column: ${rosterHasIdColumn}, with values: ${rosterIdHasValues}`);
+            console.log(`  - Payroll has Employee_ID column: ${cleanHasIdColumn}, with values: ${cleanIdHasValues}`);
+            console.log(`  - Using join key: ${joinKeyType}`);
+            
+            // ============================================================================
+            // BUILD ROSTER MAP - Using the correctly determined join key type
+            // ============================================================================
             const rosterMap = new Map(); // joinKey -> roster row data
             
             rosterData.forEach(row => {
@@ -7802,49 +7853,12 @@ async function buildRosterContext(currentPeriodKey, priorPeriodKey) {
                 });
             });
             
-            // Parse current payroll from PR_Data_Clean
-            if (!cleanRange.isNullObject && cleanRange.values && cleanRange.values.length > 1) {
-                const cleanHeaders = cleanRange.values[0].map(h => String(h || "").toLowerCase().trim());
-                const cleanData = cleanRange.values.slice(1);
-                
-                const cleanIdxMap = {
-                    employee_id: cleanHeaders.findIndex(h => h === "employee_id" || h === "emp_id"),
-                    employee_name: cleanHeaders.findIndex(h => h === "employee_name" || h === "employee"),
-                    department: cleanHeaders.findIndex(h => h === "department_name" || h === "department")
-                };
-                
-                // Determine effective join key - requires BOTH datasets to have the column with data
-                const rosterHasId = rosterIdxMap.employee_id >= 0;
-                const cleanHasId = cleanIdxMap.employee_id >= 0;
-
-                // Check if Employee_ID actually has values (not just empty column)
-                let rosterIdHasValues = false;
-                let cleanIdHasValues = false;
-
-                if (rosterHasId) {
-                    rosterIdHasValues = rosterData.some(row => {
-                        const val = String(row[rosterIdxMap.employee_id] || "").trim();
-                        return val.length > 0;
-                    });
-                }
-
-                if (cleanHasId) {
-                    cleanIdHasValues = cleanData.some(row => {
-                        const val = String(row[cleanIdxMap.employee_id] || "").trim();
-                        return val.length > 0;
-                    });
-                }
-
-                // Only use Employee_ID if BOTH datasets have the column AND have actual values
-                let useEmployeeId = rosterHasId && cleanHasId && rosterIdHasValues && cleanIdHasValues;
-                let joinKeyType = useEmployeeId ? "Employee_ID" : "Employee_Name";
-                rosterContext.join_key_used = joinKeyType;
-
-                console.log(`[RosterContext] Join key determination:`);
-                console.log(`  - Roster has Employee_ID column: ${rosterHasId}, with values: ${rosterIdHasValues}`);
-                console.log(`  - Payroll has Employee_ID column: ${cleanHasId}, with values: ${cleanIdHasValues}`);
-                console.log(`  - Using join key: ${joinKeyType}`);
-                
+            console.log(`[RosterContext] Built rosterMap with ${rosterMap.size} entries using ${joinKeyType}`);
+            
+            // ============================================================================
+            // BUILD CURRENT PAYROLL SET - Using the same join key type
+            // ============================================================================
+            if (cleanData.length > 0) {
                 // Build current payroll set
                 const currentPayrollSet = new Map(); // joinKey -> { name, department }
                 
@@ -7866,6 +7880,8 @@ async function buildRosterContext(currentPeriodKey, priorPeriodKey) {
                         });
                     }
                 });
+                
+                console.log(`[RosterContext] Built currentPayrollSet with ${currentPayrollSet.size} entries using ${joinKeyType}`);
                 
                 // Department headcount current
                 currentPayrollSet.forEach(emp => {
@@ -10248,7 +10264,7 @@ async function updateRosterRatesFromPayrollAdvisory() {
             if (!rateChanged) continue;
 
             rosterSheet.getRangeByIndexes(rosterRow.rowIndex, idx.Hourly_Rate, 1, 1).values = [[Math.round(hourlyRate * 100) / 100]];
-            rosterSheet.getRangeByIndexes(rosterRow.rowIndex, idx.Rate_Source, 1, 1).values = [[`Derived: Fixed/${HOURS_PER_PAY_PERIOD}hrs`]];
+            rosterSheet.getRangeByIndexes(rosterRow.rowIndex, idx.Rate_Source, 1, 1).values = [[`Payroll (Fixed / ${HOURS_PER_PAY_PERIOD}hrs)`]];
             rosterSheet.getRangeByIndexes(rosterRow.rowIndex, idx.Rate_Updated_Date, 1, 1).values = [[payrollDateISO]];
             updated++;
         }
