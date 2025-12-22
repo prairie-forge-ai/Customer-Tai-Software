@@ -3542,3 +3542,85 @@ body {
     padding-top: 12px;
     border-top: 1px solid rgba(148, 163, 184, 0.12);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Info Tooltip (for Export JE card instructions)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.pf-info-tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.pf-info-icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.pf-info-icon-btn:hover {
+    color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.pf-info-tooltip {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    width: 320px;
+    padding: 14px 16px;
+    background: #1e1e2e;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.pf-info-tooltip-container:hover .pf-info-tooltip,
+.pf-info-icon-btn:focus + .pf-info-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.pf-info-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 10px;
+    width: 12px;
+    height: 12px;
+    background: #1e1e2e;
+    border-left: 1px solid rgba(99, 102, 241, 0.3);
+    border-top: 1px solid rgba(99, 102, 241, 0.3);
+    transform: rotate(45deg);
+}
+
+.pf-info-tooltip strong {
+    color: #a5b4fc;
+}
+
+.pf-info-tooltip ol {
+    list-style-type: decimal;
+}
+
+.pf-info-tooltip ol li {
+    color: var(--text-primary);
+}

@@ -5088,9 +5088,35 @@ function renderJournalStep(detail) {
             ${issuesCard}
             ${unmappedPanelHtml}
             <article class="pf-step-card pf-step-detail pf-config-card">
-                <div class="pf-config-head">
-                    <h3>Export Journal Entry</h3>
-                    <p class="pf-config-subtext">Download journal entry as CSV for QuickBooks import.</p>
+                <div class="pf-config-head" style="position: relative;">
+                    <div>
+                        <h3>Export Journal Entry</h3>
+                        <p class="pf-config-subtext">Download journal entry as CSV for QuickBooks import.</p>
+                    </div>
+                    <div class="pf-info-tooltip-container" style="position: absolute; top: 0; right: 0;">
+                        <button type="button" class="pf-info-icon-btn" aria-label="Export instructions">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                        </button>
+                        <div class="pf-info-tooltip">
+                            <strong>Quick Reminder:</strong>
+                            <ol style="margin: 8px 0 8px 16px; padding: 0;">
+                                <li style="margin-bottom: 6px;"><strong>Step 1:</strong> Assign the bank feed transaction to uncategorized expense (no need to separate this out like in the past)</li>
+                                <li style="margin-bottom: 6px;"><strong>Step 2:</strong> Export this .csv file and save to your desktop (or other temporary folder)</li>
+                                <li style="margin-bottom: 6px;"><strong>Step 3:</strong> Upload to QuickBooks. Click the <span style="font-size: 14px;">⚙️</span> icon → Import Data → Journal Entry → Upload a file to import data. Map any fields that don't automap.</li>
+                            </ol>
+                            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 10px 0;">
+                            <p style="font-size: 11px; color: #a1a1aa; margin: 0;">
+                                <em>Note: The journal entry will also be booked to uncategorized expense. If everything goes as planned, uncategorized expense should be zero after recording the bank transaction and this journal entry to that account.</em>
+                            </p>
+                            <p style="font-size: 11px; color: #a1a1aa; margin: 8px 0 0 0;">
+                                <em>If there are differences they may indicate a fee that was charged, but not presented in the payroll report. This should be a separate journal entry.</em>
+                            </p>
+                        </div>
+                    </div>
                 </div>
                 <div class="pf-signoff-action">
                     ${renderLabeledButton(
