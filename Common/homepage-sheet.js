@@ -8,6 +8,59 @@ import { BRANDING } from "./constants.js";
 // Ada Assistant Configuration - imported from constants
 const ADA_IMAGE_URL = BRANDING.ADA_IMAGE_URL;
 
+// Supabase configuration for Ada API calls
+const SUPABASE_URL = "https://jgciqwzwacaesqjaoadc.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnY2lxd3p3YWNhZXNxamFvYWRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzODgzMTIsImV4cCI6MjA3NTk2NDMxMn0.DsoUTHcm1Uv65t4icaoD0Tzf3ULIU54bFnoYw8hHScE";
+
+/**
+ * Standalone Ada API call for popup modal
+ * Works independently of module-specific implementations
+ */
+async function callAdaApiStandalone(prompt, context, messageHistory) {
+    const COPILOT_URL = `${SUPABASE_URL}/functions/v1/copilot`;
+
+    try {
+        console.log("[Ada Popup] Calling copilot API...");
+
+        const response = await fetch(COPILOT_URL, {
+            method: "POST",
+            mode: "cors",
+            credentials: "omit",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                "apikey": SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                context: context,
+                module: "general",
+                function: "analysis",
+                history: messageHistory?.slice(-10) || []
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("[Ada Popup] API error:", response.status, errorText);
+            throw new Error(`API request failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("[Ada Popup] API response received");
+
+        if (data.message || data.response) {
+            return data.message || data.response;
+        }
+
+        return "I received your question but couldn't generate a response. Please try again.";
+
+    } catch (error) {
+        console.error("[Ada Popup] API call failed:", error);
+        return `I'm having trouble connecting right now. Error: ${error.message}. Please try again in a moment.`;
+    }
+}
+
 /**
  * Creates or activates a module homepage sheet with formatted styling
  * @param {string} sheetName - Name of the homepage sheet (e.g., "PR_Homepage")
@@ -192,13 +245,76 @@ export function removeAdaFab() {
     if (existingFab) {
         existingFab.remove();
     }
-    
+
     // Also remove modal if open
     const existingModal = document.getElementById("pf-ada-modal-overlay");
     if (existingModal) {
         existingModal.remove();
     }
 }
+
+/**
+ * Determine the appropriate Ada configuration based on current context
+ */
+function getAdaModalContext() {
+    // Import copilot functions dynamically
+    let renderCopilotCard, bindCopilotCard, createExcelContextProvider;
+
+    const loadCopilotFunctions = async () => {
+        try {
+            const copilotModule = await import('./copilot.js');
+            renderCopilotCard = copilotModule.renderCopilotCard;
+            bindCopilotCard = copilotModule.bindCopilotCard;
+            createExcelContextProvider = copilotModule.createExcelContextProvider;
+        } catch (e) {
+            console.warn('Could not load copilot functions:', e);
+        }
+    };
+
+    // Always provide a working Ada interface using standalone API
+    const config = {
+        subtext: "Your AI-powered assistant",
+        copilotHtml: "", // Will be set by bindFunction
+        bindFunction: async () => {
+            await loadCopilotFunctions();
+            if (renderCopilotCard && bindCopilotCard) {
+                const container = document.getElementById('ada-modal-copilot');
+                if (container) {
+                    container.innerHTML = renderCopilotCard({
+                        id: "ada-modal-copilot",
+                        heading: "Ada",
+                        subtext: "Ask questions about your data",
+                        welcomeMessage: "Hi! I'm Ada, your AI assistant. How can I help you today?",
+                        placeholder: "Ask about your data, analysis, or insights...",
+                        quickActions: [
+                            { id: "help", label: "What can you do?", prompt: "What kinds of questions can you help me with? What data do you have access to?" },
+                            { id: "overview", label: "Data Overview", prompt: "Give me an overview of the data available in this workbook." },
+                            { id: "tips", label: "Best Practices", prompt: "What are some best practices for using this tool effectively?" }
+                        ],
+                        contextProvider: createExcelContextProvider ? createExcelContextProvider({
+                            config: 'SS_PF_Config'
+                        }) : null,
+                        onPrompt: callAdaApiStandalone
+                    });
+
+                    // Bind after a short delay to ensure DOM is ready
+                    setTimeout(() => {
+                        bindCopilotCard(container, {
+                            id: "ada-modal-copilot",
+                            contextProvider: createExcelContextProvider ? createExcelContextProvider({
+                                config: 'SS_PF_Config'
+                            }) : null,
+                            onPrompt: callAdaApiStandalone
+                        });
+                    }, 200);
+                }
+            }
+        }
+    };
+
+    return config;
+}
+
 
 /**
  * Shows the Ada assistant modal
@@ -209,13 +325,16 @@ export function showAdaModal() {
     if (existingModal) {
         existingModal.remove();
     }
-    
+
+    // Get context configuration
+    const contextConfig = getAdaModalContext();
+
     const overlay = document.createElement("div");
     overlay.className = "pf-ada-modal-overlay";
     overlay.id = "pf-ada-modal-overlay";
-    
+
     overlay.innerHTML = `
-        <div class="pf-ada-modal">
+        <div class="pf-ada-modal pf-ada-modal--chat">
             <div class="pf-ada-modal__header">
                 <button class="pf-ada-modal__close" id="ada-modal-close" aria-label="Close">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -224,56 +343,38 @@ export function showAdaModal() {
                     </svg>
                 </button>
                 <img class="pf-ada-modal__avatar" src="${ADA_IMAGE_URL}" alt="Ada" />
-                <h2 class="pf-ada-modal__title">Meet Ada</h2>
-                <p class="pf-ada-modal__subtitle">Your AI-powered assistant</p>
+                <h2 class="pf-ada-modal__title">Ask Ada <span class="pf-ada-beta-tag">BETA</span></h2>
+                <p class="pf-ada-modal__subtitle">${contextConfig.subtext}</p>
             </div>
             <div class="pf-ada-modal__body">
-                <div class="pf-ada-modal__coming-soon">
-                    <div class="pf-ada-modal__coming-soon-icon">✨</div>
-                    <p class="pf-ada-modal__coming-soon-text">Coming Soon!</p>
-                    <p class="pf-ada-modal__coming-soon-desc">
-                        Ada will help you navigate your workflows, answer questions, and provide insights about your data.
-                    </p>
-                </div>
-                <div class="pf-ada-modal__features">
-                    <div class="pf-ada-modal__feature">
-                        <div class="pf-ada-modal__feature-icon">💬</div>
-                        <span class="pf-ada-modal__feature-text">Ask questions about your data</span>
-                    </div>
-                    <div class="pf-ada-modal__feature">
-                        <div class="pf-ada-modal__feature-icon">📊</div>
-                        <span class="pf-ada-modal__feature-text">Get insights and trend analysis</span>
-                    </div>
-                    <div class="pf-ada-modal__feature">
-                        <div class="pf-ada-modal__feature-icon">🔍</div>
-                        <span class="pf-ada-modal__feature-text">Troubleshoot issues quickly</span>
+                <div class="pf-ada-copilot-container" id="ada-modal-copilot">
+                    <div class="pf-ada-loading">
+                        <div class="pf-ada-typing"><span></span><span></span><span></span></div>
+                        <p>Loading Ada...</p>
                     </div>
                 </div>
-            </div>
-            <div class="pf-ada-modal__footer">
-                <span class="pf-ada-modal__powered-by">Powered by ChatGPT</span>
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(overlay);
-    
+
     // Trigger animation
     requestAnimationFrame(() => {
         overlay.classList.add("is-visible");
     });
-    
+
     // Bind close events
     const closeBtn = document.getElementById("ada-modal-close");
     closeBtn?.addEventListener("click", hideAdaModal);
-    
+
     // Close on overlay click
     overlay.addEventListener("click", (e) => {
         if (e.target === overlay) {
             hideAdaModal();
         }
     });
-    
+
     // Close on Escape key
     const handleEscape = (e) => {
         if (e.key === "Escape") {
@@ -282,6 +383,11 @@ export function showAdaModal() {
         }
     };
     document.addEventListener("keydown", handleEscape);
+
+    // Bind the copilot functionality
+    if (contextConfig.bindFunction) {
+        contextConfig.bindFunction();
+    }
 }
 
 /**

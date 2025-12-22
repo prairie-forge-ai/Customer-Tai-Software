@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+           xsi:type="TaskPaneApp">
+
+  <Id>16b2f680-b42c-4f45-ab67-af2d2c3c9d15</Id>
+  <Version>2.0.0.0</Version>
+  <ProviderName>ACP</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="ACP Tools"/>
+  <Description DefaultValue="ACP Tools Excel add-in"/>
+  <IconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Marketing%20Material/ACPtools_Color_Logo_V2.png"/>
+  <HighResolutionIconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Prairie%20Forge/Marketing%20Material/ACPtools_Color_Logo_V2.png"/>
+  <SupportUrl DefaultValue="https://prairieforge.ai/support"/>
+
+  <AppDomains>
+    <AppDomain>https://prairie-forge-ai.github.io</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <Requirements>
+    <Sets DefaultMinVersion="1.1">
+      <Set Name="ExcelApi" MinVersion="1.1"/>
+    </Sets>
+  </Requirements>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://prairie-forge-ai.github.io/Customer-ArchCollins-Foundry/module-selector/index.html"/>
+  </DefaultSettings>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="ACP.Group">
+                <Label resid="Group.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon16"/>
+                  <bt:Image size="32" resid="Icon32"/>
+                  <bt:Image size="80" resid="Icon80"/>
+                </Icon>
+                <Control xsi:type="Button" id="ACP.Button.OpenPane">
+                  <Label resid="Button.Label"/>
+                  <Supertip>
+                    <Title resid="Button.Label"/>
+                    <Description resid="Button.Desc"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon16"/>
+                    <bt:Image size="32" resid="Icon32"/>
+                    <bt:Image size="80" resid="Icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonTaskPane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon16" DefaultValue="https://prairie-forge-ai.github.io/Customer-ArchCollins-Foundry/assets/icon-16.png"/>
+        <bt:Image id="Icon32" DefaultValue="https://prairie-forge-ai.github.io/Customer-ArchCollins-Foundry/assets/icon-32.png"/>
+        <bt:Image id="Icon80" DefaultValue="https://prairie-forge-ai.github.io/Customer-ArchCollins-Foundry/assets/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://prairie-forge-ai.github.io/Customer-ArchCollins-Foundry/module-selector/index.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Group.Label" DefaultValue="ForgeSuite"/>
+        <bt:String id="Button.Label" DefaultValue="Launch ACP Tools"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="Button.Desc" DefaultValue="Open ACP Tools to access Payroll Recorder and PTO Accrual."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

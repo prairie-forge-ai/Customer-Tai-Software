@@ -79,8 +79,11 @@ export function renderCopilotCard(options = {}) {
                         <span class="pf-ada-role">${merged.subtext}</span>
                     </div>
                 </div>
-                <div class="pf-ada-status" id="${merged.id}-status-badge" title="Ready">
-                    <span class="pf-ada-status-dot" id="${merged.id}-status-dot"></span>
+                <div class="pf-ada-header-right">
+                    <span class="pf-ada-beta-tag">BETA</span>
+                    <div class="pf-ada-status" id="${merged.id}-status-badge" title="Ready">
+                        <span class="pf-ada-status-dot" id="${merged.id}-status-dot"></span>
+                    </div>
                 </div>
             </header>
             
@@ -108,7 +111,7 @@ export function renderCopilotCard(options = {}) {
                 
                 <footer class="pf-ada-footer">
                     ${CHATGPT_ICON}
-                    <span>Powered by ChatGPT</span>
+                    <span>Powered by <span class="pf-ada-model">GPT-4 Turbo</span></span>
                 </footer>
             </div>
         </article>

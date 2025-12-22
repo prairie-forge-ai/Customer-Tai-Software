@@ -1,4 +1,4 @@
-import { applyModuleTabVisibility } from "../Common/tab-visibility.js";
+import { applyModuleTabVisibility, showAndActivateSheet } from "../Common/tab-visibility.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab } from "../Common/homepage-sheet.js";
 import { initializeWorkbook, validateWorkbookStructure, repairWorkbook, getAllTabNames } from "../Common/workbook-init.js";
 import { 
@@ -8,10 +8,12 @@ import {
     DEFAULT_COLUMN_ALIASES,
     clearColumnAliasCache
 } from "../Common/gateway.js";
+import { bootstrapConfigSync } from "../Common/bootstrap.js";
+import { formatSheetHeaders } from "../Common/sheet-formatting.js";
 
 /**
  * ACF ForgeSuite - Module Selector
- * © 2025 Prairie Forge LLC
+ * 2025 Prairie Forge LLC
  */
 
 // Admin password (simple protection against accidental changes)
@@ -23,7 +25,7 @@ const STEP_TEMPLATES = [
         id: "config",
         name: "Config",
         description: "Module configuration and setup (stored in SS_PF_Config)",
-        icon: "⚙️",
+        icon: "",
         suggestedTabs: [], // No separate tab - config lives in SS_PF_Config
         fields: ["Notes", "Reviewer", "SignOff", "Complete"]
     },
@@ -31,7 +33,7 @@ const STEP_TEMPLATES = [
         id: "import",
         name: "Import",
         description: "Import data from external source",
-        icon: "📥",
+        icon: "",
         suggestedTabs: [
             { suffix: "_Data", template: "data-import", description: "Raw imported data" },
             { suffix: "_Data_Clean", template: "data-clean", description: "Validated/cleaned data" }
@@ -42,7 +44,7 @@ const STEP_TEMPLATES = [
         id: "headcount",
         name: "Headcount",
         description: "Employee headcount reconciliation",
-        icon: "👥",
+        icon: "",
         suggestedTabs: [
             { suffix: "_Roster", template: "roster", description: "Employee roster comparison" }
         ],
@@ -52,7 +54,7 @@ const STEP_TEMPLATES = [
         id: "validate",
         name: "Validate",
         description: "Data validation and verification",
-        icon: "✓",
+        icon: "",
         suggestedTabs: [],
         fields: ["Notes", "Reviewer", "SignOff", "Complete"]
     },
@@ -60,7 +62,7 @@ const STEP_TEMPLATES = [
         id: "review",
         name: "Review",
         description: "Review and analysis of data",
-        icon: "🔍",
+        icon: "",
         suggestedTabs: [
             { suffix: "_Analysis", template: "analysis", description: "Analysis and calculations" }
         ],
@@ -70,7 +72,7 @@ const STEP_TEMPLATES = [
         id: "expense",
         name: "Expense",
         description: "Expense mapping and categorization",
-        icon: "💰",
+        icon: "",
         suggestedTabs: [
             { suffix: "_Expense_Review", template: "expense", description: "Expense review and mapping" },
             { suffix: "_Expense_Mapping", template: "mapping", description: "Account mapping configuration" }
@@ -81,7 +83,7 @@ const STEP_TEMPLATES = [
         id: "je",
         name: "JE",
         description: "Journal entry creation",
-        icon: "📝",
+        icon: "",
         suggestedTabs: [
             { suffix: "_JE_Draft", template: "journal", description: "Draft journal entry" }
         ],
@@ -91,7 +93,7 @@ const STEP_TEMPLATES = [
         id: "archive",
         name: "Archive",
         description: "Archive data for historical reference",
-        icon: "📁",
+        icon: "",
         suggestedTabs: [
             { suffix: "_Archive_Summary", template: "archive", description: "Archived summary data" }
         ],
@@ -368,6 +370,130 @@ function escapeHtml(value) {
         .replace(/'/g, "&#39;");
 }
 
+/**
+ * Show a toast notification
+ */
+function showToast(message, type = "info", duration = 4000) {
+    document.querySelectorAll(".pf-toast").forEach(t => t.remove());
+    
+    const toast = document.createElement("div");
+    toast.className = `pf-toast pf-toast--${type}`;
+    toast.innerHTML = `
+        <div class="pf-toast-content">
+            <span class="pf-toast-icon">${type === "success" ? "" : type === "error" ? "" : ""}</span>
+            <span class="pf-toast-message">${message}</span>
+        </div>
+        <button class="pf-toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    if (!document.getElementById("pf-toast-styles")) {
+        const style = document.createElement("style");
+        style.id = "pf-toast-styles";
+        style.textContent = `
+            .pf-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000; max-width: 90%; display: flex; align-items: flex-start; gap: 12px; animation: toastIn 0.3s ease; }
+            .pf-toast--success { border-left: 4px solid #22c55e; }
+            .pf-toast--error { border-left: 4px solid #ef4444; }
+            .pf-toast--info { border-left: 4px solid #3b82f6; }
+            .pf-toast-content { display: flex; align-items: flex-start; gap: 8px; flex: 1; }
+            .pf-toast-icon { font-size: 18px; }
+            .pf-toast-message { font-size: 14px; line-height: 1.4; }
+            .pf-toast-close { background: none; border: none; color: #888; font-size: 20px; cursor: pointer; padding: 0; margin-left: 8px; }
+            .pf-toast-close:hover { color: white; }
+            @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(toast);
+    if (duration > 0) setTimeout(() => toast.remove(), duration);
+}
+
+/**
+ * Ensure SS_PF_Config sheet and table exist
+ * Creates them if they don't exist, so bootstrap can write config values
+ */
+async function ensureConfigSheetAndTable() {
+    if (!hasExcelRuntime()) {
+        console.log("[EnsureConfig] Excel not available, skipping");
+        return;
+    }
+    
+    await Excel.run(async (context) => {
+        const worksheets = context.workbook.worksheets;
+        worksheets.load("items/name");
+        await context.sync();
+        
+        // Check if SS_PF_Config sheet exists
+        let configSheet = worksheets.getItemOrNullObject("SS_PF_Config");
+        configSheet.load("isNullObject");
+        await context.sync();
+        
+        if (configSheet.isNullObject) {
+            console.log("[EnsureConfig] Creating SS_PF_Config sheet...");
+            configSheet = worksheets.add("SS_PF_Config");
+            
+            // Add headers
+            const headers = ["Category", "Field", "Value", "Permanent"];
+            const headerRange = configSheet.getRange("A1:D1");
+            headerRange.values = [headers];
+            formatSheetHeaders(headerRange);
+            
+            // Add default module-prefix rows
+            const defaultData = [
+                ["module-prefix", "PR_", "payroll-recorder", "Y"],
+                ["module-prefix", "PTO_", "pto-accrual", "Y"],
+                ["module-prefix", "SS_", "system", "Y"]
+            ];
+            const dataRange = configSheet.getRange(`A2:D${1 + defaultData.length}`);
+            dataRange.values = defaultData;
+            
+            await context.sync();
+            
+            // Create the table
+            const tableRange = configSheet.getRange(`A1:D${1 + defaultData.length}`);
+            const table = configSheet.tables.add(tableRange, true /* hasHeaders */);
+            table.name = "SS_PF_Config";
+            table.style = "TableStyleMedium2";
+            
+            // Freeze header row
+            configSheet.freezePanes.freezeRows(1);
+            
+            await context.sync();
+            console.log("[EnsureConfig] SS_PF_Config sheet and table created");
+        } else {
+            // Sheet exists - check if table exists
+            const tables = context.workbook.tables;
+            tables.load("items/name");
+            await context.sync();
+            
+            const tableExists = tables.items.some(t => t.name === "SS_PF_Config");
+            
+            if (!tableExists) {
+                console.log("[EnsureConfig] SS_PF_Config sheet exists but table missing, creating table...");
+                
+                // Get used range to determine table extent
+                const usedRange = configSheet.getUsedRangeOrNullObject();
+                usedRange.load("address, rowCount, columnCount");
+                await context.sync();
+                
+                if (!usedRange.isNullObject && usedRange.rowCount > 0) {
+                    try {
+                        const table = configSheet.tables.add(usedRange, true /* hasHeaders */);
+                        table.name = "SS_PF_Config";
+                        table.style = "TableStyleMedium2";
+                        await context.sync();
+                        console.log("[EnsureConfig] SS_PF_Config table created from existing data");
+                    } catch (tableError) {
+                        console.warn("[EnsureConfig] Could not create table:", tableError.message);
+                    }
+                }
+            } else {
+                console.log("[EnsureConfig] SS_PF_Config sheet and table already exist");
+            }
+        }
+    });
+}
+
 Office.onReady(() => init()).catch((err) => {
     console.error("Office.onReady error:", err);
     init();
@@ -376,6 +502,37 @@ Office.onReady(() => init()).catch((err) => {
 async function init() {
     try {
         console.log("ForgeSuite init starting...");
+        
+        // =====================================================================
+        // ENSURE SS_PF_Config EXISTS - MUST RUN BEFORE BOOTSTRAP
+        // Creates the config sheet and table if they don't exist
+        // =====================================================================
+        console.log("[Init] Ensuring SS_PF_Config exists...");
+        try {
+            await ensureConfigSheetAndTable();
+            console.log("[Init] SS_PF_Config ready");
+        } catch (configError) {
+            console.warn("[Init] Could not ensure SS_PF_Config (non-fatal):", configError);
+        }
+        
+        // =====================================================================
+        // BOOTSTRAP CONFIG SYNC - MUST RUN FIRST
+        // Syncs SS_PF_Config from Supabase warehouse BEFORE any UI loads
+        // =====================================================================
+        console.log("[Init] Running bootstrap config sync...");
+        try {
+            const bootstrapResult = await bootstrapConfigSync();
+            console.log("[Init] Bootstrap result:", bootstrapResult);
+            if (!bootstrapResult.success) {
+                console.warn("[Init] Bootstrap failed but continuing:", bootstrapResult.error);
+            }
+        } catch (bootstrapError) {
+            console.error("[Init] Bootstrap error (non-fatal):", bootstrapError);
+            // Continue anyway - manual config still works
+        }
+        console.log("[Init] Bootstrap complete");
+        // =====================================================================
+        
         renderHero();
         console.log("renderHero complete");
         renderModules();
@@ -384,6 +541,13 @@ async function init() {
         console.log("wireActions complete");
         initQuickAccess();
         console.log("initQuickAccess complete");
+        
+        // Reset workbook tab visibility for Module Selector state (prevents tab accumulation)
+        try {
+            await applyModuleTabVisibility("module-selector");
+        } catch (e) {
+            console.warn("[Module Selector] Could not apply tab visibility:", e);
+        }
         
         // Activate homepage sheet (with retry for redirects)
         await activateHomepageWithRetry();
@@ -537,228 +701,29 @@ const builderState = {
 
 // Builder wizard step templates (simplified for UI)
 const BUILDER_STEP_TEMPLATES = [
-    { id: 'config', name: 'Configuration', icon: '⚙️', defaultTabs: ['_Config'], description: 'Module settings and setup' },
-    { id: 'import', name: 'Data Import', icon: '📥', defaultTabs: ['_Raw_Data'], description: 'Import data from source systems' },
-    { id: 'cleanup', name: 'Data Cleanup', icon: '🧹', defaultTabs: ['_Data_Clean'], description: 'Validate and clean imported data' },
-    { id: 'review', name: 'Department Review', icon: '👥', defaultTabs: ['_Dept_Review'], description: 'Review by department/team' },
-    { id: 'analysis', name: 'Analysis', icon: '📊', defaultTabs: ['_Analysis'], description: 'Calculations and analysis' },
-    { id: 'journal', name: 'Journal Entry', icon: '📝', defaultTabs: ['_JE_Draft'], description: 'Create journal entries' },
-    { id: 'signoff', name: 'Sign-off', icon: '✅', defaultTabs: [], description: 'Final review and approval' }
+    { id: 'config', name: 'Configuration', icon: '', defaultTabs: ['_Config'], description: 'Module settings and setup' },
+    { id: 'import', name: 'Data Import', icon: '', defaultTabs: ['_Raw_Data'], description: 'Import data from source systems' },
+    { id: 'cleanup', name: 'Data Cleanup', icon: '', defaultTabs: ['_Data_Clean'], description: 'Validate and clean imported data' },
+    { id: 'review', name: 'Department Review', icon: '', defaultTabs: ['_Dept_Review'], description: 'Review by department/team' },
+    { id: 'analysis', name: 'Analysis', icon: '', defaultTabs: ['_Analysis'], description: 'Calculations and analysis' },
+    { id: 'journal', name: 'Journal Entry', icon: '', defaultTabs: ['_JE_Draft'], description: 'Create journal entries' },
+    { id: 'signoff', name: 'Sign-off', icon: '', defaultTabs: [], description: 'Final review and approval' }
 ];
 
 // Builder wizard function templates
 const BUILDER_FUNCTION_TEMPLATES = [
-    { id: 'paste', name: 'Paste from Clipboard', icon: '📋', steps: ['import', 'cleanup'] },
-    { id: 'file_import', name: 'Import from File', icon: '📁', steps: ['import'] },
-    { id: 'external_pull', name: 'Pull from External System', icon: '🔗', steps: ['import'] },
-    { id: 'validate', name: 'Validate Data', icon: '✓', steps: ['cleanup', 'review'] },
-    { id: 'compare_roster', name: 'Compare to Roster', icon: '👥', steps: ['review'] },
-    { id: 'flag_discrepancies', name: 'Flag Discrepancies', icon: '🚩', steps: ['review', 'analysis'] },
-    { id: 'approve_reject', name: 'Approve / Reject', icon: '✅', steps: ['review', 'signoff'] },
-    { id: 'calculate', name: 'Run Calculations', icon: '🔢', steps: ['analysis'] },
-    { id: 'generate_je', name: 'Generate Journal Entry', icon: '📝', steps: ['journal'] },
-    { id: 'export', name: 'Export Data', icon: '📤', steps: ['journal', 'signoff'] },
-    { id: 'copilot', name: 'Copilot Assistance', icon: '🤖', steps: ['import', 'cleanup', 'review', 'analysis', 'journal'] }
+    { id: 'paste', name: 'Paste from Clipboard', icon: '', steps: ['import', 'cleanup'] },
+    { id: 'file_import', name: 'Import from File', icon: '', steps: ['import'] },
+    { id: 'external_pull', name: 'Pull from External System', icon: '', steps: ['import'] },
+    { id: 'validate', name: 'Validate Data', icon: '', steps: ['cleanup', 'review'] },
+    { id: 'compare_roster', name: 'Compare to Roster', icon: '', steps: ['review'] },
+    { id: 'flag_discrepancies', name: 'Flag Discrepancies', icon: '', steps: ['review', 'analysis'] },
+    { id: 'approve_reject', name: 'Approve / Reject', icon: '', steps: ['review', 'signoff'] },
+    { id: 'calculate', name: 'Run Calculations', icon: '', steps: ['analysis'] },
+    { id: 'generate_je', name: 'Generate Journal Entry', icon: '', steps: ['journal'] },
+    { id: 'export', name: 'Export Data', icon: '', steps: ['journal', 'signoff'] },
+    { id: 'copilot', name: 'Copilot Assistance', icon: '', steps: ['import', 'cleanup', 'review', 'analysis', 'journal'] }
 ];
-
-function initAdmin() {
-    // Admin link click
-    document.getElementById("adminLink")?.addEventListener("click", openAdminOverlay);
-    
-    // Close buttons
-    document.getElementById("adminClose")?.addEventListener("click", closeAdminOverlay);
-    document.getElementById("adminCloseAuth")?.addEventListener("click", closeAdminOverlay);
-    
-    // Password submit
-    document.getElementById("adminSubmit")?.addEventListener("click", handleAdminLogin);
-    adminPassword?.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") handleAdminLogin();
-    });
-    
-    // Mode switching (Builder vs Settings)
-    document.querySelectorAll(".admin-mode-btn").forEach(btn => {
-        btn.addEventListener("click", () => switchAdminMode(btn.dataset.mode));
-    });
-    
-    // Settings tabs (in Settings mode)
-    document.querySelectorAll(".settings-tab").forEach(tab => {
-        tab.addEventListener("click", () => switchSettingsTab(tab.dataset.settings));
-    });
-    
-    // Tab Management (now in Settings mode)
-    document.getElementById("tabModuleFilter")?.addEventListener("change", renderTabMappings);
-    document.getElementById("addTabMappingBtn")?.addEventListener("click", addTabMapping);
-    
-    // Column Mapping
-    document.getElementById("columnMappingModule")?.addEventListener("change", renderColumnMappings);
-    document.getElementById("addColumnAliasBtn")?.addEventListener("click", addColumnAlias);
-    document.getElementById("resetColumnAliasesBtn")?.addEventListener("click", resetColumnAliases);
-    
-    // Shared config save
-    document.getElementById("saveSharedConfig")?.addEventListener("click", saveSharedConfig);
-    
-    // Utilities
-    document.getElementById("validateConfigBtn")?.addEventListener("click", validateConfig);
-    document.getElementById("generateFieldsBtn")?.addEventListener("click", writeAllFieldsToSheet);
-    document.getElementById("exportConfigBtn")?.addEventListener("click", exportConfig);
-    
-    // Close on overlay click
-    adminOverlay?.addEventListener("click", (e) => {
-        if (e.target === adminOverlay) closeAdminOverlay();
-    });
-    
-    // Module Builder wizard events
-    initModuleBuilder();
-}
-
-function initModuleBuilder() {
-    // Step 1: New/Edit choice
-    document.getElementById("builderNewModule")?.addEventListener("click", () => {
-        builderState.mode = 'new';
-        document.getElementById("builderNewModule").classList.add("selected");
-        document.getElementById("builderEditModule").classList.remove("selected");
-        document.getElementById("builderNewModuleForm").hidden = false;
-        document.getElementById("builderEditModuleForm").hidden = true;
-    });
-    
-    document.getElementById("builderEditModule")?.addEventListener("click", () => {
-        builderState.mode = 'edit';
-        document.getElementById("builderEditModule").classList.add("selected");
-        document.getElementById("builderNewModule").classList.remove("selected");
-        document.getElementById("builderNewModuleForm").hidden = true;
-        document.getElementById("builderEditModuleForm").hidden = false;
-        populateEditModuleDropdown();
-    });
-    
-    // Template checkbox toggle
-    document.getElementById("builderUseTemplate")?.addEventListener("change", (e) => {
-        document.getElementById("builderTemplateModule").hidden = !e.target.checked;
-        if (e.target.checked) {
-            populateTemplateModuleDropdown();
-        }
-    });
-    
-    // Edit module selection
-    document.getElementById("builderEditModuleSelect")?.addEventListener("change", (e) => {
-        const moduleName = e.target.value;
-        if (moduleName) {
-            loadModuleForEditing(moduleName);
-        } else {
-            document.getElementById("builderModuleSummary").hidden = true;
-        }
-    });
-    
-    // Navigation buttons
-    document.getElementById("builderPrevBtn")?.addEventListener("click", builderPrevStep);
-    document.getElementById("builderNextBtn")?.addEventListener("click", builderNextStep);
-    document.getElementById("builderCreateBtn")?.addEventListener("click", createModule);
-    
-    // Custom step form
-    document.getElementById("addCustomStep")?.addEventListener("click", () => {
-        document.getElementById("customStepForm").hidden = false;
-    });
-    document.getElementById("cancelCustomStep")?.addEventListener("click", () => {
-        document.getElementById("customStepForm").hidden = true;
-        document.getElementById("customStepName").value = '';
-    });
-    document.getElementById("confirmCustomStep")?.addEventListener("click", addCustomStep);
-    
-    // Fields tab selection
-    document.getElementById("builderFieldsTabSelect")?.addEventListener("change", (e) => {
-        const tabName = e.target.value;
-        document.getElementById("builderFieldsConfig").hidden = !tabName;
-        if (tabName) {
-            renderFieldsForTab(tabName);
-        }
-    });
-    
-    // Add field button - use inline input (prompt() not supported in Office Add-ins)
-    document.getElementById("addFieldBtn")?.addEventListener("click", () => {
-        const btn = document.getElementById("addFieldBtn");
-        const existingInput = btn.parentElement.querySelector('.inline-field-input');
-        if (existingInput) {
-            existingInput.focus();
-    return;
-}
-
-/**
- * Open configuration sheets (SS_* and any *mapping*) from selector
- */
-async function openConfigQuickAccess() {
-    if (typeof Excel === "undefined") return;
-    try {
-        await Excel.run(async (context) => {
-            const worksheets = context.workbook.worksheets;
-            worksheets.load("items/name,visibility");
-            await context.sync();
-
-            const targets = worksheets.items.filter((sheet) => {
-                const name = (sheet.name || "").toUpperCase();
-                return name.startsWith("SS_") || name.includes("MAPPING");
-            });
-
-            if (!targets.length) {
-                console.log("[Config] No configuration sheets found");
-                return;
-            }
-
-            // Unhide all targets
-            targets.forEach((sheet) => {
-                sheet.visibility = Excel.SheetVisibility.visible;
-            });
-            await context.sync();
-
-            // Activate SS_PF_Config if present, otherwise first target
-            let target = targets.find((s) => s.name === "SS_PF_Config") || targets[0];
-            target.activate();
-            target.getRange("A1").select();
-            await context.sync();
-            console.log("[Config] Opened config sheet:", target.name);
-        });
-    } catch (error) {
-        console.error("Error opening configuration sheets from selector:", error);
-    }
-}
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'admin-input inline-field-input';
-        input.placeholder = 'Column name';
-        input.style.cssText = 'width: 120px; padding: 6px 10px; font-size: 12px; margin-right: 8px;';
-        
-        btn.parentElement.insertBefore(input, btn);
-        input.focus();
-        
-        const addField = () => {
-            const value = input.value.trim();
-            if (value) {
-                addFieldToCurrentTab(value);
-                input.value = '';
-                input.focus();
-            }
-        };
-        
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') addField();
-        });
-        input.addEventListener('blur', () => {
-            // Keep input visible for multiple entries
-        });
-    });
-    
-    // Fields dropzone
-    initBuilderFieldsDropzone();
-    
-    // Progress step clicks
-    document.querySelectorAll(".builder-progress-step").forEach(step => {
-        step.addEventListener("click", () => {
-            const targetStep = parseInt(step.dataset.step);
-            if (targetStep < builderState.currentStep) {
-                goToBuilderStep(targetStep);
-            }
-        });
-    });
-}
 
 function switchAdminMode(mode) {
     document.querySelectorAll(".admin-mode-btn").forEach(btn => {
@@ -2208,8 +2173,7 @@ async function createExcelTab(tab) {
         // Add headers
         const headerRange = sheet.getRange(`A1:${String.fromCharCode(64 + headers.length)}1`);
         headerRange.values = [headers];
-        headerRange.format.font.bold = true;
-        headerRange.format.fill.color = "#f0f0f0";
+        formatSheetHeaders(headerRange);
         
         // Auto-fit columns
         headerRange.format.autofitColumns();
@@ -2264,9 +2228,15 @@ async function registerTabInConfig(tabName, moduleName, folder) {
  * Initialize Quick Access button handlers
  */
 function initQuickAccess() {
-    document.getElementById("quickRosterBtn")?.addEventListener("click", () => openRefData("roster"));
-    document.getElementById("quickAccountsBtn")?.addEventListener("click", () => openRefData("accounts"));
-    document.getElementById("quickConfigBtn")?.addEventListener("click", openConfigQuickAccess);
+    document.getElementById("quickRosterBtn")?.addEventListener("click", async () => {
+        await showAndActivateSheet("SS_Employee_Roster");
+    });
+    document.getElementById("quickAccountsBtn")?.addEventListener("click", async () => {
+        await handleAccountsAccess();
+    });
+    document.getElementById("quickConfigBtn")?.addEventListener("click", async () => {
+        await showAndActivateSheet("SS_PF_Config");
+    });
     
     // Modal close handlers
     document.getElementById("refDataClose")?.addEventListener("click", closeRefData);
@@ -2371,16 +2341,350 @@ function resetAllEditStates() {
 }
 
 /**
+ * Handle Accounts access - either show existing sheet or bulk upload interface
+ */
+async function handleAccountsAccess() {
+    const sheetName = "SS_Chart_of_Accounts";
+
+    try {
+        // Check if sheet exists and has data
+        const hasData = await checkSheetHasData(sheetName);
+
+        if (hasData) {
+            // Sheet exists and has data - open it
+            console.log("[Accounts] Opening existing SS_Chart_of_Accounts sheet");
+            await showAndActivateSheet(sheetName);
+            showToast("Opened Chart of Accounts", "success", 2000);
+        } else {
+            // Sheet doesn't exist or is empty - show bulk upload for accounts
+            console.log("[Accounts] No existing accounts data, showing bulk upload interface");
+            showBulkUploadForAccounts();
+        }
+    } catch (error) {
+        console.error("[Accounts] Error checking sheet:", error);
+        // Fallback to bulk upload on error
+        showBulkUploadForAccounts();
+    }
+}
+
+/**
+ * Check if a sheet exists and has data (more than just headers)
+ */
+async function checkSheetHasData(sheetName) {
+    if (!hasExcelRuntime()) return false;
+
+    try {
+        return await Excel.run(async (context) => {
+            const sheet = context.workbook.worksheets.getItemOrNullObject(sheetName);
+            sheet.load("isNullObject");
+            await context.sync();
+
+            if (sheet.isNullObject) {
+                return false; // Sheet doesn't exist
+            }
+
+            // Check if sheet has data beyond headers
+            const usedRange = sheet.getUsedRangeOrNullObject();
+            usedRange.load("rowCount");
+            await context.sync();
+
+            if (usedRange.isNullObject) {
+                return false; // No data at all
+            }
+
+            // Consider it has data if more than 1 row (headers + at least 1 data row)
+            return usedRange.rowCount > 1;
+        });
+    } catch (error) {
+        console.warn("[CheckSheetData] Error:", error);
+        return false;
+    }
+}
+
+/**
+ * Show bulk upload interface specifically for accounts
+ */
+function showBulkUploadForAccounts() {
+    // Set reference data type to accounts
+    refDataState.type = 'accounts';
+    refDataState.data = [];
+    refDataState.headers = [];
+
+    // Show the bulk upload panel
+    const bulkUploadPanel = document.getElementById("bulkUploadPanel");
+    if (bulkUploadPanel) {
+        // Hide other panels
+        document.getElementById("editTypeSelection")?.setAttribute("hidden", "");
+        document.getElementById("quickEditEmployee")?.setAttribute("hidden", "");
+        document.getElementById("quickEditAccounts")?.setAttribute("hidden", "");
+
+        // Show bulk upload
+        bulkUploadPanel.hidden = false;
+
+        // Initialize bulk upload for accounts
+        initBulkUploadForAccounts();
+
+        // Show the modal
+        openRefData('accounts');
+    }
+}
+
+/**
+ * Initialize bulk upload specifically for accounts
+ */
+function initBulkUploadForAccounts() {
+    const config = REF_DATA_CONFIG.accounts;
+    const dropzone = document.getElementById("bulkUploadDropzone");
+    const fileInput = document.createElement("input");
+
+    if (!dropzone) return;
+
+    // Set up file input
+    fileInput.type = "file";
+    fileInput.id = "bulkUploadFileInput";
+    fileInput.accept = ".csv,.xlsx,.xls";
+    fileInput.style.display = "none";
+    document.body.appendChild(fileInput);
+
+    // Update dropzone text for accounts
+    dropzone.innerHTML = `
+        <div class="upload-icon">📊</div>
+        <p class="upload-text">Drop Chart of Accounts file here</p>
+        <p class="upload-hint">CSV or Excel • ${config.defaultHeaders.join(', ')}</p>
+    `;
+
+    // Set up event handlers
+    const handleFileSelect = () => {
+        const file = fileInput.files[0];
+        if (file) {
+            handleBulkAccountsUpload(file);
+        }
+    };
+
+    dropzone.onclick = () => fileInput.click();
+    fileInput.onchange = handleFileSelect;
+
+    // Drag and drop
+    dropzone.ondragover = (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+    };
+
+    dropzone.ondragleave = () => {
+        dropzone.classList.remove('dragover');
+    };
+
+    dropzone.ondrop = (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleBulkAccountsUpload(files[0]);
+        }
+    };
+}
+
+/**
+ * Handle bulk upload of accounts file
+ */
+async function handleBulkAccountsUpload(file) {
+    try {
+        console.log("[Accounts] Processing file:", file.name);
+
+        // Validate file type
+        const validTypes = ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+        if (!validTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.csv')) {
+            throw new Error("Please select a CSV or Excel file");
+        }
+
+        // Parse file
+        let data;
+        if (file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv') {
+            data = await parseBulkCSV(file);
+        } else {
+            data = await parseBulkExcel(file);
+        }
+
+        if (!data || data.length === 0) {
+            throw new Error("No data found in file");
+        }
+
+        console.log("[Accounts] Parsed", data.length, "rows");
+
+        // Validate headers match expected format
+        const config = REF_DATA_CONFIG.accounts;
+        const headers = data[0];
+        const dataRows = data.slice(1);
+
+        // Check if headers look reasonable for accounts
+        const hasAccountNumber = headers.some(h => h && h.toLowerCase().includes('account') && h.toLowerCase().includes('number'));
+        const hasAccountName = headers.some(h => h && h.toLowerCase().includes('account') && h.toLowerCase().includes('name'));
+
+        if (!hasAccountNumber || !hasAccountName) {
+            console.warn("[Accounts] Headers may not match expected format:", headers);
+        }
+
+        // Store in state
+        refDataState.data = dataRows;
+        refDataState.headers = headers;
+
+        // Update UI
+        updateBulkUploadUI(file.name, dataRows.length);
+
+        // Show comparison/results
+        showAccountsComparison(dataRows, headers);
+
+    } catch (error) {
+        console.error("[Accounts] Upload error:", error);
+        showBulkUploadStatus("error", error.message);
+    }
+}
+
+/**
+ * Show comparison of uploaded accounts data
+ */
+function showAccountsComparison(dataRows, headers) {
+    const comparisonEl = document.getElementById("bulkUploadComparison");
+    const resultsEl = document.getElementById("comparisonResults");
+
+    if (!comparisonEl || !resultsEl) return;
+
+    // Show first few rows as preview
+    const previewRows = dataRows.slice(0, 3);
+    const previewHtml = previewRows.map((row, i) =>
+        `<div class="comparison-item">
+            <span class="comparison-label">Row ${i + 2}:</span>
+            <span class="comparison-value">${row.slice(0, 3).join(' • ')}${row.length > 3 ? '...' : ''}</span>
+        </div>`
+    ).join('');
+
+    resultsEl.innerHTML = `
+        <div class="comparison-summary">
+            <p><strong>${dataRows.length}</strong> accounts found in file</p>
+            <p>Headers: ${headers.join(', ')}</p>
+        </div>
+        <div class="comparison-preview">
+            <h5>Data Preview:</h5>
+            ${previewHtml}
+        </div>
+    `;
+
+    comparisonEl.hidden = false;
+
+    // Show confirm buttons
+    const buttonsEl = document.getElementById("bulkUploadButtons");
+    if (buttonsEl) {
+        buttonsEl.hidden = false;
+
+        // Set up confirm handler
+        const confirmBtn = document.getElementById("bulkUploadConfirm");
+        if (confirmBtn) {
+            confirmBtn.onclick = () => confirmBulkAccountsUpload();
+        }
+    }
+}
+
+/**
+ * Confirm and process bulk accounts upload
+ */
+async function confirmBulkAccountsUpload() {
+    try {
+        const confirmBtn = document.getElementById("bulkUploadConfirm");
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = "Importing...";
+        }
+
+        // Create/update the accounts sheet
+        await createAccountsSheetFromUpload();
+
+        showBulkUploadStatus("success", "Chart of Accounts imported successfully!");
+        showToast("Chart of Accounts updated", "success", 3000);
+
+        // Close modal and show the sheet
+        setTimeout(async () => {
+            closeRefData();
+            await showAndActivateSheet("SS_Chart_of_Accounts");
+        }, 1500);
+
+    } catch (error) {
+        console.error("[Accounts] Import error:", error);
+        showBulkUploadStatus("error", error.message);
+    }
+}
+
+/**
+ * Create or update accounts sheet from uploaded data
+ */
+async function createAccountsSheetFromUpload() {
+    const sheetName = "SS_Chart_of_Accounts";
+    const config = REF_DATA_CONFIG.accounts;
+
+    await Excel.run(async (context) => {
+        // Get or create sheet
+        let sheet = context.workbook.worksheets.getItemOrNullObject(sheetName);
+        sheet.load("isNullObject");
+        await context.sync();
+
+        if (sheet.isNullObject) {
+            sheet = context.workbook.worksheets.add(sheetName);
+        } else {
+            // Clear existing data
+            const usedRange = sheet.getUsedRangeOrNullObject();
+            if (!usedRange.isNullObject) {
+                usedRange.clear();
+            }
+        }
+
+        // Prepare data with headers
+        const allData = [config.defaultHeaders, ...refDataState.data];
+
+        // Write data
+        const range = sheet.getRangeByIndexes(0, 0, allData.length, config.defaultHeaders.length);
+        range.values = allData;
+
+        // Format headers
+        const headerRange = sheet.getRangeByIndexes(0, 0, 1, config.defaultHeaders.length);
+        headerRange.format.font.bold = true;
+        headerRange.format.fill.color = "#000000";
+        headerRange.format.font.color = "#ffffff";
+
+        // Create table
+        const tableRange = sheet.getRangeByIndexes(0, 0, allData.length, config.defaultHeaders.length);
+        const table = sheet.tables.add(tableRange, true);
+        table.name = sheetName;
+
+        // Freeze header and autofit
+        sheet.freezePanes.freezeRows(1);
+        sheet.getUsedRange().format.autofitColumns();
+
+        await context.sync();
+
+        console.log(`[Accounts] Created ${sheetName} with ${refDataState.data.length} accounts`);
+    });
+}
+
+/**
  * Quick Access: open configuration-related sheets (SS_* or *mapping* or *homepage*)
  * Unhides matched sheets and activates SS_PF_Config if present.
  */
 async function openConfigQuickAccess() {
-    if (typeof Excel === "undefined") return;
+    console.log("[Config] openConfigQuickAccess called");
+    
+    if (typeof Excel === "undefined") {
+        console.warn("[Config] Excel runtime not available");
+        showToast("Please open this add-in inside Excel to access configuration.", "info");
+        return;
+    }
+    
     try {
         await Excel.run(async (context) => {
             const worksheets = context.workbook.worksheets;
             worksheets.load("items/name,visibility");
             await context.sync();
+
+            console.log("[Config] Found", worksheets.items.length, "worksheets");
 
             const matches = worksheets.items.filter((sheet) => {
                 const name = sheet.name || "";
@@ -2390,8 +2694,11 @@ async function openConfigQuickAccess() {
 
             if (!matches.length) {
                 console.log("[Config] No configuration sheets found");
+                showToast("No configuration sheets found in this workbook.", "info");
                 return;
             }
+
+            console.log("[Config] Found", matches.length, "config sheets:", matches.map(s => s.name).join(", "));
 
             matches.forEach((sheet) => {
                 sheet.visibility = Excel.SheetVisibility.visible;
@@ -2406,6 +2713,7 @@ async function openConfigQuickAccess() {
         });
     } catch (error) {
         console.error("Error opening configuration sheets from selector:", error);
+        showToast("Error opening configuration: " + error.message, "error");
     }
 }
 
@@ -2538,8 +2846,7 @@ async function openRefDataSheet() {
                 sheet = context.workbook.worksheets.add(config.sheetName);
                 const headerRange = sheet.getRange(`A1:${String.fromCharCode(64 + config.defaultHeaders.length)}1`);
                 headerRange.values = [config.defaultHeaders];
-                headerRange.format.font.bold = true;
-                headerRange.format.fill.color = "#f0f0f0";
+                formatSheetHeaders(headerRange);
                 await context.sync();
             } else {
                 // Make sure sheet is visible before activating (may be hidden by tab visibility)
@@ -2572,8 +2879,7 @@ async function createRefDataSheet() {
             const sheet = context.workbook.worksheets.add(config.sheetName);
             const headerRange = sheet.getRange(`A1:${String.fromCharCode(64 + config.defaultHeaders.length)}1`);
             headerRange.values = [config.defaultHeaders];
-            headerRange.format.font.bold = true;
-            headerRange.format.fill.color = "#f0f0f0";
+            formatSheetHeaders(headerRange);
             headerRange.format.autofitColumns();
             await context.sync();
             
@@ -3002,7 +3308,7 @@ function selectEmployee(actionType, employee) {
             });
             break;
             
-        case 'transfer':
+        case 'transfer': {
             document.getElementById("empTransferDeptGroup").hidden = false;
             const transferDeptInput = document.getElementById("empTransferDept");
             if (transferDeptInput) {
@@ -3012,6 +3318,7 @@ function selectEmployee(actionType, employee) {
                 });
             }
             break;
+        }
             
         case 'edit':
             document.getElementById("empEditFields").hidden = false;
@@ -3509,7 +3816,7 @@ function selectAccount(actionType, account) {
             if (buttons) buttons.hidden = false;
             break;
             
-        case 'rename':
+        case 'rename': {
             document.getElementById("acctRenameNewGroup").hidden = false;
             const renameInput = document.getElementById("acctRenameNewName");
             if (renameInput) {
@@ -3518,8 +3825,9 @@ function selectAccount(actionType, account) {
                 });
             }
             break;
+        }
             
-        case 'renumber':
+        case 'renumber': {
             document.getElementById("acctRenumberNewGroup").hidden = false;
             const renumberInput = document.getElementById("acctRenumberNewNumber");
             if (renumberInput) {
@@ -3528,6 +3836,7 @@ function selectAccount(actionType, account) {
                 });
             }
             break;
+        }
     }
 }
 
@@ -3815,6 +4124,17 @@ async function handleBulkUploadFile(file) {
             warningText.textContent = "Error reading file: " + error.message;
         }
     }
+}
+
+/**
+ * Parse Excel file for bulk upload
+ * Note: For best results, please use CSV format. Excel parsing is limited.
+ */
+function parseBulkExcel(file) {
+    return new Promise((resolve, reject) => {
+        // Excel parsing requires a library - recommend CSV instead
+        reject(new Error("Please save your file as CSV format for best results. Excel files (.xlsx/.xls) require additional processing."));
+    });
 }
 
 /**
@@ -4111,8 +4431,7 @@ async function confirmBulkUpload() {
                 sheet = context.workbook.worksheets.add(config.sheetName);
                 const headerRange = sheet.getRange(`A1:${String.fromCharCode(64 + config.defaultHeaders.length)}1`);
                 headerRange.values = [config.defaultHeaders];
-                headerRange.format.font.bold = true;
-                headerRange.format.fill.color = "#f0f0f0";
+                formatSheetHeaders(headerRange);
                 await context.sync();
                 console.log("Sheet created with headers");
             }

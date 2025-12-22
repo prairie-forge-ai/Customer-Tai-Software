@@ -15,6 +15,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+declare const Deno: {
+  env: {
+    get: (key: string) => string | undefined;
+  };
+};
+
 // Configuration
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://jgciqwzwacaesqjaoadc.supabase.co";
@@ -25,28 +31,113 @@ const DEFAULT_MODEL = "gpt-4-turbo-preview";
 const DEFAULT_MAX_TOKENS = 1500;
 const DEFAULT_TEMPERATURE = 0.7;
 
-// CORS headers for Excel add-in
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// Logging / privacy controls
+const STORE_AI_RESPONSES = Deno.env.get("STORE_AI_RESPONSES") === "true";
+// "keys" stores only Object.keys(context); "full" stores the full context payload
+const STORE_CONTEXT_MODE = (Deno.env.get("STORE_CONTEXT_MODE") || "keys").toLowerCase();
+
+// Multi-tenant scoping controls
+// If enabled, queries will filter by customer_id when provided.
+// IMPORTANT: Only enable this if your tables have a customer_id column.
+const ENABLE_CUSTOMER_SCOPING = Deno.env.get("ENABLE_CUSTOMER_SCOPING") === "true";
+
+// CORS controls
+// Comma-separated allowlist of origins. If empty/unset, falls back to "*".
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+
+const allowedModules = new Set(["payroll-recorder", "pto-accrual", "module-selector", "global"]);
+const allowedFunctions = new Set(["mapping", "analysis", "validation"]);
+
+function buildCorsHeaders(origin: string | null) {
+  const allowAll = ALLOWED_ORIGINS.length === 0;
+  const isAllowed = allowAll || (!!origin && ALLOWED_ORIGINS.includes(origin));
+  const allowOrigin = allowAll ? "*" : (isAllowed ? origin! : "null");
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
+
+function isOriginAllowed(origin: string | null) {
+  if (ALLOWED_ORIGINS.length === 0) return true;
+  return !!origin && ALLOWED_ORIGINS.includes(origin);
+}
+
+function sanitizeModuleKey(input: string | null | undefined) {
+  if (!input) return null;
+  const key = String(input).trim();
+  if (!key) return null;
+  return allowedModules.has(key) ? key : null;
+}
+
+function sanitizeFunctionContext(input: string | null | undefined) {
+  const key = String(input || "analysis").trim();
+  return allowedFunctions.has(key) ? key : "analysis";
+}
+
+function sanitizeStoredContext(context: Record<string, unknown> | undefined) {
+  if (!context) return null;
+  if (STORE_CONTEXT_MODE === "full") return context;
+  // Default: store only keys to reduce risk of sensitive content being logged
+  return Object.keys(context);
+}
 
 interface AdaRequest {
   prompt: string;
   context?: Record<string, unknown>;
   systemPrompt?: string;
   promptName?: string; // Name of the system prompt to use from database
+  module?: string; // Module key: 'payroll-recorder', 'pto-accrual'
+  function?: string; // Function context: 'mapping', 'analysis', 'validation'
   history?: Array<{ role: string; content: string }>;
   sessionId?: string;
   customerId?: string;
 }
 
-interface SystemPromptConfig {
-  prompt_text: string;
+async function fetchNamedSystemPrompt(promptName: string, customerId: string | null): Promise<{ system_prompt: string; model: string; max_tokens: number; temperature: number } | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  try {
+    let query = supabase
+      .from('ada_system_prompts')
+      .select('prompt_text, model, max_tokens, temperature')
+      .eq('name', promptName)
+      .eq('is_active', true);
+
+    if (ENABLE_CUSTOMER_SCOPING) {
+      if (!customerId) {
+        console.warn("[Ada] ENABLE_CUSTOMER_SCOPING is true but request.customerId is missing");
+      } else {
+        query = query.or(`customer_id.is.null,customer_id.eq.${customerId}`);
+      }
+    }
+
+    const { data, error } = await query.single();
+    if (error || !data) return null;
+    return {
+      system_prompt: data.prompt_text,
+      model: data.model || DEFAULT_MODEL,
+      max_tokens: data.max_tokens || DEFAULT_MAX_TOKENS,
+      temperature: data.temperature || DEFAULT_TEMPERATURE,
+    };
+  } catch (e) {
+    console.error('Failed to fetch named system prompt:', e);
+    return null;
+  }
+}
+
+interface ModuleConfigResult {
+  system_prompt: string | null;
+  welcome_message: string | null;
   model: string;
   max_tokens: number;
   temperature: number;
+  ada_context_mapping: string | null;
+  ada_context_analysis: string | null;
+  ada_context_validation: string | null;
 }
 
 // Create Supabase client for database operations
@@ -58,28 +149,140 @@ function getSupabaseClient() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 }
 
-// Fetch system prompt from database
-async function fetchSystemPrompt(promptName: string = "default"): Promise<SystemPromptConfig | null> {
+// Fetch module config from database (unified table with prompts)
+async function fetchModuleConfig(moduleKey: string, customerId: string | null): Promise<ModuleConfigResult | null> {
   const supabase = getSupabaseClient();
   if (!supabase) return null;
 
   try {
-    const { data, error } = await supabase
-      .from('ada_system_prompts')
-      .select('prompt_text, model, max_tokens, temperature')
-      .eq('name', promptName)
-      .eq('is_active', true)
-      .single();
+    let query = supabase
+      .from('ada_module_config')
+      .select('system_prompt, welcome_message, model, max_tokens, temperature, ada_context_mapping, ada_context_analysis, ada_context_validation')
+      .eq('module_key', moduleKey)
+      .eq('is_active', true);
+
+    if (ENABLE_CUSTOMER_SCOPING) {
+      if (!customerId) {
+        console.warn("[Ada] ENABLE_CUSTOMER_SCOPING is true but request.customerId is missing");
+      } else {
+        query = query.or(`customer_id.is.null,customer_id.eq.${customerId}`);
+      }
+    }
+
+    const { data, error } = await query.single();
 
     if (error) {
-      console.error('Error fetching system prompt:', error);
+      console.log('No module config found for:', moduleKey);
       return null;
     }
 
     return data;
   } catch (e) {
-    console.error('Failed to fetch system prompt:', e);
+    console.error('Failed to fetch module config:', e);
     return null;
+  }
+}
+
+// Fetch global/default config as fallback
+async function fetchGlobalConfig(customerId: string | null): Promise<ModuleConfigResult | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  try {
+    // Try 'global' first, then 'default'
+    let query = supabase
+      .from('ada_module_config')
+      .select('system_prompt, welcome_message, model, max_tokens, temperature, ada_context_mapping, ada_context_analysis, ada_context_validation')
+      .eq('module_key', 'global')
+      .eq('is_active', true);
+
+    if (ENABLE_CUSTOMER_SCOPING) {
+      if (!customerId) {
+        console.warn("[Ada] ENABLE_CUSTOMER_SCOPING is true but request.customerId is missing");
+      } else {
+        query = query.or(`customer_id.is.null,customer_id.eq.${customerId}`);
+      }
+    }
+
+    let { data, error } = await query.single();
+
+    if (error || !data) {
+      // Fallback: try ada_system_prompts for backward compatibility
+      const { data: legacyData, error: legacyError } = await supabase
+        .from('ada_system_prompts')
+        .select('prompt_text, model, max_tokens, temperature')
+        .eq('name', 'default')
+        .eq('is_active', true)
+        .single();
+      
+      if (!legacyError && legacyData) {
+        return {
+          system_prompt: legacyData.prompt_text,
+          welcome_message: null,
+          model: legacyData.model || DEFAULT_MODEL,
+          max_tokens: legacyData.max_tokens || DEFAULT_MAX_TOKENS,
+          temperature: legacyData.temperature || DEFAULT_TEMPERATURE,
+          ada_context_mapping: null,
+          ada_context_analysis: null,
+          ada_context_validation: null,
+        };
+      }
+      return null;
+    }
+
+    return data;
+  } catch (e) {
+    console.error('Failed to fetch global config:', e);
+    return null;
+  }
+}
+
+// Fetch relevant knowledge sources from database
+async function fetchKnowledgeSources(moduleKey: string | null, functionContext: string | null, customerId: string | null): Promise<string> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return '';
+
+  try {
+    let query = supabase
+      .from('ada_knowledge_sources')
+      .select('source_type, title, content')
+      .eq('is_active', true)
+      .order('priority', { ascending: false })
+      .limit(5);
+
+    if (ENABLE_CUSTOMER_SCOPING) {
+      if (!customerId) {
+        console.warn("[Ada] ENABLE_CUSTOMER_SCOPING is true but request.customerId is missing");
+      } else {
+        query = query.or(`customer_id.is.null,customer_id.eq.${customerId}`);
+      }
+    }
+
+    // Filter by module (include global entries where module_key is null)
+    if (moduleKey) {
+      query = query.or(`module_key.is.null,module_key.eq.${moduleKey}`);
+    }
+
+    // Filter by function context (include global entries where function_context is null)
+    if (functionContext) {
+      query = query.or(`function_context.is.null,function_context.eq.${functionContext}`);
+    }
+
+    const { data, error } = await query;
+
+    if (error || !data?.length) {
+      return '';
+    }
+
+    // Format knowledge sources for injection
+    const knowledgeBlock = data.map(k => 
+      `### [${k.source_type.toUpperCase()}] ${k.title}\n${k.content}`
+    ).join('\n\n');
+
+    return `\n\n## REFERENCE KNOWLEDGE\nUse this knowledge to answer user questions when relevant:\n\n${knowledgeBlock}`;
+  } catch (e) {
+    console.error('Failed to fetch knowledge sources:', e);
+    return '';
   }
 }
 
@@ -90,7 +293,9 @@ async function logConversation(
   tokensUsed: number | null,
   latencyMs: number,
   error: string | null,
-  model: string
+  model: string,
+  moduleContext: string | null,
+  functionContext: string
 ) {
   const supabase = getSupabaseClient();
   if (!supabase) return;
@@ -101,10 +306,10 @@ async function logConversation(
       .insert({
         session_id: request.sessionId || null,
         customer_id: request.customerId || null,
-        prompt_name: request.promptName || 'default',
+        module_context: moduleContext,
         user_prompt: request.prompt,
-        context: request.context || null,
-        ai_response: response,
+        context: sanitizeStoredContext(request.context),
+        ai_response: STORE_AI_RESPONSES ? response : null,
         model: model,
         tokens_used: tokensUsed,
         latency_ms: latencyMs,
@@ -117,10 +322,23 @@ async function logConversation(
 
 serve(async (req) => {
   const startTime = Date.now();
+
+  const origin = req.headers.get("Origin");
+  const corsHeaders = buildCorsHeaders(origin);
   
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
+    if (!isOriginAllowed(origin)) {
+      return new Response("forbidden", { status: 403, headers: corsHeaders });
+    }
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (!isOriginAllowed(origin)) {
+    return new Response(
+      JSON.stringify({ error: "Origin not allowed", code: "CORS_FORBIDDEN" }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   let body: AdaRequest | null = null;
@@ -141,7 +359,16 @@ serve(async (req) => {
 
     // Parse request
     body = await req.json();
+    if (!body) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body", code: "INVALID_REQUEST" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { prompt, context, systemPrompt, promptName, history } = body;
+    const moduleKey = sanitizeModuleKey(body.module);
+    const functionContext = sanitizeFunctionContext(body.function);
+    const customerId = body.customerId || null;
 
     if (!prompt?.trim()) {
       return new Response(
@@ -150,19 +377,57 @@ serve(async (req) => {
       );
     }
 
-    // Try to fetch system prompt from database
-    let promptConfig: SystemPromptConfig | null = null;
+    // Build the effective system prompt from unified ada_module_config
     let effectiveSystemPrompt = systemPrompt;
     let maxTokens = DEFAULT_MAX_TOKENS;
     let temperature = DEFAULT_TEMPERATURE;
 
     if (!systemPrompt) {
-      promptConfig = await fetchSystemPrompt(promptName || 'default');
-      if (promptConfig) {
-        effectiveSystemPrompt = promptConfig.prompt_text;
-        model = promptConfig.model || DEFAULT_MODEL;
-        maxTokens = promptConfig.max_tokens || DEFAULT_MAX_TOKENS;
-        temperature = promptConfig.temperature || DEFAULT_TEMPERATURE;
+      // Optional: select a named prompt (legacy table)
+      if (promptName) {
+        const named = await fetchNamedSystemPrompt(promptName, customerId);
+        if (named) {
+          effectiveSystemPrompt = named.system_prompt;
+          model = named.model;
+          maxTokens = named.max_tokens;
+          temperature = named.temperature;
+        }
+      }
+
+      // Get config from module or fall back to global
+      let config: ModuleConfigResult | null = null;
+      
+      if (!effectiveSystemPrompt && moduleKey) {
+        config = await fetchModuleConfig(moduleKey, customerId);
+      }
+      
+      // Fall back to global config if no module-specific config
+      if (!effectiveSystemPrompt && !config) {
+        config = await fetchGlobalConfig(customerId);
+      }
+      
+      if (config) {
+        effectiveSystemPrompt = config.system_prompt || '';
+        model = config.model || DEFAULT_MODEL;
+        maxTokens = config.max_tokens || DEFAULT_MAX_TOKENS;
+        temperature = config.temperature || DEFAULT_TEMPERATURE;
+        
+        // Append function-specific context
+        const contextAdditions: Record<string, string | null> = {
+          'mapping': config.ada_context_mapping,
+          'analysis': config.ada_context_analysis,
+          'validation': config.ada_context_validation,
+        };
+        const additionalContext = contextAdditions[functionContext];
+        if (additionalContext && effectiveSystemPrompt) {
+          effectiveSystemPrompt += `\n\n## ADDITIONAL CONTEXT FOR ${functionContext.toUpperCase()}\n${additionalContext}`;
+        }
+      }
+      
+      // Inject relevant knowledge sources
+      const knowledgeBlock = await fetchKnowledgeSources(moduleKey, functionContext, customerId);
+      if (knowledgeBlock && effectiveSystemPrompt) {
+        effectiveSystemPrompt += knowledgeBlock;
       }
     }
 
@@ -189,7 +454,7 @@ serve(async (req) => {
       console.error("OpenAI API error:", errorData);
       
       const latencyMs = Date.now() - startTime;
-      await logConversation(body, null, null, latencyMs, `OpenAI error: ${openaiResponse.status}`, model);
+      await logConversation(body, null, null, latencyMs, `OpenAI error: ${openaiResponse.status}`, model, moduleKey, functionContext);
       
       if (openaiResponse.status === 429) {
         return new Response(
@@ -216,9 +481,9 @@ serve(async (req) => {
     const latencyMs = Date.now() - startTime;
 
     // Log successful conversation
-    await logConversation(body, responseMessage, tokensUsed, latencyMs, null, model);
+    await logConversation(body, responseMessage, tokensUsed, latencyMs, null, model, moduleKey, functionContext);
 
-    console.log(`Ada responded: ${tokensUsed} tokens used, ${latencyMs}ms`);
+    console.log(`Ada responded: ${tokensUsed} tokens used, ${latencyMs}ms, module: ${moduleKey || 'none'}, function: ${functionContext}`);
 
     // Return successful response
     return new Response(
@@ -227,7 +492,9 @@ serve(async (req) => {
         usage: {
           tokens: tokensUsed,
           model: model,
-          latencyMs: latencyMs
+          latencyMs: latencyMs,
+          module: moduleKey,
+          function: functionContext
         }
       }),
       { 
@@ -241,7 +508,9 @@ serve(async (req) => {
     
     const latencyMs = Date.now() - startTime;
     if (body) {
-      await logConversation(body, null, null, latencyMs, String(error), model);
+      const moduleKey = sanitizeModuleKey(body.module);
+      const functionContext = sanitizeFunctionContext(body.function);
+      await logConversation(body, null, null, latencyMs, String(error), model, moduleKey, functionContext);
     }
     
     return new Response(

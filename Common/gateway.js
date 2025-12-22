@@ -101,6 +101,16 @@ export async function loadConfigFromTable(tableCandidates = [SHARED_CONFIG_TABLE
 }
 
 // Save a config value to a config table
+// Static fields that should be marked as Permanent (never cleared on archive)
+const PERMANENT_FIELDS = new Set([
+    "SS_Installation_Key",
+    "SS_Company_ID",
+    "SS_Company_Name",
+    "SS_Accounting_Software",
+    "PTO_Payroll_Provider",
+    "PR_Payroll_Provider"
+]);
+
 export async function saveConfigValue(fieldName, value, tableCandidates = [SHARED_CONFIG_TABLE]) {
     if (!hasExcelRuntime()) return false;
 
@@ -131,18 +141,25 @@ export async function saveConfigValue(fieldName, value, tableCandidates = [SHARE
                 (row) => String(row[cols.field] || "").trim() === fieldName
             );
 
+            // Determine if this field should be permanent
+            const shouldBePermanent = PERMANENT_FIELDS.has(fieldName);
+
             if (targetIndex >= 0) {
                 body.getCell(targetIndex, cols.value).values = [[value]];
+                // Also ensure permanent flag is correct for permanent fields
+                if (shouldBePermanent && cols.permanent >= 0) {
+                    body.getCell(targetIndex, cols.permanent).values = [["Y"]];
+                }
             } else {
                 // Add new row with Category, Field, Value, Permanent structure
                 const newRow = new Array(headers.length).fill("");
-                if (cols.type >= 0) newRow[cols.type] = "Run Settings";
+                if (cols.type >= 0) newRow[cols.type] = shouldBePermanent ? "Shared" : "Run Settings";
                 newRow[cols.field] = fieldName;
                 newRow[cols.value] = value;
-                if (cols.permanent >= 0) newRow[cols.permanent] = "N";
+                if (cols.permanent >= 0) newRow[cols.permanent] = shouldBePermanent ? "Y" : "N";
                 if (cols.title >= 0) newRow[cols.title] = "";
                 table.rows.add(null, [newRow]);
-                console.log("Added new config row:", fieldName, "=", value);
+                console.log("Added new config row:", fieldName, "=", value, shouldBePermanent ? "(permanent)" : "");
             }
 
             await context.sync();

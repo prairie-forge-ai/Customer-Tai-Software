@@ -1,14 +1,17 @@
 // Build script injects the current commit hash at bundle time
-export const VERSION = __BUILD_COMMIT__;
+// Fallback to "dev" when running outside bundle (tests, lint)
+export const VERSION = typeof __BUILD_COMMIT__ !== "undefined" ? __BUILD_COMMIT__ : "dev";
 
 export const SHEET_NAMES = {
     CONFIG: "SS_PF_Config",
-    DATA: "PR_Data",
+    // DATA removed - workflow now goes directly to PR_Data_Clean
     DATA_CLEAN: "PR_Data_Clean",
     EXPENSE_MAPPING: "PR_Expense_Mapping",
     EXPENSE_REVIEW: "PR_Expense_Review",
     JE_DRAFT: "PR_JE_Draft",
-    ARCHIVE_SUMMARY: "PR_Archive_Summary"
+    // JE_ALLOCATION REMOVED - consolidated into PR_JE_Draft
+    ARCHIVE_SUMMARY: "PR_Archive_Summary",
+    ARCHIVE_TOTALS: "PR_Archive_Totals"
 };
 
 export const PAY_CATEGORY_HEADERS = [
@@ -90,6 +93,10 @@ export const SHEET_BLUEPRINTS = [
     {
         name: SHEET_NAMES.JE_DRAFT,
         description: "Journal entry preparation area"
+    },
+    {
+        name: SHEET_NAMES.ARCHIVE_TOTALS,
+        description: "Historical payroll totals by department and period"
     }
 ];
 
@@ -262,84 +269,35 @@ export const WORKFLOW_STEPS = [
     },
     {
         id: 1,
-        title: "Import Payroll Data",
-        summary: "Paste the payroll provider export into the Data sheet",
-        description: "Pull your payroll data from your provider’s portal and paste it into the Data tab. If the columns match, just paste the rows; if they don’t, paste your headers and data right over the top. Formatting is fully automated.",
+        title: "Upload & Validate",
+        summary: "Import payroll data, create matrix, and run validation checks",
+        description: "Upload your payroll data, auto-map columns, create the data matrix (PR_Data_Clean), and run advisory validation checks including bank reconciliation and payroll coverage.",
         icon: "📥",
-        ctaLabel: "Prepare Import Sheet",
-        statusHint: "The Data worksheet is activated so you can paste the latest provider export.",
+        ctaLabel: "Upload & Validate",
+        statusHint: "Upload file, create matrix, review validation checks (advisory).",
         highlights: [
             {
-                label: "Source File",
-                detail: "Use WellsOne/ADP export with every pay category column visible."
+                label: "Upload & Map",
+                detail: "Drop your payroll file and auto-map columns to standard fields."
             },
             {
-                label: "Structure",
-                detail: "Row 2 headers, row 3+ data, no blank columns, totals removed."
+                label: "Create Matrix",
+                detail: "Generate PR_Data_Clean with normalized, mapped data."
             },
             {
-                label: "Quality",
-                detail: "Spot-check employee counts and pay period filters before moving on."
+                label: "Validation",
+                detail: "Bank reconciliation + payroll coverage checks (advisory, non-blocking)."
             }
         ],
         checklist: [
             "Download the payroll detail export covering this pay period.",
-            "Paste values into the Data sheet starting at cell A3.",
-            "Confirm all pay category headers remain intact and spelled consistently."
+            "Upload file (we auto-detect and map columns).",
+            "Resolve any ambiguous mappings, then click 'Create Matrix'.",
+            "Review bank reconciliation and payroll coverage (advisory)."
         ]
     },
     {
         id: 2,
-        title: "Headcount Review",
-        summary: "Ensure roster and payroll rows agree",
-        description: "This step is optional, but strongly recommended. A centralized employee roster keeps every payroll-related workbook aligned while ensuring key attributes such as department and location stay consistent each pay period.",
-        icon: "👥",
-        ctaLabel: "Launch Headcount Review",
-        statusHint: "Data and mapping sheets are surfaced so you can reconcile roster counts before validation.",
-        highlights: [
-            {
-                label: "Roster Alignment",
-                detail: "Compare active roster to the employees present in the Data sheet."
-            },
-            {
-                label: "Variance Tracking",
-                detail: "Note missing departments or unexpected hires before the validation run."
-            },
-            {
-                label: "Approvals",
-                detail: "Capture reviewer initials and date for audit coverage."
-            }
-        ],
-        checklist: [
-            "Filter the Data sheet by Department to ensure every team appears.",
-            "Look for duplicate or out-of-period employees and resolve upstream.",
-            "Document findings on the Headcount Review tab or your tracker of choice."
-        ]
-    },
-    {
-        id: 3,
-        title: "Validate & Reconcile",
-        summary: "Normalize payroll data and reconcile totals",
-        description: "Automatically rebuild the PR_Data_Clean sheet, confirm payroll totals match, and prep the bank reconciliation before moving to Expense Review.",
-        icon: "✅",
-        statusHint: "Run completes automatically when you enter this step.",
-        highlights: [
-            {
-                label: "Normalized Data",
-                detail: "Creates one row per employee and payroll category."
-            },
-            {
-                label: "Outputs",
-                detail: "Data_Clean rebuilt with payroll category + mapping details."
-            },
-            {
-                label: "Reconciliation",
-                detail: "Displays PR_Data vs PR_Data_Clean totals plus bank comparison."
-            }
-        ]
-    },
-    {
-        id: 4,
         title: "Expense Review",
         summary: "Generate an executive-ready payroll summary",
         description: "Build a six-period payroll dashboard (current + five prior), including department-level breakouts and variance indicators, plus notes and CoPilot guidance.",
@@ -362,7 +320,7 @@ export const WORKFLOW_STEPS = [
         checklist: []
     },
     {
-        id: 5,
+        id: 3,
         title: "Journal Entry Prep",
         summary: "Generate a QuickBooks-ready journal draft",
         description: "Create the JE Draft sheet with the headers QuickBooks Online/Desktop expect so you only need to paste balanced lines.",
@@ -390,7 +348,7 @@ export const WORKFLOW_STEPS = [
         ]
     },
     {
-        id: 6,
+        id: 4,
         title: "Archive & Clear",
         summary: "Snapshot workpapers and reset working tabs",
         description: "Capture a log of each payroll run, note the archive destination, and optionally clear staging sheets for the next cycle.",

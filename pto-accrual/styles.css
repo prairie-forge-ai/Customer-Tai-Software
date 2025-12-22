@@ -191,7 +191,15 @@ body {
     font-size: 13px;
     color: var(--pf-tertiary);
     letter-spacing: 0.02em;
-    text-transform: uppercase;
+    /* No text-transform - match payroll-recorder title case */
+}
+
+/* Field hint for config labels (matches payroll-recorder) */
+.pf-field-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--pf-tertiary);
+    opacity: 0.7;
 }
 
 .pf-config-field input,
@@ -1207,4 +1215,967 @@ body {
 .pf-je-issues-list li strong {
     color: #ff6b6b;
     font-weight: 600;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FILE UPLOAD DROPZONE (matches payroll-recorder exactly)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.pf-upload-zone {
+    border: 2px dashed rgba(76, 47, 255, 0.3);
+    border-radius: 16px;
+    padding: 32px 24px;
+    text-align: center;
+    background: rgba(76, 47, 255, 0.03);
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.pf-upload-zone:hover,
+.pf-upload-zone.pf-upload-zone--dragover {
+    border-color: rgba(76, 47, 255, 0.6);
+    background: rgba(76, 47, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.pf-upload-zone--ready {
+    border-style: solid;
+    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(34, 197, 94, 0.05);
+    cursor: default;
+}
+
+.pf-upload-zone--ready:hover {
+    transform: none;
+    border-color: rgba(34, 197, 94, 0.5);
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.pf-upload-zone--analyzing {
+    border-style: solid;
+    border-color: rgba(76, 47, 255, 0.5);
+    background: rgba(76, 47, 255, 0.05);
+    cursor: wait;
+}
+
+.pf-upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.pf-upload-icon {
+    width: 48px;
+    height: 48px;
+    color: rgba(76, 47, 255, 0.6);
+    margin-bottom: 8px;
+}
+
+.pf-upload-text {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--pf-text);
+}
+
+.pf-upload-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--pf-muted);
+}
+
+.pf-upload-browse {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    text-decoration: underline;
+    padding: 0;
+}
+
+.pf-upload-browse:hover {
+    color: var(--primary-hover);
+}
+
+.pf-upload-formats {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: var(--pf-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* File loaded state */
+.pf-upload-file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+
+.pf-upload-file-icon {
+    width: 32px;
+    height: 32px;
+    color: rgba(34, 197, 94, 0.8);
+    flex-shrink: 0;
+}
+
+.pf-upload-file-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+.pf-upload-filename {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--pf-text);
+}
+
+.pf-upload-meta {
+    font-size: 12px;
+    color: var(--pf-muted);
+}
+
+.pf-upload-clear {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--pf-muted);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.pf-upload-clear:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.pf-upload-action {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.pf-upload-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(76, 47, 255, 0.2);
+    border-top-color: rgba(76, 47, 255, 0.8);
+    border-radius: 50%;
+    animation: pf-spin 0.8s linear infinite;
+    margin-bottom: 12px;
+}
+
+@keyframes pf-spin {
+    to { transform: rotate(360deg); }
+}
+
+.pf-upload-status {
+    font-size: 14px;
+    color: var(--pf-muted);
+    margin: 0;
+}
+
+.pf-upload-error {
+    margin: 12px 0 0;
+    padding: 12px 16px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    color: #ef4444;
+    font-size: 13px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   VALIDATION SECTION (matches payroll-recorder exactly)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.pf-validation-section {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Consistent spacing between validation cards */
+.pf-validation-section .pf-step-card + .pf-step-card {
+    margin-top: 16px;
+}
+
+.pf-validation-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--pf-text);
+    margin: 0 0 4px 0;
+}
+
+.pf-validation-subtext {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 16px 0;
+}
+
+/* Validation Card Layout */
+.pf-validation-card {
+    padding: 16px;
+}
+
+.pf-validation-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.pf-validation-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--pf-text);
+    margin: 0;
+}
+
+.pf-validation-desc {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 12px 0;
+}
+
+.pf-validation-issues {
+    font-size: 12px;
+    color: rgba(251, 191, 36, 0.9);
+    margin: 0 0 12px 0;
+    padding: 8px 12px;
+    background: rgba(251, 191, 36, 0.1);
+    border-radius: 6px;
+}
+
+.pf-validation-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Status Badges */
+.pf-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.pf-status-badge--success,
+.pf-status-badge--ok {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.pf-status-badge--warning,
+.pf-status-badge--review {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.pf-status-badge--pending {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.pf-status-badge--unavailable {
+    background: rgba(248, 113, 113, 0.2);
+    color: #f87171;
+}
+
+/* Subtle action toggle (for refresh buttons) */
+.pf-action-toggle--subtle {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.pf-action-toggle--subtle:hover {
+    opacity: 1;
+}
+
+/* Metric hints */
+.pf-metric-hint {
+    font-size: 13px;
+    color: var(--pf-muted);
+    margin: 0;
+}
+
+.pf-metric-hint--info {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.pf-metric-hint--success {
+    color: #4ade80;
+}
+
+.pf-metric-hint--warning {
+    color: #fbbf24;
+}
+
+.pf-metric-hint--error {
+    color: #f87171;
+}
+
+/* ==========================================================================
+   Employee Coverage Card - Unified Layout (matches payroll-recorder)
+   ========================================================================== */
+
+.pf-employee-coverage-card {
+    /* Inherits standard card styling - no additional styles needed */
+    position: relative;
+}
+
+.pf-subsection-hint {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+    padding: 8px 12px;
+}
+
+.pf-subsection-hint--warn {
+    color: #fbbf24;
+}
+
+/* Unified Coverage Stats (compact single-row layout) */
+.pf-coverage-stats-unified {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+}
+
+.pf-cov-stat {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.pf-cov-stat strong {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.pf-cov-stat--new strong {
+    color: #4ade80;
+}
+
+.pf-cov-stat--reactivated strong {
+    color: #60a5fa;
+}
+
+.pf-cov-stat--warn strong {
+    color: #fbbf24;
+}
+
+/* Coverage Item (success state) */
+.pf-coverage-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.pf-coverage-item:last-child {
+    margin-bottom: 0;
+}
+
+.pf-coverage-item-icon {
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+}
+
+.pf-coverage-item--ok {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+/* Coverage Issues List (compact) */
+.pf-coverage-issues {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 4px;
+}
+
+.pf-coverage-issue {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.pf-issue-icon {
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+    font-size: 11px;
+}
+
+.pf-issue-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pf-issue-names {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.pf-coverage-issue--warn {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-issue--warn .pf-issue-icon {
+    color: #fbbf24;
+}
+
+.pf-coverage-issue--new {
+    background: rgba(74, 222, 128, 0.08);
+    border: 1px solid rgba(74, 222, 128, 0.15);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-issue--new .pf-issue-icon {
+    color: #4ade80;
+}
+
+.pf-coverage-issue--info {
+    background: rgba(96, 165, 250, 0.06);
+    border: 1px solid rgba(96, 165, 250, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.pf-coverage-issue--info .pf-issue-icon {
+    color: #60a5fa;
+}
+
+/* ============================================
+   Coverage Clickable Pills & Detail Modal
+   ============================================ */
+
+/* Pill row container */
+.pf-coverage-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+/* Individual pill - clickable summary button */
+.pf-coverage-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pf-coverage-pill:active {
+    transform: scale(0.98);
+}
+
+.pf-pill-count {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.pf-pill-label {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Pill variants */
+.pf-coverage-pill--base {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.pf-coverage-pill--base .pf-pill-count {
+    color: #818cf8;
+}
+
+.pf-coverage-pill--warn {
+    background: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.25);
+}
+
+.pf-coverage-pill--warn .pf-pill-count {
+    color: #fbbf24;
+}
+
+.pf-coverage-pill--new {
+    background: rgba(74, 222, 128, 0.08);
+    border-color: rgba(74, 222, 128, 0.2);
+}
+
+.pf-coverage-pill--new .pf-pill-count {
+    color: #4ade80;
+}
+
+/* Hint text below pills */
+.pf-coverage-hint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 4px 0 12px 0;
+    font-style: italic;
+}
+
+/* Coverage Detail Modal */
+.pf-coverage-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pf-modal-fade-in 0.15s ease;
+}
+
+@keyframes pf-modal-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.pf-coverage-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+}
+
+.pf-coverage-modal-card {
+    position: relative;
+    width: 90%;
+    max-width: 480px;
+    max-height: 80vh;
+    background: linear-gradient(180deg, #1a1b26 0%, #16171f 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    animation: pf-modal-slide-up 0.2s ease;
+}
+
+@keyframes pf-modal-slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.pf-coverage-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pf-coverage-modal-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.pf-coverage-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pf-coverage-modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.pf-coverage-modal-close svg {
+    width: 14px;
+    height: 14px;
+}
+
+.pf-coverage-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* Headcount Bridge in modal */
+.pf-headcount-bridge {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.pf-bridge-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.pf-bridge-row--base {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.pf-bridge-row--base .pf-bridge-value {
+    color: #818cf8;
+    font-weight: 600;
+}
+
+.pf-bridge-row--add {
+    color: #4ade80;
+}
+
+.pf-bridge-row--add .pf-bridge-value {
+    color: #4ade80;
+    font-weight: 500;
+}
+
+.pf-bridge-row--subtract {
+    color: #fbbf24;
+}
+
+.pf-bridge-row--subtract .pf-bridge-value {
+    color: #fbbf24;
+    font-weight: 500;
+}
+
+.pf-bridge-row--total {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 600;
+}
+
+.pf-bridge-row--total .pf-bridge-value {
+    color: var(--text-primary);
+}
+
+.pf-bridge-row--diff {
+    margin-top: 4px;
+}
+
+.pf-bridge-row--match .pf-bridge-value {
+    color: #4ade80;
+}
+
+.pf-bridge-row--mismatch .pf-bridge-value {
+    color: #fbbf24;
+}
+
+.pf-bridge-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+}
+
+.pf-bridge-value {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Review list in modal */
+.pf-coverage-review-list {
+    margin: 12px 0;
+    padding-left: 20px;
+}
+
+.pf-coverage-review-list li {
+    margin: 8px 0;
+    line-height: 1.5;
+}
+
+/* Employee list in modal */
+.pf-employee-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.pf-employee-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.pf-employee-index {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+    min-width: 20px;
+}
+
+.pf-employee-name {
+    flex: 1;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+}
+
+.pf-employee-dept {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* =============================================================================
+   RECONCILIATION STYLES (Employee Coverage Card)
+   ============================================================================= */
+
+.pf-recon-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 12px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pf-recon-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pf-recon-row:last-child {
+    border-bottom: none;
+}
+
+.pf-recon-row--header {
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.pf-recon-row--header .pf-recon-label {
+    color: #a5b4fc;
+}
+
+.pf-recon-row--header .pf-recon-value {
+    font-size: 18px;
+    color: #c7d2fe;
+}
+
+.pf-recon-row--footer {
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.pf-recon-row--footer .pf-recon-label {
+    color: #a5b4fc;
+}
+
+.pf-recon-row--footer .pf-recon-value {
+    font-size: 18px;
+    color: #c7d2fe;
+}
+
+.pf-recon-row--add {
+    background: rgba(74, 222, 128, 0.04);
+}
+
+.pf-recon-row--subtract {
+    background: rgba(251, 146, 60, 0.04);
+}
+
+.pf-recon-changes {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.pf-recon-changes .pf-recon-row {
+    padding: 10px 16px;
+}
+
+.pf-recon-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.pf-recon-label:hover {
+    color: var(--text-primary);
+}
+
+.pf-recon-operator {
+    display: inline-block;
+    width: 16px;
+    font-weight: 600;
+}
+
+.pf-recon-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.pf-recon-value--add {
+    color: #4ade80;
+}
+
+.pf-recon-value--subtract {
+    color: #fb923c;
+}
+
+.pf-recon-divider {
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.15) 20%, 
+        rgba(255, 255, 255, 0.15) 80%, 
+        transparent 100%
+    );
+    margin: 0 16px;
+}
+
+/* =============================================================================
+   DATA QUALITY EXPANDABLE SECTIONS
+   ============================================================================= */
+
+.pf-quality-issues-container {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pf-quality-issue-row {
+    background: rgba(251, 191, 36, 0.08);
+    border-radius: 8px;
+    border-left: 3px solid #fbbf24;
+    overflow: hidden;
+}
+
+.pf-quality-issue-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.pf-quality-issue-toggle:hover {
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.pf-quality-chevron {
+    font-size: 10px;
+    color: #fbbf24;
+    width: 12px;
+    flex-shrink: 0;
+}
+
+.pf-quality-issue-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #fbbf24;
+}
+
+.pf-quality-issue-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 12px 12px 32px;
+}
+
+.pf-quality-issue-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.pf-quality-issue-item--warn {
+    border-left: 2px solid #fb923c;
+}
+
+.pf-quality-issue-item--info {
+    border-left: 2px solid #60a5fa;
+}
+
+.pf-quality-issue-name {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.pf-quality-issue-value {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
 }

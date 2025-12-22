@@ -16,7 +16,8 @@ export default [
                 Excel: "readonly",
                 Office: "readonly",
                 OfficeRuntime: "readonly",
-                PrairieForge: "writable"
+                PrairieForge: "writable",
+                __BUILD_COMMIT__: "readonly"  // Injected by esbuild at bundle time
             }
         },
         rules: {

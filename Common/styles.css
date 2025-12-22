@@ -6,6 +6,9 @@
 /* Google Fonts - Inter for UI, Comfortaa for brand */
 @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
 
+/* Seasonal Effects (Christmas lights, snow, etc.) */
+@import url('./seasonal.css');
+
 /* CSS Variables (Design Tokens) */
 :root {
   /* Colors */
@@ -1246,10 +1249,8 @@ body {
 }
 
 .pf-action-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 16px;
-  background: rgba(129, 140, 248, 0.18);
+  width: 20px;
+  height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2217,88 +2218,172 @@ body {
 }
 
 /* ==========================================================================
-   Quick Access Hamburger Menu - Shared navigation dropdown
+   Quick Access Modal - Centered popup menu
    ========================================================================== */
-
-.pf-quick-access-wrapper {
-  position: relative;
-}
 
 .pf-nav-btn.is-active {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.pf-quick-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
+.pf-quick-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
   right: 0;
-  min-width: 180px;
-  background: rgba(15, 23, 42, 0.95);
+  bottom: 0;
+  z-index: 2147483647; /* Maximum z-index value */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  isolation: isolate; /* Create new stacking context */
+}
+
+.pf-quick-modal.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.pf-quick-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147483646;
+  background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  z-index: 1000;
+  -webkit-backdrop-filter: blur(12px);
+  animation: pf-quick-backdrop-in 0.2s ease;
+}
+
+@keyframes pf-quick-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.pf-quick-modal-card {
+  position: relative;
+  z-index: 2147483647; /* Maximum z-index value */
+  background: linear-gradient(145deg, rgb(30, 30, 50), rgb(20, 20, 35));
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 16px;
+  padding: 0;
+  min-width: 280px;
+  max-width: 340px;
+  box-shadow: 
+    0 24px 48px rgba(0, 0, 0, 0.6),
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(99, 102, 241, 0.2) inset,
+    0 0 60px rgba(99, 102, 241, 0.1);
+  animation: pf-quick-card-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
-  animation: dropdownSlide 0.15s ease-out;
 }
 
-.pf-quick-dropdown.hidden {
-  display: none;
-}
-
-@keyframes dropdownSlide {
+@keyframes pf-quick-card-in {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: scale(0.95) translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1) translateY(0);
   }
 }
 
-.pf-quick-dropdown-header {
-  padding: 10px 14px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.5);
+.pf-quick-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.pf-quick-item {
+.pf-quick-modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: -0.2px;
+}
+
+.pf-quick-modal-close {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 14px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   background: transparent;
   border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pf-quick-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pf-quick-modal-close .pf-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.pf-quick-modal-items {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 2px;
+}
+
+.pf-quick-modal-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
+  font-size: 14px;
+  font-family: inherit;
   font-weight: 500;
+  text-decoration: none;
   text-align: left;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.pf-quick-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+.pf-quick-modal-item:hover {
+  background: rgba(99, 102, 241, 0.15);
   color: #fff;
 }
 
-.pf-quick-item .pf-nav-icon,
-.pf-quick-item .pf-icon {
-  width: 18px;
-  height: 18px;
+.pf-quick-modal-item .pf-nav-icon,
+.pf-quick-modal-item .pf-icon {
+  width: 20px;
+  height: 20px;
   opacity: 0.7;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
 
-.pf-quick-item:hover .pf-nav-icon,
-.pf-quick-item:hover .pf-icon {
+.pf-quick-modal-item:hover .pf-nav-icon,
+.pf-quick-modal-item:hover .pf-icon {
   opacity: 1;
+  color: #818cf8;
+}
+
+/* Legacy quick-bar classes (kept for backwards compatibility) */
+.pf-quick-bar {
+  display: none;
+}
+
+.pf-quick-bar.hidden {
+  display: none;
 }
 
 /* ==========================================================================
@@ -2455,9 +2540,9 @@ button,
   transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 
-button:not(:disabled):not(.pf-clickable):not(.pf-action-tile):not(.pf-quick-item):not(.pf-nav-btn):hover,
+button:not(:disabled):not(.pf-clickable):not(.pf-action-tile):not(.pf-quick-modal-item):not(.pf-nav-btn):hover,
 .pf-btn:not(:disabled):hover,
-[type="button"]:not(:disabled):not(.pf-clickable):not(.pf-action-tile):not(.pf-quick-item):not(.pf-nav-btn):hover,
+[type="button"]:not(:disabled):not(.pf-clickable):not(.pf-action-tile):not(.pf-quick-modal-item):not(.pf-nav-btn):hover,
 [type="submit"]:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
@@ -2911,6 +2996,54 @@ button:disabled,
   padding: 24px;
 }
 
+/* Chat variant - larger modal for full copilot interface */
+.pf-ada-modal--chat {
+  max-width: 440px;
+  max-height: 90vh;
+}
+
+.pf-ada-modal--chat .pf-ada-modal__body {
+  padding: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.pf-ada-modal--chat .pf-ada-copilot-container {
+  height: 100%;
+  min-height: 350px;
+}
+
+.pf-ada-modal--chat .pf-ada {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  height: 100%;
+}
+
+.pf-ada-modal--chat .pf-ada-header {
+  display: none; /* Hide duplicate header in modal */
+}
+
+.pf-ada-modal--chat .pf-ada-footer {
+  display: none; /* Hide duplicate footer in modal */
+}
+
+/* Loading state for Ada modal */
+.pf-ada-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.6);
+  gap: 16px;
+}
+
+.pf-ada-loading p {
+  margin: 0;
+  font-size: 14px;
+}
+
 .pf-ada-modal__coming-soon {
   text-align: center;
   padding: 24px 16px;
@@ -2978,6 +3111,373 @@ button:disabled,
 .pf-ada-modal__powered-by {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.35);
+}
+
+/* Ada Copilot Container in Modal */
+.pf-ada-copilot-container {
+  min-height: 300px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ADA COPILOT CARD (shared across modules)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.pf-ada {
+  background: linear-gradient(135deg, rgba(76, 47, 255, 0.08) 0%, rgba(18, 18, 31, 0.95) 100%);
+  border: 1px solid rgba(76, 47, 255, 0.2);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pf-ada-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: rgba(76, 47, 255, 0.04);
+  border-bottom: 1px solid rgba(76, 47, 255, 0.12);
+}
+
+.pf-ada-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pf-ada-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(76, 47, 255, 0.6);
+  box-shadow: 
+    0 4px 16px rgba(76, 47, 255, 0.4),
+    0 0 0 4px rgba(76, 47, 255, 0.15);
+}
+
+.pf-ada-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pf-ada-title {
+  font-size: 22px;
+  font-weight: 400;
+  color: #fff;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: baseline;
+}
+
+.pf-ada-title--ask {
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0;
+}
+
+.pf-ada-title--ada {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.03em;
+}
+
+.pf-ada-role {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.pf-ada-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pf-ada-beta-tag {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary-color, #4c2fff) 0%, var(--pf-accent, #3533cd) 100%);
+  border-radius: 4px;
+  text-transform: uppercase;
+  box-shadow: 
+    0 0 12px rgba(76, 47, 255, 0.6),
+    0 0 24px rgba(76, 47, 255, 0.3),
+    0 2px 8px rgba(76, 47, 255, 0.4);
+  animation: beta-glow 2s ease-in-out infinite;
+}
+
+@keyframes beta-glow {
+  0%, 100% { 
+    box-shadow: 
+      0 0 12px rgba(76, 47, 255, 0.6),
+      0 0 24px rgba(76, 47, 255, 0.3),
+      0 2px 8px rgba(76, 47, 255, 0.4);
+  }
+  50% { 
+    box-shadow: 
+      0 0 16px rgba(76, 47, 255, 0.8),
+      0 0 32px rgba(76, 47, 255, 0.5),
+      0 2px 12px rgba(76, 47, 255, 0.6);
+  }
+}
+
+.pf-ada-status {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+.pf-ada-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--success-color, #10b981);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  animation: ada-pulse 2.5s ease-in-out infinite;
+}
+
+.pf-ada-status-dot--busy {
+  background: var(--warning-color, #f59e0b);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  animation: ada-busy 1s ease-in-out infinite;
+}
+
+.pf-ada-status-dot--offline {
+  background: var(--text-tertiary, #6b7280);
+  box-shadow: none;
+  animation: none;
+}
+
+@keyframes ada-busy {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.pf-ada-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pf-ada-conversation {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.pf-ada-bubble {
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 90%;
+}
+
+.pf-ada-bubble p {
+  margin: 0;
+}
+
+.pf-ada-bubble--ai {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: #e5e5e5;
+  align-self: flex-start;
+  padding: 14px 18px;
+}
+
+.pf-ada-bubble--ai p {
+  margin: 0;
+  /* No additional background or padding on the paragraph */
+}
+
+.pf-ada-bubble--user {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  align-self: flex-end;
+}
+
+.pf-ada-bubble--system {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+  align-self: center;
+  font-size: 13px;
+}
+
+.pf-ada-bubble--loading {
+  padding: 16px 20px;
+}
+
+.pf-ada-typing {
+  display: flex;
+  gap: 4px;
+}
+
+.pf-ada-typing span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(76, 47, 255, 0.6);
+  animation: ada-typing 1.4s ease-in-out infinite;
+}
+
+.pf-ada-typing span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.pf-ada-typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes ada-typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+.pf-ada-composer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 6px 6px 6px 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pf-ada-composer:focus-within {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.pf-ada-input {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  color: #e5e5e5;
+  font-size: 14px;
+  outline: none;
+  transition: background 0.2s ease;
+}
+
+.pf-ada-input::placeholder {
+  color: #6b7280;
+}
+
+.pf-ada-input:focus,
+.pf-ada-input:hover {
+  background: transparent;
+}
+
+.pf-ada-send {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.pf-ada-send:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.pf-ada-send:active {
+  transform: scale(0.98);
+}
+
+.pf-ada-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pf-ada-send svg {
+  width: 18px;
+  height: 18px;
+  color: white;
+  margin-left: 2px;
+}
+
+.pf-ada-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pf-ada-chip {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: transparent;
+  color: #a5b4fc;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pf-ada-chip:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #c7d2fe;
+}
+
+.pf-ada-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 16px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pf-ada-footer svg {
+  width: 16px;
+  height: 16px;
+  color: #818cf8;
+}
+
+.pf-ada-footer span {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.pf-ada-footer .pf-ada-model {
+  color: #818cf8;
+  font-weight: 600;
 }
 
 /* Responsive */
@@ -3262,4 +3762,43 @@ button:disabled,
 .pf-datepicker-clear:hover {
   background: rgba(239, 68, 68, 0.2);
   color: #fca5a5;
+}
+
+/* ============================================
+   ADA "IN THE FORGE" OVERLAY - TEMPORARY
+   Disables Ada interactions, preserves header visibility
+   ============================================ */
+
+[data-copilot],
+.pf-ada-modal,
+.pf-copilot-card {
+  position: relative;
+  pointer-events: none;
+}
+
+[data-copilot]::after,
+.pf-ada-modal::after,
+.pf-copilot-card::after {
+  content: 'Ada\'s in the Forge\A Sharpening her skills. Back soon.';
+  white-space: pre-wrap;
+  position: absolute;
+  top: 80px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 15, 25, 0.5);
+  backdrop-filter: blur(2px);
+  border-radius: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #a5b4fc;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-align: center;
+  line-height: 1.6;
+  padding: 24px;
 }

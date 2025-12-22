@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build artifacts / bundles (match anywhere)
+**/*.bundle.js
+**/*.min.js
+**/*.map
+dist/
+build/
+out/
+
+# Supabase temp / generated
+supabase/.temp/**
+
+# Coverage
+coverage/
+
+# OS
+.DS_Store

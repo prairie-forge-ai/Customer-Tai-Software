@@ -125,6 +125,8 @@ body {
     flex-shrink: 0;
 }
 
+/* Company badge styles removed - not currently displayed */
+
 /* Quick Access styles are in Common/styles.css */
 
 .pf-step-grid {
@@ -576,6 +578,209 @@ body {
     font-size: 14px;
 }
 
+.pf-metric-hint--success {
+    color: #4ade80;
+}
+
+.pf-metric-hint--warning {
+    color: #fbbf24;
+}
+
+.pf-metric-hint--error {
+    color: #f87171;
+}
+
+.pf-metric-hint--info {
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+}
+
+/* Validation Section */
+.pf-validation-section {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Consistent spacing between validation cards */
+.pf-validation-section .pf-step-card + .pf-step-card {
+    margin-top: 16px;
+}
+
+.pf-validation-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--pf-text);
+    margin: 0 0 4px 0;
+}
+
+.pf-validation-subtext {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0 0 16px 0;
+}
+
+/* Status Badges */
+.pf-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.pf-status-badge--ok {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.pf-status-badge--review {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.pf-status-badge--pending {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.pf-status-badge--unavailable {
+    background: rgba(248, 113, 113, 0.2);
+    color: #f87171;
+}
+
+/* Accessible status badges - ensure text is always readable */
+/* Minimum contrast ratio 4.5:1 for small text */
+.pf-status-badge[role="status"] {
+    letter-spacing: 0.02em;
+}
+
+/* Subtle refresh button - less prominent when data is fresh */
+.pf-action-toggle--subtle {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.pf-action-toggle--subtle:hover {
+    opacity: 1;
+}
+
+/* Join key indicator */
+.pf-coverage-join-key {
+    display: inline-block;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    margin-left: 4px;
+}
+
+/* Payroll Coverage Card */
+.pf-coverage-content {
+    padding: 0;
+}
+
+.pf-coverage-summary {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.pf-coverage-stat {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.pf-coverage-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.pf-coverage-check--pass {
+    background: rgba(74, 222, 128, 0.1);
+    color: #4ade80;
+}
+
+.pf-coverage-check--warn {
+    background: rgba(251, 191, 36, 0.1);
+    color: #fbbf24;
+}
+
+.pf-coverage-check--info {
+    background: rgba(96, 165, 250, 0.1);
+    color: #60a5fa;
+}
+
+.pf-coverage-check--error {
+    background: rgba(248, 113, 113, 0.1);
+    color: #f87171;
+}
+
+.pf-coverage-check--pending {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.pf-coverage-icon {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+.pf-coverage-hint {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-left: 4px;
+}
+
+.pf-coverage-names {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 6px;
+    line-height: 1.5;
+}
+
+/* Department section */
+.pf-coverage-dept-section {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.pf-coverage-dept-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.pf-coverage-dept-item {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.pf-coverage-dept-list {
+    color: rgba(255, 255, 255, 0.8);
+}
+
 .pf-skip-option {
     display: inline-flex;
     align-items: center;
@@ -873,6 +1078,43 @@ body {
     line-height: 1.3;
 }
 
+.pf-ada-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pf-ada-beta-tag {
+    padding: 3px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--pf-accent) 100%);
+    border-radius: 4px;
+    text-transform: uppercase;
+    box-shadow: 
+        0 0 12px rgba(76, 47, 255, 0.6),
+        0 0 24px rgba(76, 47, 255, 0.3),
+        0 2px 8px rgba(76, 47, 255, 0.4);
+    animation: beta-glow 2s ease-in-out infinite;
+}
+
+@keyframes beta-glow {
+    0%, 100% { 
+        box-shadow: 
+            0 0 12px rgba(76, 47, 255, 0.6),
+            0 0 24px rgba(76, 47, 255, 0.3),
+            0 2px 8px rgba(76, 47, 255, 0.4);
+    }
+    50% { 
+        box-shadow: 
+            0 0 16px rgba(76, 47, 255, 0.8),
+            0 0 32px rgba(76, 47, 255, 0.5),
+            0 2px 12px rgba(76, 47, 255, 0.6);
+    }
+}
+
 .pf-ada-status {
     width: 32px;
     height: 32px;
@@ -974,9 +1216,9 @@ body {
 }
 
 .pf-ada-bubble--ai p {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.9);
-    border-bottom-left-radius: 6px;
+    background: rgba(76, 47, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(76, 47, 255, 0.15);
 }
 
 .pf-ada-bubble--user {
@@ -1147,13 +1389,13 @@ body {
 .pf-ada-footer svg {
     width: 14px;
     height: 14px;
-    color: #10a37f;
-    opacity: 0.6;
+    color: rgba(76, 47, 255, 0.8);
+    opacity: 0.7;
 }
 
 .pf-ada-footer span {
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(76, 47, 255, 0.6);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 500;
@@ -1368,4 +1610,1935 @@ body {
     text-align: right;
     color: var(--pf-muted);
     font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FILE UPLOAD & ADA SMART IMPORT
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.pf-upload-zone {
+    border: 2px dashed rgba(76, 47, 255, 0.3);
+    border-radius: 16px;
+    padding: 32px 24px;
+    text-align: center;
+    background: rgba(76, 47, 255, 0.03);
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.pf-upload-zone:hover,
+.pf-upload-zone.pf-upload-zone--dragover {
+    border-color: rgba(76, 47, 255, 0.6);
+    background: rgba(76, 47, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.pf-upload-zone--ready {
+    border-style: solid;
+    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(34, 197, 94, 0.05);
+    cursor: default;
+}
+
+.pf-upload-zone--ready:hover {
+    transform: none;
+    border-color: rgba(34, 197, 94, 0.5);
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.pf-upload-zone--analyzing {
+    border-style: solid;
+    border-color: rgba(76, 47, 255, 0.5);
+    background: rgba(76, 47, 255, 0.05);
+    cursor: wait;
+}
+
+.pf-upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.pf-upload-icon {
+    width: 48px;
+    height: 48px;
+    color: rgba(76, 47, 255, 0.6);
+    margin-bottom: 8px;
+}
+
+.pf-upload-text {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--pf-text);
+}
+
+.pf-upload-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--pf-muted);
+}
+
+.pf-upload-browse {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    text-decoration: underline;
+    padding: 0;
+}
+
+.pf-upload-browse:hover {
+    color: var(--primary-hover);
+}
+
+.pf-upload-formats {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: var(--pf-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* File loaded state */
+.pf-upload-file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+
+.pf-upload-file-icon {
+    width: 32px;
+    height: 32px;
+    color: rgba(34, 197, 94, 0.8);
+    flex-shrink: 0;
+}
+
+.pf-upload-file-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+.pf-upload-filename {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--pf-text);
+}
+
+.pf-upload-meta {
+    font-size: 12px;
+    color: var(--pf-muted);
+}
+
+.pf-upload-clear {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--pf-muted);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.pf-upload-clear:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+/* Ada analyze button */
+.pf-ada-analyze-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, var(--primary-color), var(--pf-accent));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 16px rgba(76, 47, 255, 0.25);
+}
+
+.pf-ada-analyze-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(76, 47, 255, 0.35);
+}
+
+.pf-ada-analyze-btn:active {
+    transform: translateY(0);
+}
+
+.pf-ada-analyze-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Analyzing spinner */
+.pf-upload-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(76, 47, 255, 0.2);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+}
+
+.pf-upload-status {
+    margin: 0;
+    font-size: 14px;
+    color: var(--pf-muted);
+}
+
+.pf-upload-error {
+    margin: 12px 0 0;
+    padding: 10px 14px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    color: #ef4444;
+    font-size: 13px;
+}
+
+/* Column Mapping Card */
+.pf-mapping-card {
+    border-color: rgba(76, 47, 255, 0.3);
+    background: linear-gradient(135deg, rgba(76, 47, 255, 0.05), rgba(53, 51, 205, 0.02));
+}
+
+.pf-mapping-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.pf-mapping-grid::-webkit-scrollbar {
+    width: 5px;
+}
+
+.pf-mapping-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+.pf-mapping-row {
+    display: grid;
+    grid-template-columns: 1fr 24px 1fr 70px;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    transition: all 0.15s ease;
+}
+
+.pf-mapping-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.pf-mapping-row--low-conf {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.pf-mapping-raw {
+    font-size: 13px;
+    color: var(--pf-text);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pf-mapping-arrow {
+    color: var(--pf-muted);
+    font-size: 14px;
+}
+
+.pf-mapping-select {
+    height: 38px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: var(--pf-text);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 32px;
+    width: 100%;
+}
+
+.pf-mapping-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(76, 47, 255, 0.2);
+}
+
+.pf-mapping-select option {
+    background: #1a1a2e;
+    color: var(--pf-text);
+}
+
+.pf-mapping-select optgroup {
+    font-weight: 600;
+    color: var(--pf-muted);
+}
+
+.pf-mapping-conf {
+    font-size: 11px;
+    color: var(--warning-color);
+    background: rgba(245, 158, 11, 0.15);
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pf-mapping-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Mapping Summary */
+.pf-mapping-summary {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.pf-summary-item {
+    font-size: 12px;
+    color: var(--pf-muted);
+}
+
+.pf-summary--warning {
+    color: var(--warning-color);
+}
+
+.pf-summary--muted {
+    opacity: 0.6;
+}
+
+/* Mapping Status Pills - Fixed width for consistent row layout */
+.pf-pill {
+    min-width: 60px;
+    width: 60px;
+    text-align: center;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pf-pill--success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+}
+
+.pf-pill--warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+}
+
+/* Neutral pill - NOT red, just subdued */
+.pf-pill--neutral {
+    background: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+}
+
+/* Legacy badge support */
+.pf-mapping-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pf-badge--success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.pf-badge--warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.pf-badge--error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+/* Row States */
+.pf-mapping-row--saved {
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(34, 197, 94, 0.05);
+}
+
+.pf-mapping-row--ambiguous {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.pf-mapping-row--unmapped {
+    border-color: rgba(148, 163, 184, 0.2);
+    background: rgba(148, 163, 184, 0.03);
+}
+
+/* Ambiguous Options Buttons */
+.pf-ambiguous-options {
+    display: flex;
+    gap: 6px;
+    flex: 1.5;
+}
+
+.pf-ambiguous-btn {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--pf-text);
+}
+
+.pf-ambiguous-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Ambiguous buttons - neutral styling, no amount/dimension distinction */
+.pf-ambiguous-btn--primary {
+    border-color: rgba(76, 47, 255, 0.3);
+}
+
+.pf-ambiguous-btn--primary:hover {
+    background: rgba(76, 47, 255, 0.15);
+    border-color: rgba(76, 47, 255, 0.5);
+}
+
+.pf-ambiguous-btn--secondary {
+    border-color: rgba(148, 163, 184, 0.3);
+}
+
+.pf-ambiguous-btn--secondary:hover {
+    background: rgba(148, 163, 184, 0.15);
+    border-color: rgba(148, 163, 184, 0.5);
+}
+
+.pf-ambiguous-btn--skip {
+    border-color: rgba(148, 163, 184, 0.2);
+    opacity: 0.7;
+}
+
+.pf-ambiguous-btn--skip:hover {
+    background: rgba(148, 163, 184, 0.1);
+    border-color: rgba(148, 163, 184, 0.4);
+    opacity: 1;
+}
+
+.pf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pf-btn--secondary {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--pf-text);
+}
+
+.pf-btn--secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.pf-btn--primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--pf-accent));
+    border: none;
+    color: white;
+    box-shadow: 0 2px 12px rgba(76, 47, 255, 0.25);
+}
+
+.pf-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(76, 47, 255, 0.35);
+}
+
+.pf-btn--primary:active {
+    transform: translateY(0);
+}
+
+/* Field hint for config labels */
+.pf-field-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--pf-tertiary);
+    opacity: 0.7;
+}
+
+/* Primary action toggle - gradient background for main CTAs */
+.pf-action-toggle--primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--pf-accent)) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 2px 12px rgba(76, 47, 255, 0.25);
+}
+
+.pf-action-toggle--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(76, 47, 255, 0.35);
+}
+
+/* Upload action area - centered button */
+.pf-upload-action {
+    display: flex;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+/* Single action button layout */
+.pf-mapping-actions--single {
+    justify-content: center;
+}
+
+/* Full-width CTA button layout */
+.pf-mapping-actions--cta {
+    justify-content: stretch;
+    padding: 16px 0 8px;
+}
+
+/* Prominent CTA Button - Purple with glow */
+.pf-cta-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border: none;
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: -0.2px;
+    cursor: pointer;
+    box-shadow: 
+        0 4px 14px rgba(99, 102, 241, 0.4),
+        0 0 0 1px rgba(99, 102, 241, 0.3) inset,
+        0 0 20px rgba(99, 102, 241, 0.15);
+    transition: all 0.2s ease;
+}
+
+.pf-cta-button:hover {
+    background: linear-gradient(135deg, #7c7ff5 0%, #5b54eb 100%);
+    box-shadow: 
+        0 6px 20px rgba(99, 102, 241, 0.5),
+        0 0 0 1px rgba(99, 102, 241, 0.4) inset,
+        0 0 30px rgba(99, 102, 241, 0.25);
+    transform: translateY(-1px);
+}
+
+.pf-cta-button:active {
+    transform: translateY(0);
+    box-shadow: 
+        0 2px 10px rgba(99, 102, 241, 0.3),
+        0 0 0 1px rgba(99, 102, 241, 0.3) inset;
+}
+
+.pf-cta-button svg {
+    width: 20px;
+    height: 20px;
+    opacity: 0.9;
+}
+
+.pf-cta-button span {
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Employee Coverage Card - Combined Payroll Coverage + Roster Updates
+   ========================================================================== */
+
+/* .pf-employee-coverage-card inherits standard card styling */
+
+.pf-employee-coverage-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 12px 16px 16px;
+}
+
+.pf-employee-coverage-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.pf-employee-coverage-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pf-employee-coverage-section-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pf-employee-coverage-section-icon .pf-icon {
+    width: 14px;
+    height: 14px;
+    stroke: var(--pf-text-muted);
+}
+
+.pf-employee-coverage-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pf-coverage-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+
+.pf-coverage-stat {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.pf-coverage-stat strong {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.pf-subsection-hint {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+}
+
+.pf-subsection-hint--warn {
+    color: #fbbf24;
+}
+
+.pf-coverage-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.pf-coverage-item:last-child {
+    margin-bottom: 0;
+}
+
+.pf-coverage-item-icon {
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+}
+
+.pf-coverage-item-names {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 2px;
+}
+
+.pf-coverage-item--ok {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.pf-coverage-item--warn {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-item--warn .pf-coverage-item-icon {
+    color: #fbbf24;
+}
+
+.pf-coverage-item--info {
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-item--info .pf-coverage-item-icon {
+    color: #60a5fa;
+}
+
+.pf-coverage-item--new {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-item--new .pf-coverage-item-icon {
+    color: #4ade80;
+}
+
+.pf-coverage-item--reactivated {
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-item--reactivated .pf-coverage-item-icon {
+    color: #60a5fa;
+}
+
+.pf-coverage-item--missing {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-item--missing .pf-coverage-item-icon {
+    color: #fbbf24;
+}
+
+.pf-roster-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pf-roster-actions .pf-action-toggle--subtle {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* Unified Coverage Stats (compact single-row layout) */
+.pf-coverage-stats-unified {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+}
+
+.pf-cov-stat {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.pf-cov-stat strong {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.pf-cov-stat--new strong {
+    color: #4ade80;
+}
+
+.pf-cov-stat--reactivated strong {
+    color: #60a5fa;
+}
+
+.pf-cov-stat--warn strong {
+    color: #fbbf24;
+}
+
+/* Coverage Issues List (compact) */
+.pf-coverage-issues {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 4px;
+}
+
+.pf-coverage-issue {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.pf-issue-icon {
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+    font-size: 11px;
+}
+
+.pf-issue-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pf-issue-names {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.pf-coverage-issue--warn {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-issue--warn .pf-issue-icon {
+    color: #fbbf24;
+}
+
+.pf-coverage-issue--new {
+    background: rgba(74, 222, 128, 0.08);
+    border: 1px solid rgba(74, 222, 128, 0.15);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-issue--new .pf-issue-icon {
+    color: #4ade80;
+}
+
+.pf-coverage-issue--reactivated {
+    background: rgba(96, 165, 250, 0.08);
+    border: 1px solid rgba(96, 165, 250, 0.15);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-issue--reactivated .pf-issue-icon {
+    color: #60a5fa;
+}
+
+.pf-coverage-issue--missing {
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.15);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-issue--missing .pf-issue-icon {
+    color: #fbbf24;
+}
+
+.pf-coverage-issue--info {
+    background: rgba(96, 165, 250, 0.06);
+    border: 1px solid rgba(96, 165, 250, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.pf-coverage-issue--info .pf-issue-icon {
+    color: #60a5fa;
+}
+
+/* ==========================================================================
+   Seasonal Effects - Now centralized in Common/seasonal.css
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Ada Insights Panel - Expense Review AI Analysis
+   -------------------------------------------------------------------------- */
+
+.pf-ada-insights-panel {
+    background: linear-gradient(135deg, 
+        rgba(20, 18, 52, 0.95) 0%, 
+        rgba(12, 10, 35, 0.98) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.pf-ada-insights-panel:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15);
+}
+
+.pf-ada-insights-panel--collapsed .pf-ada-insights-body {
+    display: none;
+}
+
+.pf-ada-insights-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: rgba(99, 102, 241, 0.08);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+    cursor: pointer;
+}
+
+.pf-ada-insights-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pf-ada-insights-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(99, 102, 241, 0.4);
+}
+
+.pf-ada-insights-name {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pf-ada-insights-refresh {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.pf-ada-insights-collapse {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.pf-ada-insights-collapse:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+/* Status dot */
+.pf-ada-insights-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(148, 163, 184, 0.5);
+    flex-shrink: 0;
+}
+
+.pf-ada-insights-dot--ready {
+    background: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.pf-ada-insights-dot--busy {
+    background: #eab308;
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.5);
+    animation: pf-pulse 1.5s ease-in-out infinite;
+}
+
+.pf-ada-insights-dot--error {
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes pf-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Body */
+.pf-ada-insights-body {
+    padding: 16px;
+}
+
+.pf-ada-insights-body.hidden {
+    display: none;
+}
+
+/* Quick prompts */
+.pf-ada-quick-prompts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.pf-ada-quick-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pf-ada-quick-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: var(--text-primary);
+}
+
+.pf-ada-quick-btn--primary {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25));
+    border-color: rgba(99, 102, 241, 0.5);
+    color: var(--text-primary);
+}
+
+.pf-ada-quick-btn--primary:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.4));
+    border-color: rgba(99, 102, 241, 0.7);
+}
+
+/* Content area */
+.pf-ada-insights-content {
+    min-height: 80px;
+}
+
+/* Loading state */
+.pf-ada-insights-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    color: var(--text-secondary);
+}
+
+.pf-ada-insights-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(99, 102, 241, 0.2);
+    border-top-color: rgba(99, 102, 241, 0.8);
+    border-radius: 50%;
+    animation: pf-spin 1s linear infinite;
+}
+
+@keyframes pf-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Error state */
+.pf-ada-insights-error {
+    padding: 16px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    color: #fca5a5;
+    font-size: 13px;
+}
+
+/* Empty state */
+.pf-ada-insights-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.pf-ada-insights-hint {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-top: 8px;
+}
+
+/* Response content */
+.pf-ada-insights-response {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.pf-ada-insights-response h3.pf-ada-h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 20px 0 10px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pf-ada-insights-response h3.pf-ada-h3:first-child {
+    margin-top: 0;
+}
+
+.pf-ada-insights-response h4.pf-ada-h4 {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 16px 0 8px 0;
+}
+
+.pf-ada-insights-response ul.pf-ada-list {
+    margin: 8px 0;
+    padding-left: 20px;
+    list-style: none;
+}
+
+.pf-ada-insights-response ul.pf-ada-list li {
+    position: relative;
+    margin: 6px 0;
+    padding-left: 4px;
+}
+
+.pf-ada-insights-response ul.pf-ada-list li::before {
+    content: "•";
+    position: absolute;
+    left: -14px;
+    color: rgba(99, 102, 241, 0.7);
+}
+
+.pf-ada-insights-response p {
+    margin: 8px 0;
+}
+
+.pf-ada-insights-response strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* askADA title styling - reuse from copilot */
+.pf-ada-title {
+    font-size: 15px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+}
+
+.pf-ada-title--ask {
+    color: var(--text-secondary);
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+}
+
+.pf-ada-title--ada {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================
+   Coverage Clickable Pills & Detail Modal
+   ============================================ */
+
+/* Pill row container */
+.pf-coverage-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+/* Individual pill - clickable summary button */
+.pf-coverage-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-coverage-pill:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pf-coverage-pill:active {
+    transform: scale(0.98);
+}
+
+.pf-pill-count {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.pf-pill-label {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Pill variants */
+.pf-coverage-pill--base {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.pf-coverage-pill--base .pf-pill-count {
+    color: #818cf8;
+}
+
+.pf-coverage-pill--warn {
+    background: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.25);
+}
+
+.pf-coverage-pill--warn .pf-pill-count {
+    color: #fbbf24;
+}
+
+.pf-coverage-pill--new {
+    background: rgba(74, 222, 128, 0.08);
+    border-color: rgba(74, 222, 128, 0.2);
+}
+
+.pf-coverage-pill--new .pf-pill-count {
+    color: #4ade80;
+}
+
+.pf-coverage-pill--reactivated {
+    background: rgba(96, 165, 250, 0.08);
+    border-color: rgba(96, 165, 250, 0.2);
+}
+
+.pf-coverage-pill--reactivated .pf-pill-count {
+    color: #60a5fa;
+}
+
+.pf-coverage-pill--missing {
+    background: rgba(251, 191, 36, 0.08);
+    border-color: rgba(251, 191, 36, 0.15);
+}
+
+.pf-coverage-pill--missing .pf-pill-count {
+    color: #fbbf24;
+}
+
+.pf-coverage-pill--info {
+    background: rgba(148, 163, 184, 0.08);
+    border-color: rgba(148, 163, 184, 0.15);
+}
+
+.pf-coverage-pill--info .pf-pill-count {
+    color: #94a3b8;
+}
+
+/* Hint text below pills */
+.pf-coverage-hint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 4px 0 12px 0;
+    font-style: italic;
+}
+
+/* Coverage actions row */
+.pf-coverage-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Coverage Detail Modal */
+.pf-coverage-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pf-modal-fade-in 0.15s ease;
+}
+
+@keyframes pf-modal-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.pf-coverage-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+}
+
+.pf-coverage-modal-card {
+    position: relative;
+    width: 90%;
+    max-width: 480px;
+    max-height: 80vh;
+    background: linear-gradient(180deg, #1a1b26 0%, #16171f 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    animation: pf-modal-slide-up 0.2s ease;
+}
+
+@keyframes pf-modal-slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.pf-coverage-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pf-coverage-modal-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.pf-coverage-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pf-coverage-modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.pf-coverage-modal-close svg {
+    width: 14px;
+    height: 14px;
+}
+
+.pf-coverage-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* Headcount Bridge in modal */
+.pf-headcount-bridge {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.pf-bridge-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.pf-bridge-row--base {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.pf-bridge-row--base .pf-bridge-value {
+    color: #818cf8;
+    font-weight: 600;
+}
+
+.pf-bridge-row--add {
+    color: #4ade80;
+}
+
+.pf-bridge-row--add .pf-bridge-value {
+    color: #4ade80;
+    font-weight: 500;
+}
+
+.pf-bridge-row--subtract {
+    color: #fbbf24;
+}
+
+.pf-bridge-row--subtract .pf-bridge-value {
+    color: #fbbf24;
+    font-weight: 500;
+}
+
+.pf-bridge-row--total {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 600;
+}
+
+.pf-bridge-row--total .pf-bridge-value {
+    color: var(--text-primary);
+}
+
+.pf-bridge-row--diff {
+    margin-top: 4px;
+}
+
+.pf-bridge-row--match .pf-bridge-value {
+    color: #4ade80;
+}
+
+.pf-bridge-row--mismatch .pf-bridge-value {
+    color: #fbbf24;
+}
+
+.pf-bridge-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+}
+
+.pf-bridge-value {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Review list in modal */
+.pf-coverage-review-list {
+    margin: 12px 0;
+    padding-left: 20px;
+}
+
+.pf-coverage-review-list li {
+    margin: 8px 0;
+    line-height: 1.5;
+}
+
+/* Employee list in modal */
+.pf-employee-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.pf-employee-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.pf-employee-index {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+    min-width: 20px;
+}
+
+.pf-employee-name {
+    flex: 1;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+}
+
+.pf-employee-dept {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* ============================================
+   Column Mapping Modal (Overlay)
+   ============================================ */
+
+/* Compact mapping status card in side panel */
+.pf-mapping-status-card .pf-config-head {
+    /* Inherits existing card header styles */
+    margin-bottom: 4px;
+}
+
+.pf-mapping-status-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 0 4px 0;
+}
+
+/* Mapping modal overlay */
+.pf-mapping-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pf-modal-fade-in 0.15s ease;
+}
+
+.pf-mapping-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+}
+
+.pf-mapping-modal-card {
+    position: relative;
+    width: 95%;
+    max-width: 600px;
+    max-height: 85vh;
+    background: linear-gradient(180deg, #1a1b26 0%, #16171f 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    animation: pf-modal-slide-up 0.2s ease;
+}
+
+.pf-mapping-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pf-mapping-modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.pf-mapping-modal-subtext {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+}
+
+.pf-mapping-modal-summary {
+    display: flex;
+    gap: 12px;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pf-mapping-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+
+.pf-mapping-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Modal mapping grid - slightly smaller for overlay */
+.pf-mapping-modal .pf-mapping-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pf-mapping-modal .pf-mapping-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.pf-mapping-modal .pf-mapping-raw {
+    flex: 0 0 140px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pf-mapping-modal .pf-mapping-arrow {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 11px;
+}
+
+.pf-mapping-modal .pf-mapping-select {
+    flex: 1;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+}
+
+.pf-mapping-modal .pf-mapping-select:focus {
+    outline: none;
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.pf-mapping-modal .pf-pill {
+    font-size: 10px;
+    padding: 2px 6px;
+}
+
+/* ============================================
+   Expandable Mapping Bars
+   Replaces pills with full-width clickable bars
+   ============================================ */
+
+.pf-mapping-expand-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.pf-expand-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    font-family: inherit;
+}
+
+.pf-expand-bar:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.pf-expand-bar:active {
+    transform: scale(0.995);
+}
+
+.pf-expand-bar-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    opacity: 0.6;
+    transition: transform 0.2s ease;
+}
+
+.pf-expand-bar:hover .pf-expand-bar-icon {
+    opacity: 1;
+}
+
+.pf-expand-bar-count {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.pf-expand-bar-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+}
+
+/* Bar variants */
+.pf-expand-bar--success {
+    border-color: rgba(74, 222, 128, 0.25);
+    background: rgba(74, 222, 128, 0.06);
+}
+
+.pf-expand-bar--success:hover {
+    border-color: rgba(74, 222, 128, 0.4);
+    background: rgba(74, 222, 128, 0.1);
+}
+
+.pf-expand-bar--success .pf-expand-bar-count {
+    color: #4ade80;
+}
+
+.pf-expand-bar--success .pf-expand-bar-icon {
+    stroke: #4ade80;
+}
+
+.pf-expand-bar--warning {
+    border-color: rgba(251, 191, 36, 0.25);
+    background: rgba(251, 191, 36, 0.06);
+}
+
+.pf-expand-bar--warning:hover {
+    border-color: rgba(251, 191, 36, 0.4);
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.pf-expand-bar--warning .pf-expand-bar-count {
+    color: #fbbf24;
+}
+
+.pf-expand-bar--warning .pf-expand-bar-icon {
+    stroke: #fbbf24;
+}
+
+.pf-expand-bar--muted {
+    border-color: rgba(148, 163, 184, 0.2);
+    background: rgba(148, 163, 184, 0.04);
+}
+
+.pf-expand-bar--muted:hover {
+    border-color: rgba(148, 163, 184, 0.3);
+    background: rgba(148, 163, 184, 0.08);
+}
+
+.pf-expand-bar--muted .pf-expand-bar-count {
+    color: #94a3b8;
+}
+
+.pf-expand-bar--muted .pf-expand-bar-icon {
+    stroke: #94a3b8;
+}
+
+/* Pill button styles for modal footer */
+.pf-pill-btn--primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border: none;
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.pf-pill-btn--primary:hover {
+    background: linear-gradient(135deg, #7c7ff5 0%, #5b54eb 100%);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+}
+
+.pf-pill-btn--primary:active {
+    transform: translateY(0);
+}
+
+.pf-pill-btn--primary svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.9;
+}
+
+/* =============================================================================
+   ROSTER RECONCILIATION STYLES
+   ============================================================================= */
+
+.pf-roster-reconciliation {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.pf-recon-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.pf-recon-row:last-child {
+    border-bottom: none;
+}
+
+.pf-recon-row--header {
+    background: rgba(99, 102, 241, 0.08);
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+}
+
+.pf-recon-row--header .pf-recon-label {
+    color: #a5b4fc;
+}
+
+.pf-recon-row--header .pf-recon-value {
+    font-size: 18px;
+    color: #c7d2fe;
+}
+
+.pf-recon-row--footer {
+    background: rgba(99, 102, 241, 0.08);
+    border-radius: 0 0 8px 8px;
+    border-top: 2px solid rgba(99, 102, 241, 0.3);
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.pf-recon-row--footer .pf-recon-label {
+    color: #a5b4fc;
+}
+
+.pf-recon-row--footer .pf-recon-value {
+    font-size: 18px;
+    color: #c7d2fe;
+}
+
+.pf-recon-row--ok {
+    background: rgba(74, 222, 128, 0.06);
+    color: #4ade80;
+}
+
+.pf-recon-row--add {
+    background: rgba(74, 222, 128, 0.04);
+}
+
+.pf-recon-row--subtract {
+    background: rgba(251, 146, 60, 0.04);
+}
+
+.pf-recon-changes {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 8px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.pf-recon-changes .pf-recon-row {
+    padding: 10px 16px;
+}
+
+.pf-recon-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.pf-recon-value {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.pf-recon-value--add {
+    color: #4ade80;
+}
+
+.pf-recon-value--subtract {
+    color: #fb923c;
+}
+
+.pf-recon-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    flex: 1;
+}
+
+.pf-recon-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #6366f1;
+    cursor: pointer;
+}
+
+.pf-recon-name {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.pf-recon-hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(148, 163, 184, 0.12);
 }

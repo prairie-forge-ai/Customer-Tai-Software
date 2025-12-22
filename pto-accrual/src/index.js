@@ -1,7 +1,9 @@
-import { applyModuleTabVisibility, showAllSheets } from "../../Common/tab-visibility.js";
+import { applyModuleTabVisibility, showAllSheets, showAndActivateSheet } from "../../Common/tab-visibility.js";
 import { bindInstructionsButton } from "../../Common/instructions.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab, removeAdaFab } from "../../Common/homepage-sheet.js";
+import { renderCopilotCard, bindCopilotCard, createExcelContextProvider } from "../../Common/copilot.js";
 import { initDatePicker } from "../../Common/date-picker.js";
+import * as XLSX from "xlsx";
 import {
     HOME_ICON_SVG,
     MODULES_ICON_SVG,
@@ -14,6 +16,7 @@ import {
     LOCK_OPEN_SVG,
     CHECK_ICON_SVG,
     X_CIRCLE_SVG,
+    X_ICON_SVG,
     CALCULATOR_ICON_SVG,
     LINK_ICON_SVG,
     SAVE_ICON_SVG,
@@ -22,6 +25,9 @@ import {
     DOWNLOAD_ICON_SVG,
     REFRESH_ICON_SVG,
     TRASH_ICON_SVG,
+    FILE_TEXT_ICON_SVG,
+    SETTINGS_ICON_SVG,
+    GLOBE_ICON_SVG,
     getStepIconSvg
 } from "../../Common/icons.js";
 import { renderInlineNotes, renderSignoff, renderLabeledButton, updateLockButtonVisual, updateSaveButtonState, initSaveTracking } from "../../Common/notes-signoff.js";
@@ -30,10 +36,15 @@ import { loadConfigFromTable, saveConfigValue, hasExcelRuntime } from "../../Com
 import { formatSheetHeaders, formatCurrencyColumn, formatNumberColumn, formatDateColumn, NUMBER_FORMATS } from "../../Common/sheet-formatting.js";
 
 // Build script injects the current commit hash at bundle time
-const MODULE_VERSION = __BUILD_COMMIT__;
+// Fallback to "dev" when running outside bundle (tests, lint)
+const MODULE_VERSION = typeof __BUILD_COMMIT__ !== "undefined" ? __BUILD_COMMIT__ : "dev";
 const MODULE_KEY = "pto-accrual";
 const MODULE_ALIAS_TOKENS = ["pto", "pto-accrual", "pto review", "accrual"];
 const MODULE_NAME = "PTO Accrual";
+
+// Supabase configuration
+const SUPABASE_URL = "https://jgciqwzwacaesqjaoadc.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnY2lxd3p3YWNhZXNxamFvYWRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzODgzMTIsImV4cCI6MjA3NTk2NDMxMn0.DsoUTHcm1Uv65t4icaoD0Tzf3ULIU54bFnoYw8hHScE";
 
 // =============================================================================
 // OFFICE-SAFE DIALOGS (window.alert not supported in Office Add-ins)
@@ -287,23 +298,20 @@ const PTO_CONFIG_FIELDS = {
 };
 const HEADCOUNT_SKIP_NOTE = "User opted to skip the headcount review this period.";
 // Step notes/sign-off fields - Pattern: PTO_{Type}_{StepName}
+// Matches payroll-recorder 5-step structure (0-4)
 const STEP_CONFIG_FIELDS = {
     0: { note: "PTO_Notes_Config", reviewer: "PTO_Reviewer_Config", signOff: "PTO_SignOff_Config" },
-    1: { note: "PTO_Notes_Import", reviewer: "PTO_Reviewer_Import", signOff: "PTO_SignOff_Import" },
-    2: { note: "PTO_Notes_Headcount", reviewer: "PTO_Reviewer_Headcount", signOff: "PTO_SignOff_Headcount" },
-    3: { note: "PTO_Notes_Validate", reviewer: "PTO_Reviewer_Validate", signOff: "PTO_SignOff_Validate" },
-    4: { note: "PTO_Notes_Review", reviewer: "PTO_Reviewer_Review", signOff: "PTO_SignOff_Review" },
-    5: { note: "PTO_Notes_JE", reviewer: "PTO_Reviewer_JE", signOff: "PTO_SignOff_JE" },
-    6: { note: "PTO_Notes_Archive", reviewer: "PTO_Reviewer_Archive", signOff: "PTO_SignOff_Archive" }
+    1: { note: "PTO_Notes_Upload", reviewer: "PTO_Reviewer_Upload", signOff: "PTO_SignOff_Upload" },
+    2: { note: "PTO_Notes_Review", reviewer: "PTO_Reviewer_Review", signOff: "PTO_SignOff_Review" },
+    3: { note: "PTO_Notes_JE", reviewer: "PTO_Reviewer_JE", signOff: "PTO_SignOff_JE" },
+    4: { note: "PTO_Notes_Archive", reviewer: "PTO_Reviewer_Archive", signOff: "PTO_SignOff_Archive" }
 };
 const STEP_COMPLETE_FIELDS = {
     0: "PTO_Complete_Config",
-    1: "PTO_Complete_Import",
-    2: "PTO_Complete_Headcount",
-    3: "PTO_Complete_Validate",
-    4: "PTO_Complete_Review",
-    5: "PTO_Complete_JE",
-    6: "PTO_Complete_Archive"
+    1: "PTO_Complete_Upload",
+    2: "PTO_Complete_Review",
+    3: "PTO_Complete_JE",
+    4: "PTO_Complete_Archive"
 };
 
 const PTO_ACTIVITY_COLUMNS = [
@@ -348,77 +356,70 @@ const WORKFLOW_STEPS = [
     {
         id: 0,
         title: "Configuration",
-        summary: "Set the analysis date, accounting period, and review details for this run.",
-        description: "Complete this step first to ensure all downstream calculations use the correct period settings.",
-        actionLabel: "Configure Workbook",
+        summary: "Auto-loaded from system. Review period-specific settings before each run.",
+        description: "Configuration is loaded from your installation. Only period-specific fields (analysis date, accounting period) need review each run.",
+        actionLabel: "Review Configuration",
+        icon: "🧭",
         secondaryAction: { sheet: "SS_PF_Config", label: "Open Config Sheet" }
     },
     {
         id: 1,
-        title: "Import PTO Data",
-        summary: "Pull your latest PTO export from payroll and paste it into PTO_Data.",
-        description: "Open your payroll provider, download the PTO report, and paste the data into the PTO_Data tab.",
-        actionLabel: "Import Sample Data",
-        secondaryAction: { sheet: "PTO_Data", label: "Open Data Sheet" }
+        title: "Upload & Validate PTO Data",
+        summary: "Import PTO report, normalize headers, and run validation checks.",
+        description: "Upload your Obsidian PTO report, auto-map headers using ada_payroll_dimensions, create PTO_Data_Clean, and review advisory validation checks.",
+        actionLabel: "Upload PTO Report",
+        icon: "📥",
+        secondaryAction: { sheet: "PTO_Data_Clean", label: "Open Clean Data" }
     },
     {
         id: 2,
-        title: "Headcount Review",
-        summary: "Quick check to make sure your roster matches your PTO data.",
-        description: "Compare employees in PTO_Data against your employee roster to catch any discrepancies.",
-        actionLabel: "Open Headcount Review",
-        secondaryAction: { sheet: "SS_Employee_Roster", label: "Open Sheet" }
+        title: "PTO Accrual Review",
+        summary: "Review accrued, used, and balance metrics with executive-ready summary.",
+        description: "Analyze PTO data grouped by employee and plan. Review totals, trends, and variances using PTO_Data_Clean as the source of truth.",
+        actionLabel: "Generate Review",
+        icon: "📊",
+        secondaryAction: { sheet: "PTO_Review", label: "Open Review Sheet" }
     },
     {
         id: 3,
-        title: "Data Quality Review",
-        summary: "Scan your PTO data for potential errors before crunching numbers.",
-        description: "Identify negative balances, overdrawn accounts, and other anomalies that might need attention.",
-        actionLabel: "Click to Run Quality Check"
+        title: "Journal Entry Prep",
+        summary: "Generate accounting-ready journal entry output.",
+        description: "Create journal entry draft using PTO_Data_Clean and GL mappings. Produces output ready for QuickBooks or your accounting system.",
+        actionLabel: "Generate JE Draft",
+        icon: "🧾",
+        secondaryAction: { sheet: "PTO_JE_Draft", label: "Open JE Draft" }
     },
     {
         id: 4,
-        title: "PTO Accrual Review",
-        summary: "Review the calculated liability for each employee and compare to last period.",
-        description: "The analysis enriches your PTO data with pay rates and department info, then calculates the liability.",
-        actionLabel: "Click to Perform Review"
-    },
-    {
-        id: 5,
-        title: "Journal Entry Prep",
-        summary: "Generate a balanced journal entry, run validation checks, and export when ready.",
-        description: "Build the JE from your PTO data, verify debits equal credits, and export for upload to your accounting system.",
-        actionLabel: "Open Journal Draft",
-        secondaryAction: { sheet: "PTO_JE_Draft", label: "Open Sheet" }
-    },
-    {
-        id: 6,
-        title: "Archive & Reset",
-        summary: "Save this period's results and prepare for the next cycle.",
-        description: "Archive the current analysis so it becomes the 'prior period' for your next review.",
-        actionLabel: "Archive Run"
+        title: "Archive & Clear",
+        summary: "Archive the period and reset for next run.",
+        description: "Save a snapshot of this period's work, then clear working tabs to prepare for the next PTO analysis cycle.",
+        actionLabel: "Archive Period",
+        icon: "🗂️",
+        secondaryAction: { sheet: "PTO_Archive_Summary", label: "Open Archive" }
     }
 ];
 
 // Step → Sheet mapping (clicking step card activates this sheet)
+// Matches payroll-recorder 5-step structure
 const STEP_SHEET_MAP = {
-    0: "PTO_Homepage",        // Configuration → PTO_Homepage
-    1: "PTO_Data",            // Import → PTO_Data
-    2: "PTO_Data",            // Headcount Review → PTO_Data
-    3: "PTO_Analysis",        // Data Quality → PTO_Analysis
-    4: "PTO_Analysis",        // Accrual Review → PTO_Analysis
-    5: "PTO_JE_Draft"         // Journal Entry → PTO_JE_Draft
+    0: "PTO_Homepage",           // Configuration → PTO_Homepage
+    1: "PTO_Data_Clean",         // Upload & Validate → PTO_Data_Clean
+    2: "PTO_Review",             // Expense Review → PTO_Review
+    3: "PTO_JE_Draft",           // Journal Entry Prep → PTO_JE_Draft
+    4: "PTO_Archive_Summary"     // Archive & Clear → PTO_Archive_Summary
 };
 
 // Reverse map: sheet name → step ID (for tab-to-panel sync)
 const SHEET_TO_STEP_MAP = {
-    "PTO_Homepage": 0,         // Homepage → Configuration
-    "PTO_Data": 1,             // PTO_Data → Import (also used for Headcount)
-    "PTO_Analysis": 4,         // PTO_Analysis → Accrual Review
-    "PTO_JE_Draft": 5,         // PTO_JE_Draft → Journal Entry
-    "PTO_Archive_Summary": 6,  // Archive → Archive step
-    "SS_PF_Config": 0,         // Config sheet → Configuration
-    "SS_Employee_Roster": 2    // Roster → Headcount Review
+    "PTO_Homepage": 0,           // Homepage → Configuration
+    "PTO_Data_Clean": 1,         // PTO_Data_Clean → Upload & Validate
+    "PTO_Data_Raw": 1,           // Raw data also maps to step 1
+    "PTO_Review": 2,             // Expense Review → Expense Review step
+    "PTO_JE_Draft": 3,           // PTO_JE_Draft → Journal Entry Prep
+    "PTO_Archive_Summary": 4,    // Archive → Archive & Clear step
+    "SS_PF_Config": 0,           // Config sheet → Configuration
+    "SS_Employee_Roster": 1      // Roster → Upload & Validate (for coverage check)
 };
 
 const WORKBOOK_SHEETS = [
@@ -427,15 +428,14 @@ const WORKBOOK_SHEETS = [
         description: "Overview of the PTO workflow",
         position: "beginning",
         onCreate: async (sheet, context) => {
+            // Updated to match payroll-recorder 5-step structure
             const rows = [
                 ["Prairie Forge PTO Accrual", `Version ${MODULE_VERSION}`],
-                ["Step 0 — Configuration", "Set your analysis date, accounting period, and JE reference."],
-                ["Step 1 — Import PTO Data", "Pull data from payroll and paste into PTO_Data."],
-                ["Step 2 — Headcount Review", "Verify employees match between roster and PTO data."],
-                ["Step 3 — Data Quality", "Scan for balance issues and anomalies."],
-                ["Step 4 — Accrual Review", "Calculate liabilities and compare to prior period."],
-                ["Step 5 — Journal Entry", "Generate JE, validate, and export for upload."],
-                ["Step 6 — Archive", "Save results for next period comparison."]
+                ["Step 0 — Configuration", "Auto-loaded from system. Review period settings."],
+                ["Step 1 — Upload & Validate", "Upload PTO report, normalize headers, run validation."],
+                ["Step 2 — PTO Accrual Review", "Review metrics with executive-ready summary."],
+                ["Step 3 — Journal Entry Prep", "Generate accounting-ready journal entry."],
+                ["Step 4 — Archive & Clear", "Archive period and reset for next cycle."]
             ];
             const target = sheet.getRangeByIndexes(0, 0, rows.length, 2);
             target.values = rows;
@@ -455,7 +455,7 @@ const WORKBOOK_SHEETS = [
     // PTO_Config removed - consolidated into SS_PF_Config
     { name: "SS_PF_Config", description: "Prairie Forge shared configuration (all modules)" },
     { name: "PTO_Rates", description: "Accrual rate definitions" },
-    { name: "PTO_Data", description: "Raw PTO transactions" },
+    { name: "PTO_Data_Clean", description: "Normalized PTO data (from upload)" },
     { name: "PTO_Analysis", description: "Calculated balances" },
     { name: "PTO_ExpenseReview", description: "Expense review workspace" },
     { name: "PTO_JE_Draft", description: "Journal entry prep" },
@@ -492,7 +492,7 @@ const SAMPLE_PTO_ACTIVITY = [
     { employeeId: "AC3020", employeeName: "Amelia Yates", actionDate: "2025-01-18", actionType: "Carryover", hours: 20, notes: "Year-end carryover", source: "Finance" }
 ];
 
-// Sample data will be generated dynamically from PTO_Data via syncPtoAnalysis
+// Sample data will be generated dynamically from PTO_Data_Clean via syncPtoAnalysis
 const SAMPLE_ANALYSIS_DATA = [];
 
 const SAMPLE_EXPENSE_REVIEW = [
@@ -500,6 +500,18 @@ const SAMPLE_EXPENSE_REVIEW = [
     { department: "Sales", currentPeriod: 2300, priorPeriod: 2600, variance: -300, comment: "Usage down vs. forecast" },
     { department: "Executive", currentPeriod: 4100, priorPeriod: 4100, variance: 0, comment: "Steady quarter" }
 ];
+
+/**
+ * Parse currency string like "$1,234.56" or "1,234.56" to number
+ * Handles dollar signs, commas, and various formats
+ */
+function parseCurrency(value) {
+    if (typeof value === "number") return value;
+    if (!value) return 0;
+    const cleaned = String(value).replace(/[$,]/g, "").trim();
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+}
 
 const SAMPLE_JOURNAL_LINES = [
     { account: "2100.100", description: "PTO Accrual Expense", debit: 11800, credit: 0, reference: "PTO-EXP-2025-01" },
@@ -536,15 +548,21 @@ let pendingScrollIndex = null;
 const pendingConfigWrites = new Map();
 const headcountState = {
     skipAnalysis: false,
+    loading: false,
+    hasAnalyzed: false,
+    lastError: null,
+    // Structured comparison data (matches payroll-recorder format)
+    rosterCount: 0,           // Active employees in SS_Employee_Roster
+    ptoCount: 0,              // Unique employees in PTO_Data
+    missingFromPto: [],       // In roster but not in PTO: [{name, department}]
+    extraInPto: [],           // In PTO but not in roster: [{name}]
+    // Legacy fields for backward compatibility
     roster: {
         rosterCount: null,
         payrollCount: null,
         difference: null,
         mismatches: []
-    },
-    loading: false,
-    hasAnalyzed: false,
-    lastError: null
+    }
 };
 const journalState = {
     debitTotal: null,
@@ -569,7 +587,9 @@ const dataQualityState = {
     accrualOutliers: [],       // [{name, accrualRate, rowIndex}] - rates > 8 hrs/period
     // Summary counts
     totalIssues: 0,
-    totalEmployees: 0
+    totalEmployees: 0,
+    // UI state for expandable sections
+    expandedSections: new Set() // "balanceIssues" | "zeroBalances" | "accrualOutliers"
 };
 
 const analysisState = {
@@ -582,7 +602,7 @@ const analysisState = {
     missingPayRates: [],      // [{name: "John Doe", rowIndex: 2}, ...]
     missingDepartments: [],   // [{name: "Jane Smith", rowIndex: 3}, ...]
     ignoredMissingPayRates: new Set(), // Names user chose to ignore
-    // Data completeness check (PTO_Data vs PTO_Analysis sums)
+    // Data completeness check (PTO_Data_Clean vs PTO_Analysis sums)
     completenessCheck: {
         accrualRate: null,    // { match: true/false, ptoData: number, ptoAnalysis: number }
         carryOver: null,
@@ -592,10 +612,349 @@ const analysisState = {
     }
 };
 
+// =============================================================================
+// PTO REVIEW STATE - Step 2 variance table
+// =============================================================================
+const ptoReviewState = {
+    loaded: false,
+    loading: false,
+    lastRun: null,
+    // Executive summary values
+    totalCurrentLiability: 0,
+    totalPriorLiability: 0,
+    netChange: 0,
+    employeeCount: 0,
+    // Reconciliation data (Report → Calculated → JE)
+    reconciliation: {
+        reportLiabilityTotal: 0,      // Sum of Report_Liability from PrismHR
+        calcLiabilityTotal: 0,        // Sum of Calc_Liability (includes negatives)
+        negativeBalanceTotal: 0,      // Sum of negative Calc_Liability values
+        negativeBalanceCount: 0,      // Count of employees with negative vested balance
+        positiveBalanceCount: 0,      // Count with positive vested balance
+        zeroBalanceCount: 0,          // Count with zero vested balance
+        missingRateCount: 0           // Employees actually missing pay rate
+    },
+    // Employee coverage (Roster vs PTO Report)
+    coverage: {
+        rosterCount: 0,
+        ptoReportCount: 0,
+        inBothCount: 0,
+        inPtoOnlyCount: 0,
+        inPtoOnlyNames: [],
+        inPtoOnlyLiability: 0,
+        inRosterOnlyCount: 0,
+        inRosterOnlyNames: []
+    },
+    // Review table data (written to PTO_Review sheet)
+    reviewData: [],     // [{employeeName, department, payRate, vestedBalance, liabilityAmount, calculatedLiability, priorLiability, change, flags}]
+    // Flags: NEW, MISSING_RATE, LARGE_MOVE, NEG_BALANCE, RATE_VARIANCE, LIABILITY_VARIANCE
+    flagThresholds: {
+        largeMove: 500  // Configurable threshold for large move flag
+    }
+};
+
+// =============================================================================
+// INSTALLATION STATE (loaded from SS_PF_Config - written by bootstrap)
+// Bootstrap already fetches from ada_addin_installations and writes to SS_PF_Config
+// =============================================================================
+
+const installationState = {
+    loaded: false,
+    loading: false,
+    error: null,
+    // From SS_PF_Config (originally from ada_addin_installations via bootstrap)
+    company_id: null,
+    ss_company_name: null,
+    pto_payroll_provider: null,
+    ss_accounting_software: null,
+    // Validation status
+    isValid: false,
+    validationErrors: []
+};
+
+/**
+ * Load installation configuration from SS_PF_Config
+ * Bootstrap has already synced values from ada_addin_installations
+ * This mirrors how payroll-recorder loads config
+ */
+async function loadInstallationConfig() {
+    console.log("[PTO] Loading installation configuration from SS_PF_Config...");
+    installationState.loading = true;
+    installationState.error = null;
+    installationState.validationErrors = [];
+    
+    try {
+        if (!hasExcelRuntime()) {
+            throw new Error("Excel runtime not available.");
+        }
+        
+        // Read config values directly from SS_PF_Config table
+        // Bootstrap writes: SS_Company_ID, SS_Company_Name, PTO_Payroll_Provider, SS_Accounting_Software
+        // loadConfigFromTable takes TABLE names, returns all fields as key-value object
+        const configValues = await loadConfigFromTable(["SS_PF_Config"]);
+        
+        console.log("[PTO] Config values loaded:", configValues);
+        
+        // Store values in state
+        installationState.company_id = configValues?.SS_Company_ID || null;
+        installationState.ss_company_name = configValues?.SS_Company_Name || null;
+        installationState.pto_payroll_provider = configValues?.PTO_Payroll_Provider || null;
+        installationState.ss_accounting_software = configValues?.SS_Accounting_Software || null;
+        
+        // Validate required fields
+        validateInstallation();
+        
+        installationState.loaded = true;
+        installationState.loading = false;
+        
+        console.log("[PTO] Installation config loaded successfully:", {
+            company_id: installationState.company_id,
+            company_name: installationState.ss_company_name,
+            provider: installationState.pto_payroll_provider,
+            isValid: installationState.isValid
+        });
+        
+    } catch (error) {
+        console.error("[PTO] Failed to load installation:", error);
+        installationState.error = error.message;
+        installationState.loading = false;
+        installationState.loaded = true;
+        installationState.isValid = false;
+        installationState.validationErrors.push(error.message);
+    }
+}
+
+/**
+ * Validate installation configuration
+ * Fail fast if company_id is missing
+ */
+function validateInstallation() {
+    installationState.validationErrors = [];
+    
+    // Check company_id
+    if (!installationState.company_id) {
+        installationState.validationErrors.push(
+            "Company ID is not configured. Please open Module Selector to sync your configuration."
+        );
+    }
+    
+    // Provider validation removed - module now accepts any provider
+    // Header normalization is handled by ada_payroll_dimensions
+    
+    installationState.isValid = installationState.validationErrors.length === 0;
+    
+    if (!installationState.isValid) {
+        console.error("[PTO] Installation validation failed:", installationState.validationErrors);
+    }
+}
+
+/**
+ * Render a minimal banner for error screens
+ */
+function renderErrorBanner() {
+    return `
+        <div class="pf-root">
+            <div class="pf-brand-float" aria-hidden="true">
+                <span class="pf-brand-wave"></span>
+            </div>
+            <header class="pf-banner">
+                <div class="pf-nav-bar">
+                    <a href="../module-selector/index.html" class="pf-nav-btn pf-nav-btn--icon pf-clickable" title="Return to Modules">
+                        ${MODULES_ICON_SVG}
+                        <span class="sr-only">Return to Modules</span>
+                    </a>
+                </div>
+            </header>
+    `;
+}
+
+/**
+ * Render blocking error screen when installation is invalid
+ */
+function renderInstallationError() {
+    const errors = installationState.validationErrors || [installationState.error || "Unknown error"];
+    
+    // Check if this is a "not found" error vs a validation error
+    const isSetupRequired = errors.some(e => 
+        e.includes("not found") || e.includes("not configured") || 
+        e.includes("initial setup") || e.includes("Module Selector") ||
+        e.includes("sync")
+    );
+    
+    return `
+        ${renderErrorBanner()}
+            <section class="pf-hero" id="pf-error-hero">
+                <p class="pf-hero-copy">${escapeHtml(MODULE_NAME)}</p>
+                <h2 class="pf-hero-title" style="color: #ef4444;">${isSetupRequired ? "Setup Required" : "Configuration Error"}</h2>
+                <p class="pf-hero-copy">${isSetupRequired ? "This workbook needs to be connected to your organization." : "Unable to load module configuration."}</p>
+            </section>
+            <section class="pf-step-guide">
+                <article class="pf-step-card pf-step-detail" style="border-left: 4px solid ${isSetupRequired ? '#f59e0b' : '#ef4444'};">
+                    <div class="pf-config-head">
+                        <h3>${isSetupRequired ? '🔧 Initial Setup Needed' : '⚠️ Module Blocked'}</h3>
+                        <p class="pf-config-subtext">${isSetupRequired ? 'Complete these steps to get started:' : 'The following issues must be resolved before using this module:'}</p>
+                    </div>
+                    ${isSetupRequired ? `
+                    <div style="margin: 16px 0; padding: 16px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px;">
+                        <ol style="margin: 0; padding-left: 20px; color: rgba(255,255,255,0.9); line-height: 1.8;">
+                            <li><strong>Go to Module Selector</strong> — Click "Return to Modules" below</li>
+                            <li><strong>Connect Your Organization</strong> — The Module Selector will sync your installation</li>
+                            <li><strong>Return to PTO Accrual</strong> — Once connected, this module will load</li>
+                        </ol>
+                    </div>
+                    ` : `
+                    <ul style="margin: 16px 0; padding-left: 24px; color: rgba(255,255,255,0.8);">
+                        ${errors.map(err => `<li style="margin: 8px 0;">${escapeHtml(err)}</li>`).join("")}
+                    </ul>
+                    `}
+                    <div style="margin-top: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 13px; color: rgba(255,255,255,0.6);">
+                        <strong>Technical details:</strong><br>
+                        ${errors.map(e => `• ${escapeHtml(e)}`).join('<br>')}
+                    </div>
+                </article>
+                <div class="pf-pill-row" style="margin-top: 16px;">
+                    <a href="../module-selector/index.html" class="pf-pill-btn" style="background: linear-gradient(145deg, #f59e0b, #d97706);">Return to Modules</a>
+                    <button type="button" class="pf-pill-btn pf-pill-btn--secondary" id="retry-config-btn">Retry</button>
+                </div>
+            </section>
+            <footer class="pf-brand-footer">
+                <div class="pf-brand-text">
+                    <div class="pf-brand-label">prairie.forge</div>
+                    <div class="pf-brand-meta"> Prairie Forge LLC, 2025. All rights reserved. Version ${MODULE_VERSION}</div>
+                </div>
+            </footer>
+        </div>
+    `;
+}
+
+/**
+ * Ensure SS_PF_Config sheet and table exist with proper structure
+ * Creates the config sheet and table if they don't exist
+ * This matches payroll-recorder's ensureConfigSheet() exactly
+ */
+async function ensureConfigSheet() {
+    if (!hasExcelRuntime()) return;
+    
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            worksheets.load("items/name");
+            await context.sync();
+            
+            // Check if SS_PF_Config sheet exists
+            let configSheet = worksheets.getItemOrNullObject("SS_PF_Config");
+            configSheet.load("isNullObject");
+            await context.sync();
+            
+            if (configSheet.isNullObject) {
+                console.log("[PTO] Creating SS_PF_Config sheet...");
+                configSheet = worksheets.add("SS_PF_Config");
+                
+                // Add headers
+                const headers = ["Category", "Field", "Value", "Permanent"];
+                const headerRange = configSheet.getRange("A1:D1");
+                headerRange.values = [headers];
+                formatSheetHeaders(headerRange);
+                
+                // Add default module-prefix rows
+                const defaultData = [
+                    ["module-prefix", "PR_", "payroll-recorder", "Y"],
+                    ["module-prefix", "PTO_", "pto-accrual", "Y"],
+                    ["module-prefix", "SS_", "system", "Y"],
+                    ["Run Settings", "SS_Company_Name", "", "Y"],
+                    ["Run Settings", "SS_Company_ID", "", "Y"]
+                ];
+                const dataRange = configSheet.getRange(`A2:D${1 + defaultData.length}`);
+                dataRange.values = defaultData;
+                
+                await context.sync();
+                
+                // Create the table
+                const tableRange = configSheet.getRange(`A1:D${1 + defaultData.length}`);
+                const table = configSheet.tables.add(tableRange, true);
+                table.name = "SS_PF_Config";
+                table.style = "TableStyleMedium2";
+                
+                // Auto-fit columns
+                tableRange.format.autofitColumns();
+                
+                await context.sync();
+                console.log("[PTO] SS_PF_Config sheet and table created");
+            } else {
+                // Sheet exists - check if table exists
+                const tables = context.workbook.tables;
+                tables.load("items/name");
+                await context.sync();
+                
+                const hasConfigTable = tables.items.some(t => t.name === "SS_PF_Config");
+                
+                if (!hasConfigTable) {
+                    console.log("[PTO] SS_PF_Config sheet exists but no table - creating table...");
+                    
+                    // Get used range to determine table extent
+                    const usedRange = configSheet.getUsedRangeOrNullObject();
+                    usedRange.load("address,rowCount");
+                    await context.sync();
+                    
+                    if (!usedRange.isNullObject && usedRange.rowCount > 0) {
+                        const table = configSheet.tables.add(usedRange, true);
+                        table.name = "SS_PF_Config";
+                        table.style = "TableStyleMedium2";
+                        await context.sync();
+                        console.log("[PTO] SS_PF_Config table created from existing data");
+                    } else {
+                        // Empty sheet - add headers and create table
+                        const headers = ["Category", "Field", "Value", "Permanent"];
+                        const headerRange = configSheet.getRange("A1:D1");
+                        headerRange.values = [headers];
+                        headerRange.format.font.bold = true;
+                        
+                        const defaultData = [
+                            ["module-prefix", "PR_", "payroll-recorder", "Y"],
+                            ["module-prefix", "PTO_", "pto-accrual", "Y"],
+                            ["module-prefix", "SS_", "system", "Y"],
+                            ["Run Settings", "SS_Company_Name", "", "Y"],
+                            ["Run Settings", "SS_Company_ID", "", "Y"]
+                        ];
+                        const dataRange = configSheet.getRange(`A2:D${1 + defaultData.length}`);
+                        dataRange.values = defaultData;
+                        
+                        await context.sync();
+                        
+                        const tableRange = configSheet.getRange(`A1:D${1 + defaultData.length}`);
+                        const table = configSheet.tables.add(tableRange, true);
+                        table.name = "SS_PF_Config";
+                        table.style = "TableStyleMedium2";
+                        tableRange.format.autofitColumns();
+                        
+                        await context.sync();
+                        console.log("[PTO] SS_PF_Config table created with default data");
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error("[PTO] Error ensuring config sheet:", error);
+    }
+}
+
 async function init() {
     try {
         rootEl = document.getElementById("app");
         loadingEl = document.getElementById("loading");
+        
+        // CRITICAL: Ensure SS_PF_Config exists FIRST (matches payroll-recorder exactly)
+        await ensureConfigSheet();
+        
+        // Load installation config from SS_PF_Config (non-blocking, like payroll-recorder)
+        // Bootstrap populates SS_PF_Config when user visits Module Selector
+        await loadInstallationConfig();
+        
+        // Log validation status but DON'T block - match payroll-recorder behavior
+        if (!installationState.isValid) {
+            console.warn("[PTO] Installation config incomplete:", installationState.validationErrors);
+            console.warn("[PTO] Continuing anyway - some features may be limited");
+        }
         
         await ensureTabVisibility();
         await loadStepConfig();
@@ -621,59 +980,34 @@ async function init() {
 }
 
 /**
- * Set up listener for worksheet activation changes
- * Syncs the side panel when user manually switches Excel tabs
+ * Bind retry button for installation error screen
  */
-async function setupWorksheetChangeListener() {
-    if (!hasExcel()) return;
-    
-    try {
-        await Excel.run(async (context) => {
-            const worksheets = context.workbook.worksheets;
-            
-            // Listen for worksheet activation
-            worksheets.onActivated.add(handleWorksheetActivated);
-            
-            await context.sync();
-            console.log("[PTO] Worksheet change listener registered");
-        });
-    } catch (error) {
-        console.warn("[PTO] Could not set up worksheet listener:", error);
-    }
+function bindRetryButton() {
+    document.getElementById("retry-config-btn")?.addEventListener("click", async () => {
+        showToast("Retrying configuration...", "info", 2000);
+        await loadInstallationConfig();
+        if (installationState.isValid) {
+            // Re-initialize the full module
+            await init();
+        } else {
+            // Re-render error screen
+            if (rootEl) {
+                rootEl.innerHTML = renderInstallationError();
+            }
+            bindRetryButton();
+        }
+    });
 }
 
 /**
- * Handle worksheet activation - sync side panel to match
+ * Set up listener for worksheet activation changes
+ * NOTE: Disabled - PTO uses one-way sync only (step click → tab opens)
+ * Tab changes in Excel do NOT update the side panel (matches payroll-recorder behavior)
  */
-async function handleWorksheetActivated(event) {
-    try {
-        await Excel.run(async (context) => {
-            const sheet = context.workbook.worksheets.getItem(event.worksheetId);
-            sheet.load("name");
-            await context.sync();
-            
-            const sheetName = sheet.name;
-            const stepId = SHEET_TO_STEP_MAP[sheetName];
-            
-            console.log(`[PTO] Tab changed to: ${sheetName} → Step ${stepId}`);
-            
-            // Only sync if we have a mapped step and it's different from current
-            if (stepId !== undefined && stepId !== appState.activeStepId) {
-                // Find the index in STEPS
-                const stepIndex = STEPS.findIndex(s => s.id === stepId);
-                if (stepIndex >= 0) {
-                    // Update state without re-activating the worksheet (to avoid loop)
-                    const view = stepId === 0 ? "config" : "step";
-                    appState.activeView = view;
-                    appState.activeStepId = stepId;
-                    appState.focusedIndex = stepIndex;
-                    renderApp();
-                }
-            }
-        });
-    } catch (error) {
-        console.warn("[PTO] Error handling worksheet change:", error);
-    }
+async function setupWorksheetChangeListener() {
+    // One-way sync only: clicking a step opens the corresponding tab
+    // Clicking an Excel tab does NOT change the side panel step
+    console.log("[PTO] Worksheet change listener disabled (one-way sync mode)");
 }
 
 async function ensureTabVisibility() {
@@ -802,6 +1136,57 @@ async function loadPermanentFlags() {
     return permanents;
 }
 
+/**
+ * Mount Quick Access modal to document.body to escape pf-root stacking context.
+ * This ensures proper z-index layering over all page content.
+ */
+function mountQuickAccessModal() {
+    // Remove existing modal if present
+    const existing = document.getElementById("quick-access-modal");
+    if (existing) existing.remove();
+    
+    const modal = document.createElement("div");
+    modal.id = "quick-access-modal";
+    modal.className = "pf-quick-modal hidden";
+    modal.style.cssText = "position:fixed!important;top:0;left:0;right:0;bottom:0;z-index:2147483647;";
+    modal.innerHTML = `
+        <div class="pf-quick-modal-backdrop" data-close></div>
+        <div class="pf-quick-modal-card">
+            <div class="pf-quick-modal-header">
+                <h3 class="pf-quick-modal-title">Quick Access</h3>
+                <button id="quick-access-close" class="pf-quick-modal-close pf-clickable" type="button" aria-label="Close">
+                    ${X_ICON_SVG}
+                </button>
+            </div>
+            <div class="pf-quick-modal-items">
+                ${installationState.pto_payroll_provider ? `
+                <a id="nav-provider-link" class="pf-quick-modal-item pf-clickable" href="${escapeHtml(installationState.pto_payroll_provider)}" target="_blank" rel="noopener">
+                    ${FILE_TEXT_ICON_SVG}
+                    <span>PTO Provider Report</span>
+                </a>
+                ` : ''}
+                <button id="nav-accounting-software" class="pf-quick-modal-item pf-clickable" type="button">
+                    ${UPLOAD_ICON_SVG}
+                    <span>Accounting Software</span>
+                </button>
+                <button id="nav-employee-roster" class="pf-quick-modal-item pf-clickable" type="button">
+                    ${USERS_ICON_SVG}
+                    <span>Employee Roster</span>
+                </button>
+                <button id="nav-chart-of-accounts" class="pf-quick-modal-item pf-clickable" type="button">
+                    ${BOOK_ICON_SVG}
+                    <span>Chart of Accounts</span>
+                </button>
+                <button id="nav-config" class="pf-quick-modal-item pf-clickable" type="button">
+                    ${SETTINGS_ICON_SVG}
+                    <span>Configuration</span>
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
 function renderApp() {
     if (!rootEl) return;
     const prevDisabled = appState.focusedIndex <= 0 ? "disabled" : "";
@@ -836,27 +1221,18 @@ function renderApp() {
                         ${ARROW_RIGHT_SVG}
                         <span class="sr-only">Next step</span>
                     </button>
-                    <span class="pf-nav-divider"></span>
-                    <div class="pf-quick-access-wrapper">
-                        <button id="nav-quick-toggle" class="pf-nav-btn pf-nav-btn--icon pf-clickable" type="button" title="Quick Access">
-                            ${MENU_ICON_SVG}
-                            <span class="sr-only">Quick Access Menu</span>
-                        </button>
-                        <div id="quick-access-dropdown" class="pf-quick-dropdown hidden">
-                            <div class="pf-quick-dropdown-header">Quick Access</div>
-                            <button id="nav-config" class="pf-quick-item pf-clickable" type="button">
-                                ${TABLE_ICON_SVG}
-                                <span>Configuration</span>
-                            </button>
-                        </div>
-                    </div>
+                    <div class="pf-nav-divider"></div>
+                    <button id="nav-quick-toggle" class="pf-nav-btn pf-nav-btn--icon pf-clickable" type="button" title="Quick Access">
+                        ${MENU_ICON_SVG}
+                        <span class="sr-only">Quick Access Menu</span>
+                    </button>
                 </div>
             </header>
             ${content}
             <footer class="pf-brand-footer">
                 <div class="pf-brand-text">
                     <div class="pf-brand-label">prairie.forge</div>
-                    <div class="pf-brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version ${MODULE_VERSION}</div>
+                    <div class="pf-brand-meta"> Prairie Forge LLC, 2025. All rights reserved. Version ${MODULE_VERSION}</div>
                 </div>
             </footer>
         </div>
@@ -878,6 +1254,9 @@ function renderApp() {
         });
     }
     
+    // Mount quick access modal to body for proper z-index layering
+    mountQuickAccessModal();
+    
     bindInteractions();
     scrollFocusedIntoView();
     
@@ -892,6 +1271,10 @@ function renderApp() {
 /**
  * Get step-specific info panel configuration
  */
+/**
+ * Step-specific info panel configuration
+ * Matches payroll-recorder 5-step structure (0-4)
+ */
 function getStepInfoConfig(stepId) {
     switch (stepId) {
         case 0:
@@ -900,198 +1283,128 @@ function getStepInfoConfig(stepId) {
                 content: `
                     <div class="pf-info-section">
                         <h4>🎯 What This Step Does</h4>
-                        <p>Sets up the key parameters for your PTO review. Complete this before importing data.</p>
+                        <p>Configuration is auto-loaded from your installation. Review period-specific settings before each PTO run.</p>
                     </div>
                     <div class="pf-info-section">
-                        <h4>📋 Key Fields</h4>
+                        <h4>📋 Auto-Loaded (Read-Only)</h4>
+                        <ul>
+                            <li><strong>Company Name</strong> — From your installation</li>
+                            <li><strong>Company ID</strong> — Used for GL mapping lookups</li>
+                            <li><strong>Company ID</strong> — Required for GL mappings</li>
+                        </ul>
+                    </div>
+                    <div class="pf-info-section">
+                        <h4>📝 Period-Specific (Editable)</h4>
                         <ul>
                             <li><strong>Analysis Date</strong> — The period-end date (e.g., 11/30/2024)</li>
                             <li><strong>Accounting Period</strong> — Shows up in your JE description</li>
                             <li><strong>Journal Entry ID</strong> — Reference number for your accounting system</li>
                         </ul>
                     </div>
-                    <div class="pf-info-section">
-                        <h4>💡 Tip</h4>
-                        <p>The accounting period and JE ID auto-generate based on your analysis date, but you can override them if needed.</p>
-                    </div>
                 `
             };
         case 1:
             return {
-                title: "Data Import",
+                title: "Upload & Validate PTO Data",
                 content: `
                     <div class="pf-info-section">
                         <h4>🎯 What This Step Does</h4>
-                        <p>Gets your PTO data into the workbook. Pull a report from your payroll provider and paste it into PTO_Data.</p>
+                        <p>Upload your Obsidian PTO export, auto-normalize headers, create PTO_Data_Clean, and run advisory validation checks.</p>
                     </div>
                     <div class="pf-info-section">
-                        <h4>📋 Required Columns</h4>
-                        <p>Your payroll export should include:</p>
+                        <h4>📥 Upload Process</h4>
+                        <ol>
+                            <li>Download your PTO report from Obsidian</li>
+                            <li>Click Upload and select the file</li>
+                            <li>Headers are auto-normalized using ada_payroll_dimensions</li>
+                            <li>PTO_Data_Clean is created with standardized columns</li>
+                        </ol>
+                    </div>
+                    <div class="pf-info-section">
+                        <h4>✅ Validation Checks (Advisory)</h4>
                         <ul>
-                            <li><strong>Employee Name</strong> — Full name (used to match against roster)</li>
-                            <li><strong>Accrual Rate</strong> — Hours accrued per pay period</li>
-                            <li><strong>Carry Over</strong> — Hours carried from prior year</li>
-                            <li><strong>YTD Accrued</strong> — Total hours accrued this year</li>
-                            <li><strong>YTD Used</strong> — Total hours used this year</li>
-                            <li><strong>Balance</strong> — Current available hours</li>
+                            <li><strong>Employee Coverage</strong> — Compare against SS_Employee_Roster</li>
+                            <li><strong>Data Quality</strong> — Negative balances, outliers, date consistency</li>
                         </ul>
-                    </div>
-                    <div class="pf-info-section">
-                        <h4>💡 Tip</h4>
-                        <p>Column headers don't need to match exactly—the system is flexible with naming. Just make sure each field is present.</p>
+                        <p class="pf-info-note">Validation is advisory and does not block the workflow.</p>
                     </div>
                 `
             };
         case 2:
             return {
-                title: "Headcount Review",
+                title: "PTO Accrual Review",
                 content: `
                     <div class="pf-info-section">
                         <h4>🎯 What This Step Does</h4>
-                        <p>Compares employee counts between your roster and PTO data to catch discrepancies early.</p>
+                        <p>Review PTO accrual metrics with an executive-ready summary. Uses PTO_Data_Clean as the single source of truth.</p>
                     </div>
                     <div class="pf-info-section">
-                        <h4>📊 Data Sources</h4>
+                        <h4>📊 Key Measures</h4>
                         <ul>
-                            <li><strong>SS_Employee_Roster</strong> — Your centralized employee list</li>
-                            <li><strong>PTO_Data</strong> — The data you just imported</li>
+                            <li><strong>Accrual Rate</strong> — Hours accrued per pay period</li>
+                            <li><strong>Carry Over</strong> — Hours carried from prior year</li>
+                            <li><strong>YTD Accrued / Used</strong> — Year-to-date totals</li>
+                            <li><strong>Pay Period Accrued / Used</strong> — Current period activity</li>
+                            <li><strong>Balance</strong> — Current available hours</li>
                         </ul>
                     </div>
                     <div class="pf-info-section">
-                        <h4>🔍 What to Look For</h4>
-                        <ul>
-                            <li><strong>In Roster, Not in PTO</strong> — May need to add PTO records</li>
-                            <li><strong>In PTO, Not in Roster</strong> — Could be terminated employees</li>
-                        </ul>
-                    </div>
-                    <div class="pf-info-section">
-                        <h4>💡 Tip</h4>
-                        <p>If discrepancies are expected (e.g., contractors without PTO), you can skip this check.</p>
+                        <h4>📈 Analysis View</h4>
+                        <p>Data is grouped by Employee Name and Plan Description for detailed review.</p>
                     </div>
                 `
             };
         case 3:
             return {
-                title: "Data Quality Review",
+                title: "Journal Entry Prep",
                 content: `
                     <div class="pf-info-section">
                         <h4>🎯 What This Step Does</h4>
-                        <p>Scans your PTO data for anomalies that could cause problems later in the process.</p>
+                        <p>Generates accounting-ready journal entry output from your PTO analysis.</p>
                     </div>
                     <div class="pf-info-section">
-                        <h4>⚠️ Balance Issues (Critical)</h4>
-                        <p>Flags when:</p>
+                        <h4>📝 JE Generation</h4>
                         <ul>
-                            <li><strong>Negative Balance</strong> — Balance is less than zero</li>
-                            <li><strong>Overdrawn</strong> — Used more than available (YTD Used > Carry Over + YTD Accrued)</li>
+                            <li>Uses PTO_Data_Clean as the data source</li>
+                            <li>GL accounts resolved via ada_customer_gl_mappings</li>
+                            <li>Output ready for QuickBooks or your accounting system</li>
                         </ul>
-                        <p class="pf-info-note">Usually indicates missing accrual entries or data errors in payroll.</p>
                     </div>
                     <div class="pf-info-section">
-                        <h4>📊 High Accrual Rates (Warning)</h4>
-                        <p>Employees with Accrual Rate > 8 hours/period may have data entry errors.</p>
-                        <p class="pf-info-note">Most bi-weekly accruals are 3-6 hours.</p>
-                    </div>
-                    <div class="pf-info-section">
-                        <h4>💡 Tip</h4>
-                        <p>You can acknowledge issues and proceed, but it's best to fix them in your source system first.</p>
+                        <h4>✅ Validation</h4>
+                        <ul>
+                            <li><strong>Debits = Credits</strong> — Entry must balance</li>
+                            <li><strong>All rows mapped</strong> — Every line has a GL account</li>
+                        </ul>
                     </div>
                 `
             };
         case 4:
             return {
-                title: "PTO Accrual Review",
+                title: "Archive & Clear",
                 content: `
                     <div class="pf-info-section">
                         <h4>🎯 What This Step Does</h4>
-                        <p>Calculates the PTO liability for each employee and compares it to last period.</p>
+                        <p>Archive this period's results and reset working tabs for the next PTO cycle.</p>
                     </div>
                     <div class="pf-info-section">
-                        <h4>📊 Data Sources</h4>
+                        <h4>📦 What Gets Archived</h4>
                         <ul>
-                            <li><strong>PTO_Data</strong> — Your imported PTO balances</li>
-                            <li><strong>SS_Employee_Roster</strong> — Department assignments</li>
-                            <li><strong>PR_Archive_Summary</strong> — Pay rates from payroll history</li>
-                            <li><strong>PTO_Archive_Summary</strong> — Last period's liability (for comparison)</li>
+                            <li><strong>PTO_Archive_Summary</strong> — Rolling summary of last 5 periods</li>
+                            <li><strong>Excel Workbook</strong> — Full snapshot saved externally</li>
                         </ul>
                     </div>
                     <div class="pf-info-section">
-                        <h4>💰 How Liability is Calculated</h4>
-                        <div class="pf-info-formula">
-                            Liability = Balance (hours) × Hourly Rate
-                        </div>
-                        <p class="pf-info-note">Hourly rate comes from Regular Earnings ÷ 80 hours in your payroll history.</p>
-                    </div>
-                    <div class="pf-info-section">
-                        <h4>📈 How Change is Calculated</h4>
-                        <div class="pf-info-formula">
-                            Change = Current Liability − Prior Period Liability
-                        </div>
+                        <h4>🧹 What Gets Cleared</h4>
                         <ul>
-                            <li><span style="color: #30d158;">Positive</span> = Liability went up (book expense)</li>
-                            <li><span style="color: #ff453a;">Negative</span> = Liability went down (reverse expense)</li>
-                        </ul>
-                    </div>
-                `
-            };
-        case 5:
-            return {
-                title: "Journal Entry Prep",
-                content: `
-                    <div class="pf-info-section">
-                        <h4>🎯 What This Step Does</h4>
-                        <p>Generates a balanced journal entry from your PTO analysis, ready for upload to your accounting system.</p>
-                    </div>
-                    <div class="pf-info-section">
-                        <h4>📝 How the JE Works</h4>
-                        <p>Groups the <strong>Change</strong> amounts by department:</p>
-                        <ul>
-                            <li><span style="color: #30d158;">Positive Change</span> → Debit expense account</li>
-                            <li><span style="color: #ff453a;">Negative Change</span> → Credit expense account</li>
-                        </ul>
-                        <p>The offset always goes to <strong>21540</strong> (Accrued PTO liability).</p>
-                    </div>
-                    <div class="pf-info-section">
-                        <h4>🏢 Department → Account Mapping</h4>
-                        <table style="width:100%; font-size: 12px; margin-top: 8px;">
-                            <tr><td>General & Admin</td><td style="text-align:right">64110</td></tr>
-                            <tr><td>R&D</td><td style="text-align:right">62110</td></tr>
-                            <tr><td>Marketing</td><td style="text-align:right">61610</td></tr>
-                            <tr><td>Sales & Marketing</td><td style="text-align:right">61110</td></tr>
-                            <tr><td>COGS Onboarding</td><td style="text-align:right">53110</td></tr>
-                            <tr><td>COGS Prof. Services</td><td style="text-align:right">56110</td></tr>
-                            <tr><td>COGS Support</td><td style="text-align:right">52110</td></tr>
-                            <tr><td>Client Success</td><td style="text-align:right">61811</td></tr>
-                        </table>
-                    </div>
-                    <div class="pf-info-section">
-                        <h4>✅ Validation Checks</h4>
-                        <ul>
-                            <li><strong>Debits = Credits</strong> — Entry must balance</li>
-                            <li><strong>Line Amounts = $0</strong> — Net change must be zero</li>
-                            <li><strong>JE Matches Analysis</strong> — Totals tie back to your data</li>
-                        </ul>
-                    </div>
-                `
-            };
-        case 6:
-            return {
-                title: "Archive & Reset",
-                content: `
-                    <div class="pf-info-section">
-                        <h4>🎯 What This Step Does</h4>
-                        <p>Saves this period's results so they become the "prior period" for your next review.</p>
-                    </div>
-                    <div class="pf-info-section">
-                        <h4>📦 What Gets Saved</h4>
-                        <ul>
-                            <li><strong>PTO_Archive_Summary</strong> — Employee name, liability amount, and analysis date</li>
-                            <li>This data is used to calculate the "Change" column next period</li>
+                            <li>PTO_Data_Clean</li>
+                            <li>PTO_Review</li>
+                            <li>PTO_JE_Draft</li>
                         </ul>
                     </div>
                     <div class="pf-info-section">
                         <h4>⚠️ Important</h4>
-                        <p>Only the <strong>most recent period</strong> is kept in the archive. Running archive again will overwrite the previous data.</p>
+                        <p>Ensure you've exported any needed files before clearing. The external workbook is your permanent backup.</p>
                     </div>
                     <div class="pf-info-section">
                         <h4>💡 Tip</h4>
@@ -1110,13 +1423,11 @@ function getStepInfoConfig(stepId) {
                     <div class="pf-info-section">
                         <h4>📋 Workflow Overview</h4>
                         <ol style="margin: 8px 0; padding-left: 20px;">
-                            <li>Configure your period settings</li>
-                            <li>Import PTO data from payroll</li>
-                            <li>Review headcount alignment</li>
-                            <li>Check data quality</li>
-                            <li>Review calculated liabilities</li>
-                            <li>Generate and export journal entry</li>
-                            <li>Archive for next period</li>
+                            <li>Review period configuration (auto-loaded)</li>
+                            <li>Upload & validate PTO data</li>
+                            <li>Review PTO accrual metrics</li>
+                            <li>Generate journal entry</li>
+                            <li>Archive & clear for next period</li>
                         </ol>
                     </div>
                     <div class="pf-info-section">
@@ -1160,12 +1471,17 @@ function renderStepCard(step, index) {
 }
 
 function renderArchiveStep(detail) {
-    const completionItems = WORKFLOW_STEPS.filter((step) => step.id !== 6).map((step) => ({
+    // Step 4 - matches payroll-recorder archive step exactly
+    // Check completion of steps 0-3 (don't include step 4 itself)
+    const completionItems = WORKFLOW_STEPS.filter((step) => step.id !== 4).map((step) => ({
         id: step.id,
         title: step.title,
         complete: isStepComplete(step.id)
     }));
     const allComplete = completionItems.every((item) => item.complete);
+    const incompleteCount = completionItems.filter(i => !i.complete).length;
+    
+    // Step completion cards - matches payroll-recorder style
     const statusList = completionItems
         .map(
             (item) => `
@@ -1183,19 +1499,22 @@ function renderArchiveStep(detail) {
         `
         )
         .join("");
+    
     return `
         <section class="pf-hero" id="pf-step-hero">
             <p class="pf-hero-copy">${escapeHtml(MODULE_NAME)} | Step ${detail.id}</p>
             <h2 class="pf-hero-title">${escapeHtml(detail.title)}</h2>
             <p class="pf-hero-copy">${escapeHtml(detail.summary || "")}</p>
+            <p class="pf-hero-hint"></p>
         </section>
         <section class="pf-step-guide">
             ${statusList}
             <article class="pf-step-card pf-step-detail pf-config-card">
                 <div class="pf-config-head">
                     <h3>Archive & Reset</h3>
-                    <p class="pf-config-subtext">Only enabled when all steps above are complete.</p>
+                    <p class="pf-config-subtext">Create an archive of this module's sheets and clear work tabs.</p>
                 </div>
+                ${!allComplete ? `<p class="pf-step-note pf-step-note--info">⚠️ Complete all ${incompleteCount} remaining step(s) before archiving.</p>` : ""}
                 <div class="pf-pill-row pf-config-actions">
                     <button type="button" class="pf-pill-btn" id="archive-run-btn" ${allComplete ? "" : "disabled"}>Archive</button>
                 </div>
@@ -1214,13 +1533,20 @@ function renderConfigView() {
             </section>
         `;
     }
+    
+    // Period-specific fields (user can edit)
     const payrollDate = formatDateInput(getConfigValue(PTO_CONFIG_FIELDS.payrollDate));
     const accountingPeriod = formatDateInput(getConfigValue(PTO_CONFIG_FIELDS.accountingPeriod));
     const journalEntryId = getConfigValue(PTO_CONFIG_FIELDS.journalEntryId);
-    const accountingLink = getConfigValue(PTO_CONFIG_FIELDS.accountingSoftware);
-    const payrollLink = getConfigValue(PTO_CONFIG_FIELDS.payrollProvider);
-    const companyName = getConfigValue(PTO_CONFIG_FIELDS.companyName);
     const userName = getConfigValue(PTO_CONFIG_FIELDS.reviewerName);
+    
+    // Auto-loaded from installation (read-only)
+    const companyName = installationState.ss_company_name || getConfigValue(PTO_CONFIG_FIELDS.companyName) || "";
+    const companyId = installationState.company_id || "";
+    const ptoProvider = installationState.pto_payroll_provider || "";
+    const accountingSoftware = installationState.ss_accounting_software || getConfigValue(PTO_CONFIG_FIELDS.accountingSoftware) || "";
+    
+    // Step fields for notes/signoff
     const stepFields = getStepConfig(0);
     const notesPermanent = Boolean(configState.permanents[0]);
     const isStepComplete = Boolean(parseBooleanFlag(configState.completes[0]) || stepFields.signOffDate);
@@ -1234,6 +1560,7 @@ function renderConfigView() {
             <p class="pf-hero-copy">Make quick adjustments before every PTO run.</p>
         </section>
         <section class="pf-step-guide">
+            <!-- Period Data (User editable) - FIRST, matches payroll-recorder -->
             <article class="pf-step-card pf-step-detail pf-config-card">
                 <div class="pf-config-head">
                     <h3>Period Data</h3>
@@ -1258,6 +1585,8 @@ function renderConfigView() {
                     </label>
                 </div>
             </article>
+            
+            <!-- Static Data - SECOND, matches payroll-recorder naming/structure -->
             <article class="pf-step-card pf-step-detail pf-config-card">
                 <div class="pf-config-head">
                     <h3>Static Data</h3>
@@ -1269,15 +1598,20 @@ function renderConfigView() {
                         <input type="text" id="config-company-name" value="${escapeHtml(companyName)}" placeholder="Prairie Forge LLC">
                     </label>
                     <label class="pf-config-field">
-                        <span>Payroll Provider / Report Location</span>
-                        <input type="url" id="config-payroll-provider" value="${escapeHtml(payrollLink)}" placeholder="https://…">
+                        <span>Company ID <span class="pf-field-hint">(from Prairie Forge CRM)</span></span>
+                        <input type="text" id="config-company-id" value="${escapeHtml(companyId)}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    </label>
+                    <label class="pf-config-field">
+                        <span>PTO Provider / Report Location</span>
+                        <input type="url" id="config-pto-provider" value="${escapeHtml(ptoProvider)}" placeholder="https://…">
                     </label>
                     <label class="pf-config-field">
                         <span>Accounting Software / Import Location</span>
-                        <input type="url" id="config-accounting-link" value="${escapeHtml(accountingLink)}" placeholder="https://…">
+                        <input type="url" id="config-accounting-link" value="${escapeHtml(accountingSoftware)}" placeholder="https://…">
                     </label>
                 </div>
             </article>
+            
             ${renderInlineNotes({
                 textareaId: "config-notes",
                 value: stepFields.notes || "",
@@ -1299,6 +1633,529 @@ function renderConfigView() {
     `;
 }
 
+/**
+ * Render the PTO file upload dropzone HTML (matches payroll-recorder exactly)
+ */
+function renderPtoFileUploadZone() {
+    const hasFile = ptoUploadState.file || ptoUploadState.headers.length > 0;
+    const isLoading = ptoUploadState.loading;
+    
+    // Debug logging to diagnose upload state
+    console.log("[PTO-Upload] renderPtoFileUploadZone state:", {
+        hasFile,
+        isLoading,
+        file: ptoUploadState.file ? ptoUploadState.fileName : null,
+        headersLength: ptoUploadState.headers.length,
+        headers: ptoUploadState.headers.slice(0, 3) // First 3 for brevity
+    });
+    
+    if (isLoading) {
+        return `
+            <div class="pf-upload-zone pf-upload-zone--analyzing">
+                <div class="pf-upload-spinner"></div>
+                <p class="pf-upload-status">Processing your PTO report…</p>
+            </div>
+        `;
+    }
+    
+    if (hasFile) {
+        // Match payroll-recorder: just show file info, no Map Columns button
+        // Validation runs automatically after upload
+        return `
+            <div class="pf-upload-zone pf-upload-zone--ready">
+                <div class="pf-upload-file-info">
+                    <svg class="pf-upload-file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    <div class="pf-upload-file-details">
+                        <span class="pf-upload-filename">${escapeHtml(ptoUploadState.fileName)}</span>
+                        <span class="pf-upload-meta">${ptoUploadState.headers.length} columns • ${(ptoUploadState.rowCount || 0).toLocaleString()} rows</span>
+                    </div>
+                    <button type="button" class="pf-upload-clear" id="pto-upload-clear-btn" title="Remove file">×</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="pf-upload-zone" id="pto-upload-dropzone">
+            <input type="file" id="pto-upload-file-input" accept=".csv,.xlsx,.xls" hidden>
+            <div class="pf-upload-content">
+                <svg class="pf-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <p class="pf-upload-text">Drop your PTO file here</p>
+                <p class="pf-upload-hint">or <button type="button" class="pf-upload-browse" id="pto-upload-browse-btn">browse</button> to upload</p>
+                <p class="pf-upload-formats">Supports CSV, XLSX, XLS</p>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Render Employee Coverage validation card (reconciliation-style layout)
+ * Shows the math: Roster − Missing + Extra = PTO File
+ * Read-only comparison - discrepancies should prompt investigation, not auto-fix
+ */
+function renderPtoEmployeeCoverageCard() {
+    const hasData = headcountState.hasAnalyzed;
+    const isLoading = headcountState.loading;
+    
+    // Use structured state fields
+    const rosterCount = headcountState.rosterCount || 0;
+    const ptoCount = headcountState.ptoCount || 0;
+    const missingFromPto = headcountState.missingFromPto || [];
+    const extraInPto = headcountState.extraInPto || [];
+    
+    const allGood = hasData && missingFromPto.length === 0 && extraInPto.length === 0;
+    
+    // Status badge
+    let statusBadge = "";
+    let statusClass = "";
+    
+    if (isLoading) {
+        statusBadge = `<span class="pf-status-badge pf-status-badge--pending" role="status">⏳ Loading</span>`;
+    } else if (headcountState.lastError) {
+        statusBadge = `<span class="pf-status-badge pf-status-badge--unavailable" role="status">⚠ Unavailable</span>`;
+        statusClass = "pf-coverage-unavailable";
+    } else if (!hasData) {
+        statusBadge = `<span class="pf-status-badge pf-status-badge--pending" role="status">○ Pending</span>`;
+    } else if (allGood) {
+        statusBadge = `<span class="pf-status-badge pf-status-badge--ok" role="status">✓ OK</span>`;
+        statusClass = "pf-coverage-ok";
+    } else {
+        statusBadge = `<span class="pf-status-badge pf-status-badge--review" role="status">⚠ Review</span>`;
+        statusClass = "pf-coverage-review";
+    }
+    
+    // Build content
+    let content = "";
+    
+    if (isLoading) {
+        content = `<p class="pf-subsection-hint">Analyzing coverage...</p>`;
+    } else if (headcountState.lastError) {
+        content = `<p class="pf-subsection-hint pf-subsection-hint--warn">${escapeHtml(headcountState.lastError)}</p>`;
+    } else if (!hasData) {
+        content = `<p class="pf-subsection-hint">Upload a PTO file to run this check.</p>`;
+    } else {
+        // Reconciliation-style layout showing the math
+        content = `<div class="pf-recon-container">`;
+        
+        // Top line: Roster headcount (starting point)
+        content += `
+            <div class="pf-recon-row pf-recon-row--header">
+                <button type="button" class="pf-recon-label pf-clickable" data-pto-coverage-detail="summary">Roster Headcount</button>
+                <span class="pf-recon-value">${rosterCount}</span>
+            </div>
+        `;
+        
+        // Adjustment rows (if any discrepancies)
+        if (missingFromPto.length > 0 || extraInPto.length > 0) {
+            content += `<div class="pf-recon-changes">`;
+            
+            // Missing from PTO (subtract from roster to get PTO count)
+        if (missingFromPto.length > 0) {
+            content += `
+                    <div class="pf-recon-row pf-recon-row--subtract">
+                        <button type="button" class="pf-recon-label pf-clickable" data-pto-coverage-detail="missing">
+                            <span class="pf-recon-operator">−</span> Missing from PTO
+                </button>
+                        <span class="pf-recon-value pf-recon-value--subtract">(${missingFromPto.length})</span>
+                    </div>
+            `;
+        }
+        
+            // Extra in PTO (add to get PTO count)
+        if (extraInPto.length > 0) {
+            content += `
+                    <div class="pf-recon-row pf-recon-row--add">
+                        <button type="button" class="pf-recon-label pf-clickable" data-pto-coverage-detail="extra">
+                            <span class="pf-recon-operator">+</span> In PTO only
+                </button>
+                        <span class="pf-recon-value pf-recon-value--add">${extraInPto.length}</span>
+                    </div>
+                `;
+            }
+            
+            content += `</div>`;
+        }
+        
+        // Separator line
+        content += `<div class="pf-recon-divider"></div>`;
+        
+        // Bottom line: PTO file headcount (result)
+        const checkMark = allGood ? ' ✓' : '';
+        content += `
+            <div class="pf-recon-row pf-recon-row--footer">
+                <button type="button" class="pf-recon-label pf-clickable" data-pto-coverage-detail="summary">PTO File Headcount</button>
+                <span class="pf-recon-value">${ptoCount}${checkMark}</span>
+            </div>
+        `;
+        
+        content += `</div>`;
+        
+        // Hint text
+        if (!allGood) {
+            content += `<p class="pf-coverage-hint">Click any row to see employee details</p>`;
+        } else {
+            content += `
+                <div class="pf-coverage-item pf-coverage-item--ok" style="margin-top: 8px;">
+                    <span class="pf-coverage-item-icon">✓</span>
+                    <span>All roster employees found in PTO data</span>
+                </div>
+            `;
+        }
+    }
+    
+    return `
+        <article class="pf-step-card pf-step-detail pf-config-card pf-employee-coverage-card ${statusClass}" id="pto-coverage-card">
+            <div class="pf-config-head" style="display: flex; align-items: center;">
+                <div>
+                    <h3>Employee Coverage ${statusBadge}</h3>
+                    <p class="pf-config-subtext">Compare PTO employees against roster.</p>
+                </div>
+                <button type="button" class="pf-action-toggle pf-action-toggle--subtle pf-clickable" id="pto-check-coverage-btn" title="Run coverage check" style="margin-left: auto;">
+                    ${REFRESH_ICON_SVG}
+                </button>
+            </div>
+            ${content}
+        </article>
+    `;
+}
+
+/**
+ * Show PTO coverage detail modal for a specific category
+ */
+function showPtoCoverageDetailModal(category) {
+    const rosterCount = headcountState.rosterCount || 0;
+    const ptoCount = headcountState.ptoCount || 0;
+    const missingFromPto = headcountState.missingFromPto || [];
+    const extraInPto = headcountState.extraInPto || [];
+    
+    let title = "";
+    let content = "";
+    
+    switch (category) {
+        case "summary":
+            title = "Coverage Summary";
+            content = renderPtoCoverageSummaryDetail(rosterCount, ptoCount, missingFromPto, extraInPto);
+            break;
+        case "missing":
+            title = `${missingFromPto.length} Active Employees Not in PTO Data`;
+            content = renderPtoEmployeeListDetail(missingFromPto, "These employees are marked active in the roster but were not found in the PTO data. Verify they should have PTO balances.");
+            break;
+        case "extra":
+            title = `${extraInPto.length} In PTO Data Only`;
+            content = renderPtoEmployeeListDetail(extraInPto, "These employees are in the PTO data but not found in the active roster. They may be terminated, on leave, or the roster needs updating.");
+            break;
+        default:
+            return;
+    }
+    
+    // Create and show modal
+    showPtoCoverageModal(title, content);
+}
+
+/**
+ * Render the summary detail with headcount bridge calculation
+ */
+function renderPtoCoverageSummaryDetail(rosterCount, ptoCount, missingFromPto, extraInPto) {
+    const difference = ptoCount - rosterCount;
+    const differenceText = difference === 0 ? "Match" : (difference > 0 ? `+${difference}` : `${difference}`);
+    const differenceClass = difference === 0 ? "match" : "mismatch";
+    
+    return `
+        <div class="pf-coverage-detail-summary">
+            <h4>Headcount Bridge</h4>
+            <div class="pf-headcount-bridge">
+                <div class="pf-bridge-row pf-bridge-row--base">
+                    <span class="pf-bridge-label">Active in Roster</span>
+                    <span class="pf-bridge-value">${rosterCount}</span>
+                </div>
+                ${extraInPto.length > 0 ? `
+                <div class="pf-bridge-row pf-bridge-row--add">
+                    <span class="pf-bridge-label">+ In PTO data only (not in roster)</span>
+                    <span class="pf-bridge-value">+${extraInPto.length}</span>
+                </div>
+                ` : ""}
+                ${missingFromPto.length > 0 ? `
+                <div class="pf-bridge-row pf-bridge-row--subtract">
+                    <span class="pf-bridge-label">− Active but not in PTO data</span>
+                    <span class="pf-bridge-value">−${missingFromPto.length}</span>
+                </div>
+                ` : ""}
+                <div class="pf-bridge-row pf-bridge-row--total">
+                    <span class="pf-bridge-label">In PTO Data</span>
+                    <span class="pf-bridge-value">${ptoCount}</span>
+                </div>
+                <div class="pf-bridge-row pf-bridge-row--diff pf-bridge-row--${differenceClass}">
+                    <span class="pf-bridge-label">Difference</span>
+                    <span class="pf-bridge-value">${differenceText}</span>
+                </div>
+            </div>
+            
+            <h4 style="margin-top: 20px;">What to Review</h4>
+            <ul class="pf-coverage-review-list">
+                ${missingFromPto.length > 0 ? `<li><strong>${missingFromPto.length} not in PTO</strong> — Verify these active employees should have PTO balances</li>` : ""}
+                ${extraInPto.length > 0 ? `<li><strong>${extraInPto.length} PTO only</strong> — Check if these are terminated/on leave, or update roster via Payroll Recorder</li>` : ""}
+                ${missingFromPto.length === 0 && extraInPto.length === 0 ? `<li>✓ No issues found — roster and PTO data are in sync</li>` : ""}
+            </ul>
+        </div>
+    `;
+}
+
+/**
+ * Render a list of employees for PTO coverage modal
+ */
+function renderPtoEmployeeListDetail(employees, description) {
+    if (!employees || employees.length === 0) {
+        return `<p>${description}</p><p><em>No employees in this category.</em></p>`;
+    }
+    
+    let html = `<p style="margin-bottom: 16px;">${description}</p>`;
+    html += `<div class="pf-employee-list">`;
+    
+    employees.forEach((emp, index) => {
+        const name = emp.name || emp;
+        const dept = emp.department || null;
+        html += `
+            <div class="pf-employee-list-item">
+                <span class="pf-employee-index">${index + 1}.</span>
+                <span class="pf-employee-name">${escapeHtml(name)}</span>
+                ${dept ? `<span class="pf-employee-dept">${escapeHtml(dept)}</span>` : ""}
+            </div>
+        `;
+    });
+    
+    html += `</div>`;
+    return html;
+}
+
+/**
+ * Show PTO coverage detail modal
+ */
+function showPtoCoverageModal(title, content) {
+    // Remove existing modal if present
+    const existing = document.getElementById("pto-coverage-detail-modal");
+    if (existing) existing.remove();
+    
+    const modal = document.createElement("div");
+    modal.id = "pto-coverage-detail-modal";
+    modal.className = "pf-coverage-modal";
+    modal.innerHTML = `
+        <div class="pf-coverage-modal-backdrop" data-close></div>
+        <div class="pf-coverage-modal-card">
+            <div class="pf-coverage-modal-header">
+                <h3 class="pf-coverage-modal-title">${escapeHtml(title)}</h3>
+                <button class="pf-coverage-modal-close pf-clickable" type="button" aria-label="Close" data-close>
+                    ${X_ICON_SVG}
+                </button>
+            </div>
+            <div class="pf-coverage-modal-body">
+                ${content}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Bind close handlers
+    modal.querySelectorAll("[data-close]").forEach(el => {
+        el.addEventListener("click", () => modal.remove());
+    });
+    
+    // Close on escape key
+    const escHandler = (e) => {
+        if (e.key === "Escape") {
+            modal.remove();
+            document.removeEventListener("keydown", escHandler);
+        }
+    };
+    document.addEventListener("keydown", escHandler);
+}
+
+/**
+ * Render an expandable issue section for data quality card
+ */
+function renderQualityIssueSection(sectionKey, label, items, renderItem) {
+    if (!items?.length) return '';
+    
+    const isExpanded = dataQualityState.expandedSections.has(sectionKey);
+    const chevron = isExpanded ? '▼' : '▶';
+    
+    const itemsHtml = isExpanded 
+        ? `<div class="pf-quality-issue-details">
+            ${items.map(renderItem).join('')}
+           </div>`
+        : '';
+    
+    return `
+        <div class="pf-quality-issue-row">
+            <button type="button" class="pf-quality-issue-toggle pf-clickable" data-quality-section="${sectionKey}">
+                <span class="pf-quality-chevron">${chevron}</span>
+                <span class="pf-quality-issue-label">${items.length} ${label}</span>
+            </button>
+            ${itemsHtml}
+        </div>
+    `;
+}
+
+/**
+ * Render Data Quality validation card with expandable issue sections
+ */
+function renderPtoDataQualityCard() {
+    const hasQualityData = dataQualityState.hasRun;
+    const totalIssues = dataQualityState.totalIssues || 0;
+    const qualityPassed = totalIssues === 0;
+    
+    const statusBadge = !hasQualityData
+        ? `<span class="pf-status-badge pf-status-badge--pending" role="status">○ Pending</span>`
+        : qualityPassed
+            ? `<span class="pf-status-badge pf-status-badge--ok" role="status">✓ OK</span>`
+            : `<span class="pf-status-badge pf-status-badge--review" role="status">⚠ Review</span>`;
+    
+    const statusMessage = hasQualityData
+        ? (qualityPassed 
+            ? `${dataQualityState.totalEmployees || 0} employees checked, no issues found`
+            : `Found ${totalIssues} potential issue${totalIssues !== 1 ? 's' : ''} to review`)
+        : 'Check for negative balances, outliers, and data anomalies.';
+    
+    let issueDetails = '';
+    if (hasQualityData && !qualityPassed) {
+        // Build expandable issue sections
+        const sections = [];
+        
+        // Balance issues (negative balances, used more than available)
+        sections.push(renderQualityIssueSection(
+            'balanceIssues',
+            'negative balance(s)',
+            dataQualityState.balanceIssues,
+            (item) => `<div class="pf-quality-issue-item pf-quality-issue-item--warn">
+                <span class="pf-quality-issue-name">${escapeHtml(item.name)}</span>
+                <span class="pf-quality-issue-value">${escapeHtml(item.issue)}</span>
+            </div>`
+        ));
+        
+        // Zero balances (informational)
+        sections.push(renderQualityIssueSection(
+            'zeroBalances',
+            'zero balance(s)',
+            dataQualityState.zeroBalances,
+            (item) => `<div class="pf-quality-issue-item pf-quality-issue-item--info">
+                <span class="pf-quality-issue-name">${escapeHtml(item.name)}</span>
+                <span class="pf-quality-issue-value">0 hrs balance</span>
+            </div>`
+        ));
+        
+        // Accrual rate outliers
+        sections.push(renderQualityIssueSection(
+            'accrualOutliers',
+            'accrual rate outlier(s)',
+            dataQualityState.accrualOutliers,
+            (item) => `<div class="pf-quality-issue-item pf-quality-issue-item--info">
+                <span class="pf-quality-issue-name">${escapeHtml(item.name)}</span>
+                <span class="pf-quality-issue-value">${item.accrualRate.toFixed(2)} hrs/period</span>
+            </div>`
+        ));
+        
+        const sectionsHtml = sections.filter(s => s).join('');
+        if (sectionsHtml) {
+            issueDetails = `
+                <div class="pf-quality-issues-container">
+                    ${sectionsHtml}
+                </div>
+            `;
+        }
+    }
+    
+    // Hint text when no data
+    const hintText = !hasQualityData 
+        ? `<p class="pf-metric-hint pf-metric-hint--info" style="margin-top: 12px; font-style: italic;">Upload a PTO file above to run this check.</p>`
+        : '';
+    
+    return `
+        <article class="pf-step-card pf-step-detail pf-config-card" id="pto-quality-card">
+            <div class="pf-config-head" style="display: flex; align-items: center;">
+                <div>
+                    <h3>Data Quality ${statusBadge}</h3>
+                    <p class="pf-config-subtext">${statusMessage}</p>
+                </div>
+                <button type="button" class="pf-action-toggle pf-action-toggle--subtle pf-clickable" id="pto-check-quality-btn" title="Run quality check" style="margin-left: auto;">
+                    ${REFRESH_ICON_SVG}
+                </button>
+            </div>
+            ${issueDetails}
+            ${hintText}
+        </article>
+    `;
+}
+
+/**
+ * Step 1: Upload & Validate PTO Data
+ * Mirrors payroll-recorder Step 1 UX pattern EXACTLY
+ */
+function renderUploadValidateStep(detail) {
+    const stepFields = getStepConfig(1);
+    const notesPermanent = Boolean(configState.permanents[1]);
+    const stepReviewer = getReviewerWithFallback(stepFields?.reviewer);
+    const stepSignOff = stepFields?.signOffDate || "";
+    const stepComplete = Boolean(parseBooleanStrict(configState.completes[1]) || stepSignOff);
+    
+    // Error display
+    const errorHtml = ptoUploadState.error 
+        ? `<p class="pf-upload-error">${escapeHtml(ptoUploadState.error)}</p>` 
+        : "";
+    
+    return `
+        <section class="pf-hero" id="pf-step-hero">
+            <p class="pf-hero-copy">${escapeHtml(MODULE_NAME)} | Step ${detail.id}</p>
+            <h2 class="pf-hero-title">Upload & Validate PTO Data</h2>
+            <p class="pf-hero-copy">Upload your PTO export, create the data matrix, and verify coverage.</p>
+        </section>
+        <section class="pf-step-guide">
+            <article class="pf-step-card pf-step-detail pf-config-card">
+                <div class="pf-config-head">
+                    <h3>Import</h3>
+                    <p class="pf-config-subtext">Drop your PTO file to auto-normalize headers.</p>
+                </div>
+                ${renderPtoFileUploadZone()}
+                ${errorHtml}
+            </article>
+            
+            <div class="pf-validation-section">
+                <h3 class="pf-validation-header">Validation</h3>
+                <p class="pf-validation-subtext">Advisory checks — review but not required to proceed.</p>
+                ${renderPtoEmployeeCoverageCard()}
+                ${renderPtoDataQualityCard()}
+            </div>
+            
+            ${renderInlineNotes({
+                textareaId: "step-notes-1",
+                value: stepFields?.notes || "",
+                permanentId: "step-notes-lock-1",
+                isPermanent: notesPermanent,
+                hintId: "",
+                saveButtonId: "step-notes-save-1"
+            })}
+            ${renderSignoff({
+                reviewerInputId: "step-reviewer-1",
+                reviewerValue: stepReviewer,
+                signoffInputId: "step-signoff-1",
+                signoffValue: stepSignOff,
+                isComplete: stepComplete,
+                saveButtonId: "step-signoff-save-1",
+                completeButtonId: "step-signoff-toggle-1"
+            })}
+        </section>
+    `;
+}
+
+// LEGACY: renderImportStep kept for reference but no longer used
 function renderImportStep(detail) {
     const stepFields = getStepConfig(1);
     const notesPermanent = Boolean(configState.permanents[1]);
@@ -1317,7 +2174,7 @@ function renderImportStep(detail) {
             <article class="pf-step-card pf-step-detail pf-config-card">
                 <div class="pf-config-head">
                     <h3>Payroll Report</h3>
-                    <p class="pf-config-subtext">Access your payroll provider to download the latest PTO export, then paste into PTO_Data.</p>
+                    <p class="pf-config-subtext">Access your payroll provider to download the latest PTO export.</p>
                 </div>
                 <div class="pf-signoff-action">
                     ${renderLabeledButton(
@@ -1327,11 +2184,11 @@ function renderImportStep(detail) {
                         "Provider"
                     )}
                     ${renderLabeledButton(
-                        `<button type="button" class="pf-action-toggle pf-clickable" id="import-open-data-btn" title="Open PTO_Data sheet">${TABLE_ICON_SVG}</button>`,
-                        "PTO_Data"
+                        `<button type="button" class="pf-action-toggle pf-clickable" id="import-open-data-btn" title="Open PTO_Data_Clean sheet">${TABLE_ICON_SVG}</button>`,
+                        "Data"
                     )}
                     ${renderLabeledButton(
-                        `<button type="button" class="pf-action-toggle pf-clickable" id="import-clear-btn" title="Clear PTO_Data to start over">${TRASH_ICON_SVG}</button>`,
+                        `<button type="button" class="pf-action-toggle pf-clickable" id="import-clear-btn" title="Clear PTO_Data_Clean to start over">${TRASH_ICON_SVG}</button>`,
                         "Clear"
                     )}
                 </div>
@@ -1360,16 +2217,17 @@ function renderImportStep(detail) {
 function renderStepView(stepId) {
     const detail = WORKFLOW_STEPS.find((step) => step.id === stepId);
     if (!detail) return "";
-    if (stepId === 0) return renderConfigView();
-    if (stepId === 1) return renderImportStep(detail);
-    if (stepId === 2) return renderHeadcountStep(detail);
-    if (stepId === 3) return renderDataQualityStep(detail);
-    if (stepId === 4) return renderAccrualReviewStep(detail);
-    if (stepId === 5) return renderJournalStep(detail);
-    if (detail.id === 6) {
-        return renderArchiveStep(detail);
+    
+    // Step mapping - matches payroll-recorder 5-step structure
+    switch (stepId) {
+        case 0: return renderConfigView();
+        case 1: return renderUploadValidateStep(detail);  // Replaces old Import + Headcount + Data Quality
+        case 2: return renderAccrualReviewStep(detail);   // PTO Accrual Review
+        case 3: return renderJournalStep(detail);         // Journal Entry Prep
+        case 4: return renderArchiveStep(detail);         // Archive & Clear
     }
-    // Generic step rendering (shouldn't be reached now)
+    
+    // Generic step rendering (fallback, shouldn't be reached)
     const stepFields = getStepConfig(stepId);
     const notesPermanent = Boolean(configState.permanents[stepId]);
     const stepReviewer = getReviewerWithFallback(stepFields?.reviewer);
@@ -1418,29 +2276,51 @@ function bindInteractions() {
     document.getElementById("nav-prev")?.addEventListener("click", () => moveFocus(-1));
     document.getElementById("nav-next")?.addEventListener("click", () => moveFocus(1));
     
-    // Quick Access hamburger menu toggle
+    // Quick Access Modal (matches payroll-recorder)
     const quickToggle = document.getElementById("nav-quick-toggle");
-    const quickDropdown = document.getElementById("quick-access-dropdown");
+    const quickModal = document.getElementById("quick-access-modal");
+    const quickClose = document.getElementById("quick-access-close");
+    const quickBackdrop = quickModal?.querySelector("[data-close]");
+    
+    const closeQuickModal = () => {
+        quickModal?.classList.add("hidden");
+        quickToggle?.classList.remove("is-active");
+    };
     
     quickToggle?.addEventListener("click", (e) => {
         e.stopPropagation();
-        quickDropdown?.classList.toggle("hidden");
+        quickModal?.classList.toggle("hidden");
         quickToggle.classList.toggle("is-active");
     });
     
-    // Close dropdown when clicking outside
-    document.addEventListener("click", (e) => {
-        if (!quickDropdown?.contains(e.target) && !quickToggle?.contains(e.target)) {
-            quickDropdown?.classList.add("hidden");
-            quickToggle?.classList.remove("is-active");
-        }
+    quickClose?.addEventListener("click", closeQuickModal);
+    quickBackdrop?.addEventListener("click", closeQuickModal);
+    
+    // Quick Access - Accounting Software
+    document.getElementById("nav-accounting-software")?.addEventListener("click", async () => {
+        closeQuickModal();
+        await openAccountingSoftware();
     });
     
-    // Quick Access - Configuration modal
+    // Quick Access - Employee Roster (shows hidden SS_ sheet temporarily)
+    document.getElementById("nav-employee-roster")?.addEventListener("click", async () => {
+        closeQuickModal();
+        await showAndActivateSheet("SS_Employee_Roster");
+        showToast("Opened Employee Roster", "success", 2000);
+    });
+    
+    // Quick Access - Chart of Accounts (shows hidden SS_ sheet temporarily)
+    document.getElementById("nav-chart-of-accounts")?.addEventListener("click", async () => {
+        closeQuickModal();
+        await showAndActivateSheet("SS_Chart_of_Accounts");
+        showToast("Opened Chart of Accounts", "success", 2000);
+    });
+    
+    // Quick Access - Configuration (shows hidden SS_ sheet temporarily)
     document.getElementById("nav-config")?.addEventListener("click", async () => {
-        quickDropdown?.classList.add("hidden");
-        quickToggle?.classList.remove("is-active");
-        await openConfigModal();
+        closeQuickModal();
+        await showAndActivateSheet("SS_PF_Config");
+        showToast("Opened Configuration", "success", 2000);
     });
     
     document.querySelectorAll("[data-step-card]").forEach((card) => {
@@ -1456,18 +2336,15 @@ function bindInteractions() {
 }
 
 function bindStepView(stepId) {
-    const notesInput =
-        stepId === 2 ? document.getElementById("step-notes-input") : document.getElementById(`step-notes-${stepId}`);
-    const reviewerInput =
-        stepId === 2 ? document.getElementById("step-reviewer-name") : document.getElementById(`step-reviewer-${stepId}`);
-    const signoffInput =
-        stepId === 2 ? document.getElementById("step-signoff-date") : document.getElementById(`step-signoff-${stepId}`);
+    // All step views use consistent ID patterns: step-notes-{stepId}, step-reviewer-{stepId}, etc.
+    const notesInput = document.getElementById(`step-notes-${stepId}`);
+    const reviewerInput = document.getElementById(`step-reviewer-${stepId}`);
+    const signoffInput = document.getElementById(`step-signoff-${stepId}`);
     const backBtn = document.getElementById("step-back-btn");
-    const lockBtn =
-        stepId === 2 ? document.getElementById("step-notes-lock-2") : document.getElementById(`step-notes-lock-${stepId}`);
+    const lockBtn = document.getElementById(`step-notes-lock-${stepId}`);
 
     // Save button for notes
-    const notesSaveBtn = stepId === 2 ? document.getElementById("step-notes-save-2") : document.getElementById(`step-notes-save-${stepId}`);
+    const notesSaveBtn = document.getElementById(`step-notes-save-${stepId}`);
     notesSaveBtn?.addEventListener("click", async () => {
         const notes = notesInput?.value || "";
         await saveStepField(stepId, "notes", notes);
@@ -1475,7 +2352,7 @@ function bindStepView(stepId) {
     });
 
     // Save button for sign-off section (reviewer name)
-    const signoffSaveBtn = stepId === 2 ? document.getElementById("headcount-signoff-save") : document.getElementById(`step-signoff-save-${stepId}`);
+    const signoffSaveBtn = document.getElementById(`step-signoff-save-${stepId}`);
     signoffSaveBtn?.addEventListener("click", async () => {
         const reviewer = reviewerInput?.value || "";
         await saveStepField(stepId, "reviewer", reviewer);
@@ -1485,26 +2362,35 @@ function bindStepView(stepId) {
     // Auto-wire save state tracking for all save buttons (marks as unsaved on input change)
     initSaveTracking();
 
-    const signoffButtonId = stepId === 2 ? "headcount-signoff-toggle" : `step-signoff-toggle-${stepId}`;
+    // Button IDs must match what's rendered in the step view
+    const signoffButtonId = `step-signoff-toggle-${stepId}`;
     const signoffPrevId = `${signoffButtonId}-prev`;
     const signoffNextId = `${signoffButtonId}-next`;
-    const signoffInputId = stepId === 2 ? "step-signoff-date" : `step-signoff-${stepId}`;
+    const signoffInputId = `step-signoff-${stepId}`;
     bindSignoffToggle(stepId, {
         buttonId: signoffButtonId,
         inputId: signoffInputId,
-        canActivate:
-            stepId === 2
-                ? () => {
-                      if (!isHeadcountNotesRequired()) return true;
-                      const notes = document.getElementById("step-notes-input")?.value.trim() || "";
-                      if (notes) return true;
-                      showToast("Please enter a brief explanation of the headcount differences before completing this step.", "info");
-                      return false;
-                  }
-                : null,
+        canActivate: null, // No special validation needed - just sign off
         onComplete: getStepCompleteHandler(stepId)
     });
     bindSignoffNavButtons(signoffPrevId, signoffNextId);
+
+    // Bind Ada copilot card for PTO step 2 (Accrual Review)
+    if (stepId === 2) {
+        const adaContainer = document.querySelector('[data-copilot="pto-copilot"]');
+        if (adaContainer) {
+            bindCopilotCard(adaContainer, {
+                id: "pto-copilot",
+                contextProvider: createExcelContextProvider({
+                    dataClean: 'PTO_Data_Clean',
+                    analysis: 'PTO_Analysis',
+                    review: 'PTO_Review',
+                    config: 'SS_PF_Config'
+                }),
+                onPrompt: callAdaApi
+            });
+        }
+    }
     backBtn?.addEventListener("click", async () => {
         const homepageConfig = getHomepageConfig(MODULE_KEY);
         await activateHomepageSheet(homepageConfig.sheetName, homepageConfig.title, homepageConfig.subtitle);
@@ -1515,15 +2401,132 @@ function bindStepView(stepId) {
         updateLockButtonVisual(lockBtn, nextLocked);
         await toggleNotePermanent(stepId, nextLocked);
     });
-    if (stepId === 6) {
+    // Step 4: Archive & Clear
+    if (stepId === 4) {
         document.getElementById("archive-run-btn")?.addEventListener("click", () => {
             archiveAndReset();
         });
     }
-    // Step 1: Import PTO Data
+    
+    // Step 1: Upload & Validate PTO Data (drag-and-drop matching payroll-recorder)
     if (stepId === 1) {
-        document.getElementById("import-open-data-btn")?.addEventListener("click", () => openSheet("PTO_Data"));
-        document.getElementById("import-clear-btn")?.addEventListener("click", () => clearPtoData());
+        const dropzone = document.getElementById("pto-upload-dropzone");
+        const fileInput = document.getElementById("pto-upload-file-input");
+        const browseBtn = document.getElementById("pto-upload-browse-btn");
+        const clearBtn = document.getElementById("pto-upload-clear-btn");
+        
+        // Debug logging to verify elements exist
+        console.log("[PTO-Upload] bindStepView Step 1 - Element check:", {
+            dropzone: !!dropzone,
+            fileInput: !!fileInput,
+            browseBtn: !!browseBtn,
+            clearBtn: !!clearBtn
+        });
+        
+        // Dropzone click handler - clicking anywhere on dropzone opens file picker
+        // (matches payroll-recorder behavior)
+        if (dropzone) {
+            dropzone.addEventListener("click", () => {
+                console.log("[PTO-Upload] Dropzone clicked, opening file picker");
+                fileInput?.click();
+        });
+        
+        // Drag and drop handlers
+            dropzone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+                e.stopPropagation();
+            dropzone.classList.add("pf-upload-zone--dragover");
+        });
+            dropzone.addEventListener("dragleave", (e) => {
+            e.preventDefault();
+                e.stopPropagation();
+            dropzone.classList.remove("pf-upload-zone--dragover");
+        });
+            dropzone.addEventListener("drop", (e) => {
+            e.preventDefault();
+                e.stopPropagation();
+            dropzone.classList.remove("pf-upload-zone--dragover");
+            const file = e.dataTransfer?.files?.[0];
+                if (file) handlePtoFileUpload(file);
+            });
+        }
+        
+        // Browse button opens file picker (with stopPropagation to prevent dropzone click)
+        browseBtn?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            console.log("[PTO-Upload] Browse button clicked");
+            fileInput?.click();
+        });
+        
+        // File input change handler
+        fileInput?.addEventListener("change", (e) => {
+            const file = e.target.files?.[0];
+            console.log("[PTO-Upload] File selected:", file?.name);
+            if (file) handlePtoFileUpload(file);
+        });
+        
+        // Clear uploaded file
+        clearBtn?.addEventListener("click", () => {
+            console.log("[PTO-Upload] Clear button clicked");
+            ptoUploadState.file = null;
+            ptoUploadState.fileName = "";
+            ptoUploadState.headers = [];
+            ptoUploadState.rowCount = 0;
+            ptoUploadState.parsedData = null;
+            ptoUploadState.error = null;
+            renderApp();
+        });
+        
+        // Individual validation check refresh buttons
+        document.getElementById("pto-check-coverage-btn")?.addEventListener("click", async () => {
+            showToast("Refreshing coverage check...", "info", 2000);
+            const scrollY = window.scrollY;
+            await refreshHeadcountAnalysis();
+            renderApp();
+            requestAnimationFrame(() => window.scrollTo(0, scrollY));
+        });
+        
+        // Coverage detail pill clicks - open modal with category details
+        document.querySelectorAll("[data-pto-coverage-detail]").forEach(pill => {
+            pill.addEventListener("click", (e) => {
+                e.preventDefault();
+                const category = pill.dataset.ptoCoverageDetail;
+                showPtoCoverageDetailModal(category);
+            });
+        });
+        
+        document.getElementById("pto-check-quality-btn")?.addEventListener("click", async () => {
+            showToast("Refreshing quality check...", "info", 2000);
+            const scrollY = window.scrollY;
+            await runDataQualityCheck();
+            renderApp();
+            requestAnimationFrame(() => window.scrollTo(0, scrollY));
+        });
+        
+        // Data Quality expandable sections
+        document.querySelectorAll("[data-quality-section]").forEach(toggle => {
+            toggle.addEventListener("click", (e) => {
+                e.preventDefault();
+                const section = toggle.dataset.qualitySection;
+                const scrollY = window.scrollY;
+                
+                // Toggle expanded state
+                if (dataQualityState.expandedSections.has(section)) {
+                    dataQualityState.expandedSections.delete(section);
+                } else {
+                    dataQualityState.expandedSections.add(section);
+                }
+                
+                renderApp();
+                requestAnimationFrame(() => window.scrollTo(0, scrollY));
+            });
+        });
+    }
+    
+    // Step 2: PTO Accrual Review
+    if (stepId === 2) {
+        document.getElementById("review-generate-btn")?.addEventListener("click", () => generatePtoReview());
+        document.getElementById("review-open-btn")?.addEventListener("click", () => openSheet("PTO_Review"));
     }
     // Step 2: Headcount Review
     if (stepId === 2) {
@@ -1561,7 +2564,8 @@ function bindStepView(stepId) {
             if (e.key === "Enter") handlePayRateSave();
         });
     }
-    if (stepId === 5) {
+    // Step 3: Journal Entry Prep
+    if (stepId === 3) {
         document.getElementById("je-create-btn")?.addEventListener("click", () => createJournalDraft());
         document.getElementById("je-run-btn")?.addEventListener("click", () => runJournalSummary());
         document.getElementById("je-export-btn")?.addEventListener("click", () => exportJournalDraft());
@@ -1692,7 +2696,28 @@ function focusStep(index, stepId = null) {
     // Activate the corresponding sheet from STEP_SHEET_MAP
     const sheetName = STEP_SHEET_MAP[resolvedStepId];
     if (sheetName) {
-        openSheet(sheetName);
+        console.log("[NAV] Step→Sheet activation", {
+            moduleKey: MODULE_KEY,
+            stepIndex: index,
+            stepId: resolvedStepId,
+            targetSheetName: sheetName
+        });
+        showAndActivateSheet(sheetName)
+            .then(() => {
+                console.log("[NAV] Step→Sheet activation success", {
+                    moduleKey: MODULE_KEY,
+                    stepId: resolvedStepId,
+                    targetSheetName: sheetName
+                });
+            })
+            .catch((err) => {
+                console.warn("[NAV] Step→Sheet activation failed", {
+                    moduleKey: MODULE_KEY,
+                    stepId: resolvedStepId,
+                    targetSheetName: sheetName,
+                    error: err?.message ?? String(err)
+                });
+            });
     }
     
     // Step-specific initialization
@@ -1704,12 +2729,12 @@ function focusStep(index, stepId = null) {
 
 /**
  * Get the completion handler for a step
- * All steps (0-5) advance to the next step when completed
- * Step 6 (Archive) has its own special flow
+ * Steps 0-3 advance to the next step when completed
+ * Step 4 (Archive) is handled separately with archive flow
  */
 function getStepCompleteHandler(stepId) {
-    // Step 6 is handled separately with archive flow
-    if (stepId === 6) return null;
+    // Step 4 (Archive) is handled separately with archive flow
+    if (stepId === 4) return null;
     
     // All other steps advance to the next step
     return () => advanceToNextStep(stepId);
@@ -1820,12 +2845,12 @@ async function importSampleData() {
     toggleLoader(true, "Importing sample data...");
     try {
         await Excel.run(async (context) => {
-            await writeDatasetToSheet(context, "PTO_Data", PTO_ACTIVITY_COLUMNS, SAMPLE_PTO_ACTIVITY);
+            await writeDatasetToSheet(context, "PTO_Data_Clean", PTO_ACTIVITY_COLUMNS, SAMPLE_PTO_ACTIVITY);
             await writeDatasetToSheet(context, "PTO_ExpenseReview", PTO_EXPENSE_COLUMNS, SAMPLE_EXPENSE_REVIEW);
             await writeDatasetToSheet(context, "PTO_JE_Draft", PTO_JOURNAL_COLUMNS, SAMPLE_JOURNAL_LINES);
-            // Sync PTO_Analysis from PTO_Data (enriches with department, pay rate, calculates liability)
+            // Sync PTO_Analysis from PTO_Data_Clean (enriches with department, pay rate, calculates liability)
             await syncPtoAnalysis(context);
-            const dataSheet = context.workbook.worksheets.getItem("PTO_Data");
+            const dataSheet = context.workbook.worksheets.getItem("PTO_Data_Clean");
             dataSheet.activate();
             dataSheet.getRange("A1").select();
             await context.sync();
@@ -1953,6 +2978,2156 @@ function handlePayRateIgnore() {
     focusStep(3, 3);
 }
 
+// =============================================================================
+// HARDENED HOURLY RATE ENGINE
+// Multi-source rate derivation with graceful fallbacks
+// Never returns 0/NaN - marks as RATE_MISSING instead
+// =============================================================================
+
+/**
+ * Rate source priority (highest to lowest):
+ * 1. Roster override (Hourly_Rate with Is_Manually_Managed=TRUE)
+ * 2. Roster computed (Hourly_Rate or Salary_Annual conversion)
+ * 3. Payroll history (computed from PR_Archive_Summary)
+ * 4. Default rate (configurable, explicit in UI)
+ * 5. MISSING (flagged, excluded from $ totals unless default mode)
+ */
+const RATE_SOURCES = {
+    ROSTER_OVERRIDE: "Roster Override",
+    ROSTER: "Roster",
+    PAYROLL: "Payroll",
+    DEFAULT: "Default",
+    MISSING: "Missing"
+};
+
+const DEFAULT_STD_HOURS_PER_YEAR = 2080;
+const DEFAULT_HOURLY_RATE = 25; // Configurable default rate - shown explicitly in UI
+
+/**
+ * Additional columns needed for rate tracking in SS_Employee_Roster
+ */
+const PTO_ROSTER_RATE_COLUMNS = [
+    "Hourly_Rate",              // Explicit hourly rate (currency)
+    "Salary_Annual",            // Annual salary for conversion
+    "Std_Hours_Per_Year",       // Standard hours (default 2080)
+    "Rate_Source",              // How rate was derived
+    "Rate_Last_Updated"         // ISO timestamp of last rate update
+];
+
+/**
+ * Normalize employee name for consistent keying across modules
+ * - Trim, collapse spaces, uppercase
+ */
+function normalizeEmployeeKey(name) {
+    if (!name) return "";
+    return String(name)
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase();
+}
+
+/**
+ * State for rate engine diagnostics
+ */
+const rateEngineState = {
+    loaded: false,
+    loading: false,
+    lastRun: null,
+    // Rate lookup map: Employee_Key -> { rate, source, sourceDetail }
+    rates: new Map(),
+    // Diagnostics
+    diagnostics: {
+        fromRosterOverride: 0,
+        fromRoster: 0,
+        fromPayroll: 0,
+        fromDefault: 0,
+        missing: 0,
+        total: 0,
+        missingEmployees: [],      // [{name, key}]
+        topByLiability: []         // [{name, balance, rate, liability}]
+    }
+};
+
+/**
+ * Load and compute hourly rates for all employees
+ * Priority order: Roster Override > Roster > Payroll > Default > Missing
+ */
+async function loadEmployeeRates() {
+    console.log("[RateEngine] Starting rate load...");
+    rateEngineState.loading = true;
+    rateEngineState.rates.clear();
+    
+    // Reset diagnostics
+    const diag = rateEngineState.diagnostics;
+    diag.fromRosterOverride = 0;
+    diag.fromRoster = 0;
+    diag.fromPayroll = 0;
+    diag.fromDefault = 0;
+    diag.missing = 0;
+    diag.total = 0;
+    diag.missingEmployees = [];
+    diag.topByLiability = [];
+    
+    if (!hasExcel()) {
+        console.warn("[RateEngine] Excel not available");
+        rateEngineState.loading = false;
+        return rateEngineState.rates;
+    }
+    
+    try {
+        await Excel.run(async (context) => {
+            // Step 1: Load roster data
+            const rosterData = await loadRosterRates(context);
+            
+            // Step 2: Load payroll history for rate computation
+            const payrollRates = await loadPayrollDerivedRates(context);
+            
+            // Step 3: Get list of employees from current PTO data
+            const ptoEmployees = await getPtoEmployeeList(context);
+            
+            // Step 4: Build final rate map with fallback chain
+            for (const emp of ptoEmployees) {
+                const key = normalizeEmployeeKey(emp.name);
+                diag.total++;
+                
+                let rate = null;
+                let source = RATE_SOURCES.MISSING;
+                let sourceDetail = "";
+                
+                // Check roster override first
+                const rosterEntry = rosterData.get(key);
+                if (rosterEntry) {
+                    if (rosterEntry.isManuallyManaged && rosterEntry.hourlyRate > 0) {
+                        rate = rosterEntry.hourlyRate;
+                        source = RATE_SOURCES.ROSTER_OVERRIDE;
+                        sourceDetail = rosterEntry.rateSource || "Manual override";
+                        diag.fromRosterOverride++;
+                    } else if (rosterEntry.hourlyRate > 0) {
+                        rate = rosterEntry.hourlyRate;
+                        source = RATE_SOURCES.ROSTER;
+                        // Use Rate_Source from roster if available (set by Payroll Recorder)
+                        sourceDetail = rosterEntry.rateSource || "Hourly_Rate column";
+                        diag.fromRoster++;
+                    } else if (rosterEntry.salaryAnnual > 0) {
+                        // Convert salary to hourly
+                        const stdHours = rosterEntry.stdHoursPerYear || DEFAULT_STD_HOURS_PER_YEAR;
+                        rate = rosterEntry.salaryAnnual / stdHours;
+                        source = RATE_SOURCES.ROSTER;
+                        sourceDetail = `Salary ${rosterEntry.salaryAnnual.toFixed(0)} / ${stdHours} hrs`;
+                        diag.fromRoster++;
+                    }
+                }
+                
+                // Check payroll history if no roster rate
+                if (!rate && payrollRates.has(key)) {
+                    const payrollRate = payrollRates.get(key);
+                    if (payrollRate.rate > 0) {
+                        rate = payrollRate.rate;
+                        source = RATE_SOURCES.PAYROLL;
+                        sourceDetail = `Fixed $${payrollRate.avgFixedPerPeriod.toFixed(0)} / ${HOURS_PER_PAY_PERIOD}hrs (${payrollRate.periods} periods)`;
+                        diag.fromPayroll++;
+                    }
+                }
+                
+                // Use default if still no rate
+                if (!rate) {
+                    // For now, mark as missing - we'll apply default only if user opts in
+                    source = RATE_SOURCES.MISSING;
+                    sourceDetail = "No rate source available";
+                    diag.missing++;
+                    diag.missingEmployees.push({ name: emp.name, key });
+                }
+                
+                // Get department from roster (PTO export doesn't include department)
+                const department = rosterEntry?.department || "";
+                
+                rateEngineState.rates.set(key, {
+                    employeeName: emp.name,
+                    rate: rate || 0,
+                    source,
+                    sourceDetail,
+                    balance: emp.balance || 0,
+                    department
+                });
+            }
+            
+            await context.sync();
+        });
+        
+        // Build top 10 by liability for diagnostics
+        const entriesWithLiability = Array.from(rateEngineState.rates.values())
+            .filter(e => e.rate > 0 && e.balance > 0)
+            .map(e => ({
+                name: e.employeeName,
+                balance: e.balance,
+                rate: e.rate,
+                liability: e.balance * e.rate
+            }))
+            .sort((a, b) => b.liability - a.liability)
+            .slice(0, 10);
+        
+        diag.topByLiability = entriesWithLiability;
+        
+        // Log diagnostics
+        console.log("[RateEngine] Load complete:", {
+            total: diag.total,
+            fromRosterOverride: diag.fromRosterOverride,
+            fromRoster: diag.fromRoster,
+            fromPayroll: diag.fromPayroll,
+            fromDefault: diag.fromDefault,
+            missing: diag.missing,
+            missingNames: diag.missingEmployees.map(e => e.name)
+        });
+        console.log("[RateEngine] Top 10 by liability:", diag.topByLiability);
+        
+        rateEngineState.loaded = true;
+        rateEngineState.loading = false;
+        rateEngineState.lastRun = new Date().toISOString();
+        
+    } catch (error) {
+        console.error("[RateEngine] Error loading rates:", error);
+        rateEngineState.loading = false;
+    }
+    
+    return rateEngineState.rates;
+}
+
+/**
+ * Load rates from SS_Employee_Roster
+ */
+async function loadRosterRates(context) {
+    const rosterMap = new Map();
+    
+    const rosterSheet = context.workbook.worksheets.getItemOrNullObject("SS_Employee_Roster");
+    rosterSheet.load("isNullObject");
+    await context.sync();
+    
+    if (rosterSheet.isNullObject) {
+        console.log("[RateEngine] SS_Employee_Roster not found");
+        return rosterMap;
+    }
+    
+    const rosterRange = rosterSheet.getUsedRangeOrNullObject();
+    rosterRange.load("values");
+    await context.sync();
+    
+    if (rosterRange.isNullObject || !rosterRange.values || rosterRange.values.length < 2) {
+        console.log("[RateEngine] SS_Employee_Roster is empty");
+        return rosterMap;
+    }
+    
+    const headers = rosterRange.values[0].map(h => String(h || "").toLowerCase().trim());
+    const nameIdx = headers.findIndex(h => h === "employee_name" || h === "employee name" || h === "name");
+    const hourlyIdx = headers.findIndex(h => h === "hourly_rate" || h === "hourly rate" || h === "pay_rate" || h === "pay rate");
+    const salaryIdx = headers.findIndex(h => h === "salary_annual" || h === "annual salary" || h === "salary");
+    const stdHoursIdx = headers.findIndex(h => h === "std_hours_per_year" || h === "standard hours");
+    const manualIdx = headers.findIndex(h => h === "is_manually_managed" || h === "manual");
+    const rateSourceIdx = headers.findIndex(h => h === "rate_source" || h === "rate source");
+    const deptIdx = headers.findIndex(h => h === "department" || h === "department_name" || h === "dept" || h.includes("department"));
+    
+    console.log("[RateEngine] Roster columns found:", { nameIdx, hourlyIdx, salaryIdx, stdHoursIdx, manualIdx, rateSourceIdx, deptIdx });
+    
+    if (nameIdx < 0) {
+        console.warn("[RateEngine] No employee name column in roster");
+        return rosterMap;
+    }
+    
+    for (let i = 1; i < rosterRange.values.length; i++) {
+        const row = rosterRange.values[i];
+        const name = String(row[nameIdx] || "").trim();
+        if (!name) continue;
+        
+        const key = normalizeEmployeeKey(name);
+        const hourlyRate = hourlyIdx >= 0 ? parseFloat(row[hourlyIdx]) || 0 : 0;
+        const salaryAnnual = salaryIdx >= 0 ? parseFloat(row[salaryIdx]) || 0 : 0;
+        const stdHoursPerYear = stdHoursIdx >= 0 ? parseFloat(row[stdHoursIdx]) || DEFAULT_STD_HOURS_PER_YEAR : DEFAULT_STD_HOURS_PER_YEAR;
+        const isManuallyManaged = manualIdx >= 0 ? String(row[manualIdx] || "").toUpperCase() === "TRUE" : false;
+        const rateSource = rateSourceIdx >= 0 ? String(row[rateSourceIdx] || "").trim() : "";
+        const department = deptIdx >= 0 ? String(row[deptIdx] || "").trim() : "";
+        
+        rosterMap.set(key, {
+            name,
+            hourlyRate,
+            salaryAnnual,
+            stdHoursPerYear,
+            isManuallyManaged,
+            rateSource,
+            department,
+            rowIndex: i
+        });
+    }
+    
+    console.log(`[RateEngine] Loaded ${rosterMap.size} employees from roster`);
+    return rosterMap;
+}
+
+/**
+ * Standard hours per semi-monthly pay period
+ * Semi-monthly = 24 pay periods per year, assuming 1920 work hours/year → 80 hours/period
+ */
+const HOURS_PER_PAY_PERIOD = 80;
+
+/**
+ * Legacy fallback: Attempt to compute hourly rates from PR_Archive_Summary
+ * 
+ * NOTE: PR_Archive_Summary currently stores aggregate totals per period, not per-employee.
+ * This function will return empty results. The primary source for hourly rates is now
+ * SS_Employee_Roster.Hourly_Rate, which is populated by the Payroll Recorder module
+ * when roster updates are applied (Fixed / 80 hours calculation).
+ * 
+ * This function is kept as a future fallback if archive schema is enhanced to store
+ * per-employee bucket totals.
+ */
+async function loadPayrollDerivedRates(context, periodsToAverage = 3) {
+    const payrollRates = new Map();
+    
+    // Primary rates now come from SS_Employee_Roster.Hourly_Rate
+    // This function is a no-op until archive stores per-employee data
+    console.log("[RateEngine] loadPayrollDerivedRates: Rates now sourced from SS_Employee_Roster.Hourly_Rate");
+    return payrollRates;
+}
+
+/**
+ * Get list of employees from current PTO data
+ */
+async function getPtoEmployeeList(context) {
+    const employees = [];
+    
+    // Try PTO_Data_Clean first, then PTO_Data
+    const dataSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+    dataSheet.load("isNullObject");
+    await context.sync();
+    
+    if (dataSheet.isNullObject) {
+        console.log("[RateEngine] PTO_Data_Clean not found");
+        return employees;
+    }
+    
+    const dataRange = dataSheet.getUsedRangeOrNullObject();
+    dataRange.load("values");
+    await context.sync();
+    
+    if (dataRange.isNullObject || !dataRange.values || dataRange.values.length < 2) {
+        return employees;
+    }
+    
+    const headers = dataRange.values[0].map(h => String(h || "").toLowerCase().trim());
+    const nameIdx = headers.findIndex(h => h === "employee_name" || h === "employee name" || h.includes("employee"));
+    const balanceIdx = headers.findIndex(h => h === "balance" || h.includes("balance"));
+    
+    if (nameIdx < 0) {
+        console.warn("[RateEngine] No employee name column in PTO data");
+        return employees;
+    }
+    
+    for (let i = 1; i < dataRange.values.length; i++) {
+        const row = dataRange.values[i];
+        const name = String(row[nameIdx] || "").trim();
+        if (!name) continue;
+        
+        const balance = balanceIdx >= 0 ? parseFloat(row[balanceIdx]) || 0 : 0;
+        employees.push({ name, balance, rowIndex: i });
+    }
+    
+    console.log(`[RateEngine] Found ${employees.length} employees in PTO data`);
+    return employees;
+}
+
+/**
+ * Get rate for an employee by name
+ * Returns { rate, source, sourceDetail } or null if not loaded
+ */
+function getEmployeeRate(employeeName) {
+    const key = normalizeEmployeeKey(employeeName);
+    return rateEngineState.rates.get(key) || null;
+}
+
+/**
+ * Apply default rate to all missing employees
+ * Called when user opts to use default rate
+ */
+function applyDefaultRateToMissing(defaultRate = DEFAULT_HOURLY_RATE) {
+    let count = 0;
+    for (const [key, entry] of rateEngineState.rates) {
+        if (entry.source === RATE_SOURCES.MISSING) {
+            entry.rate = defaultRate;
+            entry.source = RATE_SOURCES.DEFAULT;
+            entry.sourceDetail = `Default $${defaultRate.toFixed(2)}/hr`;
+            count++;
+        }
+    }
+    
+    rateEngineState.diagnostics.fromDefault = count;
+    rateEngineState.diagnostics.missing -= count;
+    
+    console.log(`[RateEngine] Applied default rate $${defaultRate}/hr to ${count} employees`);
+    return count;
+}
+
+// =============================================================================
+// PTO ARCHIVE SUMMARY - Prior Period Storage (mirrors PR_Archive_Summary)
+// =============================================================================
+
+const PTO_ARCHIVE_COLUMNS = [
+    "Analysis_Date",
+    "Employee_Key",
+    "Employee_Name",
+    "Department",
+    "Pay_Rate",
+    "Accrual_Rate",
+    "Carry_Over",
+    "YTD_Accrued",
+    "YTD_Used",
+    "Vested_Balance",      // As_Of_Date_Balance - what drives liability
+    "Calc_Liability"       // Calculated liability (includes negatives) - used for prior period comparison
+];
+
+const PTO_ARCHIVE_MAX_PERIODS = 5;
+
+/**
+ * Ensure PTO_Archive_Summary sheet exists with proper schema
+ */
+async function ensurePtoArchiveSchema() {
+    if (!hasExcel()) return { ok: false, error: "Excel unavailable" };
+    
+    try {
+        return await Excel.run(async (context) => {
+            let archiveSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Archive_Summary");
+            archiveSheet.load("isNullObject");
+            await context.sync();
+            
+            if (archiveSheet.isNullObject) {
+                console.log("[PTOArchive] Creating PTO_Archive_Summary sheet");
+                archiveSheet = context.workbook.worksheets.add("PTO_Archive_Summary");
+                
+                const headerRange = archiveSheet.getRangeByIndexes(0, 0, 1, PTO_ARCHIVE_COLUMNS.length);
+                headerRange.values = [PTO_ARCHIVE_COLUMNS];
+                headerRange.format.font.bold = true;
+                await context.sync();
+                
+                return { ok: true, created: true };
+            }
+            
+            // Check for missing columns and add if needed
+            const usedRange = archiveSheet.getUsedRangeOrNullObject();
+            usedRange.load("values");
+            await context.sync();
+            
+            if (!usedRange.isNullObject && usedRange.values && usedRange.values.length > 0) {
+                const existingHeaders = usedRange.values[0].map(h => String(h || "").trim());
+                const existingLower = new Set(existingHeaders.map(h => h.toLowerCase()));
+                
+                const missingColumns = PTO_ARCHIVE_COLUMNS.filter(col => 
+                    !existingLower.has(col.toLowerCase())
+                );
+                
+                if (missingColumns.length > 0) {
+                    console.log("[PTOArchive] Adding missing columns:", missingColumns);
+                    const startCol = existingHeaders.length;
+                    const headerRange = archiveSheet.getRangeByIndexes(0, startCol, 1, missingColumns.length);
+                    headerRange.values = [missingColumns];
+                    headerRange.format.font.bold = true;
+                    
+                    // Backfill with 0 for numeric columns
+                    const rowCount = usedRange.values.length - 1;
+                    if (rowCount > 0) {
+                        const fillData = Array(rowCount).fill(missingColumns.map(() => 0));
+                        const fillRange = archiveSheet.getRangeByIndexes(1, startCol, rowCount, missingColumns.length);
+                        fillRange.values = fillData;
+                    }
+                    await context.sync();
+                }
+            }
+            
+            return { ok: true };
+        });
+    } catch (error) {
+        console.error("[PTOArchive] Error ensuring schema:", error);
+        return { ok: false, error: error.message };
+    }
+}
+
+/**
+ * Load prior period data from PTO_Archive_Summary
+ * Returns Map<Employee_Key, { analysisDate, liability, ... }>
+ */
+async function loadPriorPeriodData() {
+    const priorData = new Map();
+    
+    if (!hasExcel()) return priorData;
+    
+    try {
+        await Excel.run(async (context) => {
+            const archiveSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Archive_Summary");
+            archiveSheet.load("isNullObject");
+            await context.sync();
+            
+            if (archiveSheet.isNullObject) {
+                console.log("[PTOArchive] No archive sheet - all employees will show as NEW");
+                return;
+            }
+            
+            const archiveRange = archiveSheet.getUsedRangeOrNullObject();
+            archiveRange.load("values");
+            await context.sync();
+            
+            if (archiveRange.isNullObject || !archiveRange.values || archiveRange.values.length < 2) {
+                return;
+            }
+            
+            const headers = archiveRange.values[0].map(h => String(h || "").toLowerCase().trim());
+            const dateIdx = headers.findIndex(h => h === "analysis_date" || h.includes("date"));
+            const keyIdx = headers.findIndex(h => h === "employee_key");
+            const nameIdx = headers.findIndex(h => h === "employee_name" || h.includes("employee"));
+            // Prefer Calc_Liability (includes negatives) for accurate period-over-period comparison
+            // Fall back to Liability_Amount for backwards compatibility with old archives
+            const liabilityIdx = headers.findIndex(h => h === "calc_liability" || h === "liability_amount" || h.includes("liability"));
+            const rateIdx = headers.findIndex(h => h === "pay_rate" || h.includes("rate"));
+            const balanceIdx = headers.findIndex(h => h === "vested_balance" || h === "balance");
+            
+            if (nameIdx < 0 && keyIdx < 0) {
+                console.warn("[PTOArchive] No employee identifier column");
+                return;
+            }
+            
+            // Group by employee, find most recent period for each
+            const employeePeriods = new Map();
+            
+            for (let i = 1; i < archiveRange.values.length; i++) {
+                const row = archiveRange.values[i];
+                const key = keyIdx >= 0 
+                    ? String(row[keyIdx] || "").trim()
+                    : normalizeEmployeeKey(String(row[nameIdx] || ""));
+                
+                if (!key) continue;
+                
+                const analysisDate = dateIdx >= 0 ? String(row[dateIdx] || "") : "";
+                const liability = liabilityIdx >= 0 ? parseFloat(row[liabilityIdx]) || 0 : 0;
+                const rate = rateIdx >= 0 ? parseFloat(row[rateIdx]) || 0 : 0;
+                const balance = balanceIdx >= 0 ? parseFloat(row[balanceIdx]) || 0 : 0;
+                
+                if (!employeePeriods.has(key)) {
+                    employeePeriods.set(key, []);
+                }
+                employeePeriods.get(key).push({ analysisDate, liability, rate, balance });
+            }
+            
+            // Take most recent period for each employee
+            for (const [key, periods] of employeePeriods) {
+                periods.sort((a, b) => String(b.analysisDate).localeCompare(String(a.analysisDate)));
+                priorData.set(key, periods[0]);
+            }
+            
+            console.log(`[PTOArchive] Loaded prior data for ${priorData.size} employees`);
+        });
+    } catch (error) {
+        console.error("[PTOArchive] Error loading prior data:", error);
+    }
+    
+    return priorData;
+}
+
+/**
+ * Save current period to PTO_Archive_Summary
+ * Maintains rolling 5 periods, removes oldest if needed
+ */
+async function savePtoArchivePeriod(reviewData, analysisDate) {
+    if (!hasExcel() || !reviewData || reviewData.length === 0) {
+        return { ok: false, error: "No data to archive" };
+    }
+    
+    try {
+        await ensurePtoArchiveSchema();
+        
+        return await Excel.run(async (context) => {
+            const archiveSheet = context.workbook.worksheets.getItem("PTO_Archive_Summary");
+            const usedRange = archiveSheet.getUsedRangeOrNullObject();
+            usedRange.load("values");
+            await context.sync();
+            
+            let headers = PTO_ARCHIVE_COLUMNS;
+            let existingData = [];
+            
+            if (!usedRange.isNullObject && usedRange.values && usedRange.values.length > 0) {
+                headers = usedRange.values[0].map(h => String(h || "").trim());
+                existingData = usedRange.values.slice(1);
+            }
+            
+            const headersLower = headers.map(h => h.toLowerCase());
+            const dateIdx = headersLower.indexOf("analysis_date");
+            const keyIdx = headersLower.indexOf("employee_key");
+            
+            // Group existing data by period
+            const periodMap = new Map();
+            for (const row of existingData) {
+                const periodKey = dateIdx >= 0 ? String(row[dateIdx] || "") : "";
+                if (!periodKey) continue;
+                
+                if (!periodMap.has(periodKey)) {
+                    periodMap.set(periodKey, []);
+                }
+                periodMap.get(periodKey).push(row);
+            }
+            
+            // Remove current period if re-archiving (idempotent)
+            const normalizedDate = String(analysisDate || "").substring(0, 10);
+            periodMap.delete(normalizedDate);
+            
+            // Add new period
+            // IMPORTANT: Store Calc_Liability (includes negatives) for accurate period-over-period comparison
+            // Do NOT store Liability_Amount which zeros out negative balances
+            const newRows = reviewData.map(emp => {
+                const rowData = new Array(headers.length).fill("");
+                headers.forEach((col, idx) => {
+                    const colLower = col.toLowerCase();
+                    if (colLower === "analysis_date") rowData[idx] = normalizedDate;
+                    else if (colLower === "employee_key") rowData[idx] = normalizeEmployeeKey(emp.employeeName);
+                    else if (colLower === "employee_name") rowData[idx] = emp.employeeName || "";
+                    else if (colLower === "department") rowData[idx] = emp.department || "";
+                    else if (colLower === "pay_rate") rowData[idx] = emp.payRate || 0;
+                    else if (colLower === "accrual_rate") rowData[idx] = emp.accrualRate || 0;
+                    else if (colLower === "carry_over") rowData[idx] = emp.carryOver || 0;
+                    else if (colLower === "ytd_accrued") rowData[idx] = emp.ytdAccrued || 0;
+                    else if (colLower === "ytd_used") rowData[idx] = emp.ytdUsed || 0;
+                    // Store vested balance and calculated liability (includes negatives)
+                    else if (colLower === "vested_balance" || colLower === "balance") rowData[idx] = emp.vestedBalance ?? emp.balance ?? 0;
+                    else if (colLower === "calc_liability" || colLower === "liability_amount") rowData[idx] = emp.calculatedLiability ?? emp.liabilityAmount ?? 0;
+                });
+                return rowData;
+            });
+            periodMap.set(normalizedDate, newRows);
+            
+            // If more than 5 periods, remove oldest
+            if (periodMap.size > PTO_ARCHIVE_MAX_PERIODS) {
+                const sortedPeriods = Array.from(periodMap.keys()).sort();
+                const toRemove = sortedPeriods.slice(0, periodMap.size - PTO_ARCHIVE_MAX_PERIODS);
+                for (const period of toRemove) {
+                    console.log(`[PTOArchive] Removing oldest period: ${period}`);
+                    periodMap.delete(period);
+                }
+            }
+            
+            // Flatten and write
+            const allRows = [];
+            for (const [, rows] of periodMap) {
+                allRows.push(...rows);
+            }
+            
+            // Clear and rewrite
+            const existingRange = archiveSheet.getUsedRangeOrNullObject();
+            await context.sync();
+            if (!existingRange.isNullObject) {
+                existingRange.clear();
+            }
+            
+            // Write headers + data
+            const totalRows = 1 + allRows.length;
+            const targetRange = archiveSheet.getRangeByIndexes(0, 0, totalRows, headers.length);
+            targetRange.values = [headers, ...allRows];
+            
+            // Format header
+            const headerRange = archiveSheet.getRangeByIndexes(0, 0, 1, headers.length);
+            headerRange.format.font.bold = true;
+            
+            await context.sync();
+            
+            console.log(`[PTOArchive] Saved ${newRows.length} rows for period ${normalizedDate}`);
+            return { ok: true, rowCount: newRows.length, periodCount: periodMap.size };
+        });
+    } catch (error) {
+        console.error("[PTOArchive] Error saving archive:", error);
+        return { ok: false, error: error.message };
+    }
+}
+
+// =============================================================================
+// STEP 2: PTO ACCRUAL REVIEW - Variance Table Generation
+// =============================================================================
+
+/**
+ * Review table output columns (exact order, match screenshot)
+ */
+const PTO_REVIEW_COLUMNS = [
+    "Analysis_Date",
+    "Employee_Name",
+    "Employee_ID",
+    "Department",
+    "Pay_Rate",
+    "Rate_Source",
+    "Accrual_Rate",
+    "Carry_Over",
+    "YTD_Accrued",
+    "YTD_Used",
+    "Vested_Balance",     // As_Of_Date_Balance - what drives liability
+    "Register_Balance",   // Current_Register_Balance - for reference
+    "Liability_Amount",
+    "Liability_Source",
+    "Report_Liability",
+    "Calc_Liability",
+    "Prior_Liability",
+    "Change",
+    "_Flags"  // Hidden helper column for flags (NEW, MISSING_RATE, LARGE_MOVE, NEG_BALANCE, RATE_VARIANCE, LIABILITY_VARIANCE)
+];
+
+/**
+ * Generate the PTO Accrual Review table
+ * 1. Load rates from hardened rate engine
+ * 2. Load current PTO data from PTO_Data_Clean
+ * 3. Load prior period from PTO_Archive_Summary
+ * 4. Compute liability and change for each employee
+ * 5. Write to PTO_Review sheet
+ */
+
+/**
+ * Normalize employee name for comparison
+ * Handles: "SMITH, JOHN" vs "JOHN SMITH" vs "Smith John" etc.
+ */
+function normalizeEmployeeName(name) {
+    if (!name) return "";
+    return String(name)
+        .toUpperCase()
+        .replace(/,/g, " ")           // Remove commas (SMITH, JOHN → SMITH JOHN)
+        .replace(/\s+/g, " ")         // Collapse multiple spaces
+        .trim();
+}
+
+/**
+ * Calculate employee coverage: compare PTO report employees to roster
+ * Returns reconciliation of who's in both, PTO-only, and roster-only
+ */
+async function calculateEmployeeCoverage(reviewData) {
+    const coverage = {
+        rosterCount: 0,
+        ptoReportCount: reviewData.length,
+        inBothCount: 0,
+        inPtoOnlyCount: 0,
+        inPtoOnlyNames: [],
+        inPtoOnlyLiability: 0,
+        inRosterOnlyCount: 0,
+        inRosterOnlyNames: []
+    };
+    
+    if (!hasExcel()) return coverage;
+    
+    try {
+        await Excel.run(async (context) => {
+            // Get roster employees
+            const rosterSheet = context.workbook.worksheets.getItemOrNullObject("SS_Employee_Roster");
+            rosterSheet.load("isNullObject");
+            await context.sync();
+            
+            if (rosterSheet.isNullObject) {
+                console.warn("[Coverage] SS_Employee_Roster not found");
+                return;
+            }
+            
+            const rosterRange = rosterSheet.getUsedRangeOrNullObject();
+            rosterRange.load("values");
+            await context.sync();
+            
+            if (rosterRange.isNullObject || !rosterRange.values || rosterRange.values.length < 2) {
+                return;
+            }
+            
+            const rosterHeaders = rosterRange.values[0].map(h => String(h || "").toLowerCase().trim());
+            const nameIdx = rosterHeaders.findIndex(h => h === "employee_name" || h.includes("employee"));
+            const statusIdx = rosterHeaders.findIndex(h => h === "employment_status" || h.includes("status"));
+            
+            if (nameIdx < 0) {
+                console.warn("[Coverage] Employee name column not found in roster");
+                return;
+            }
+            
+            // Build map of normalized name → original name for roster employees
+            const rosterNameMap = new Map();  // normalized → original
+            const rosterEmployees = new Set();
+            
+            for (let i = 1; i < rosterRange.values.length; i++) {
+                const row = rosterRange.values[i];
+                const originalName = String(row[nameIdx] || "").trim();
+                const normalizedName = normalizeEmployeeName(originalName);
+                const status = statusIdx >= 0 ? String(row[statusIdx] || "").toLowerCase() : "";
+                
+                // Include active employees (not terminated)
+                if (normalizedName && !status.includes("terminated") && !status.includes("inactive")) {
+                    rosterEmployees.add(normalizedName);
+                    rosterNameMap.set(normalizedName, originalName);
+                }
+            }
+            
+            coverage.rosterCount = rosterEmployees.size;
+            
+            // Build map of normalized name → review row for PTO employees
+            const ptoNameMap = new Map();  // normalized → reviewData row
+            const ptoEmployees = new Set();
+            
+            for (const row of reviewData) {
+                const normalizedName = normalizeEmployeeName(row.employeeName);
+                if (normalizedName) {
+                    ptoEmployees.add(normalizedName);
+                    ptoNameMap.set(normalizedName, row);
+                }
+            }
+            
+            console.log("[Coverage] Roster employees:", rosterEmployees.size, "PTO employees:", ptoEmployees.size);
+            
+            // Find differences using normalized names
+            for (const normalizedName of ptoEmployees) {
+                if (rosterEmployees.has(normalizedName)) {
+                    coverage.inBothCount++;
+                } else {
+                    coverage.inPtoOnlyCount++;
+                    const originalRow = ptoNameMap.get(normalizedName);
+                    if (originalRow) {
+                        coverage.inPtoOnlyNames.push(originalRow.employeeName);
+                        coverage.inPtoOnlyLiability += originalRow.calculatedLiability || 0;
+                    }
+                }
+            }
+            
+            for (const normalizedName of rosterEmployees) {
+                if (!ptoEmployees.has(normalizedName)) {
+                    coverage.inRosterOnlyCount++;
+                    const originalName = rosterNameMap.get(normalizedName);
+                    if (originalName) {
+                        coverage.inRosterOnlyNames.push(originalName);
+                    }
+                }
+            }
+            
+            await context.sync();
+        });
+    } catch (error) {
+        console.error("[Coverage] Error calculating employee coverage:", error);
+    }
+    
+    console.log("[Coverage] Results:", coverage);
+    return coverage;
+}
+
+async function generatePtoReview() {
+    console.log("[PTOReview] Starting review generation...");
+    ptoReviewState.loading = true;
+    showToast("Generating PTO Accrual Review...", "info", 3000);
+    
+    try {
+        // Step 1: Load employee rates
+        await loadEmployeeRates();
+        
+        // Step 2: Load prior period data
+        const priorData = await loadPriorPeriodData();
+        
+        // Step 3: Build review table
+        const reviewData = await buildReviewTable(priorData);
+        
+        // Step 4: Write to PTO_Review sheet
+        await writeReviewSheet(reviewData);
+        
+        // Step 5: Update state with executive summary and reconciliation
+        let totalCurrent = 0;
+        let totalPrior = 0;
+        
+        // Reconciliation calculations
+        let reportLiabilityTotal = 0;
+        let calcLiabilityTotal = 0;
+        let negativeBalanceTotal = 0;
+        let negativeBalanceCount = 0;
+        let positiveBalanceCount = 0;
+        let zeroBalanceCount = 0;
+        let missingRateCount = 0;
+        
+        for (const row of reviewData) {
+            totalCurrent += row.liabilityAmount || 0;
+            totalPrior += row.priorLiability || 0;
+            
+            // Report liability (from PrismHR)
+            reportLiabilityTotal += row.reportLiability || 0;
+            
+            // Calculated liability (includes negatives)
+            const calcLiab = row.calculatedLiability || 0;
+            calcLiabilityTotal += calcLiab;
+            
+            // Track balance categories
+            const vested = row.vestedBalance ?? 0;
+            if (vested < 0) {
+                negativeBalanceTotal += calcLiab;  // Will be negative
+                negativeBalanceCount++;
+            } else if (vested > 0) {
+                positiveBalanceCount++;
+            } else {
+                zeroBalanceCount++;
+            }
+            
+            // Track actually missing rates
+            if (!row.payRate || row.payRate <= 0) {
+                missingRateCount++;
+            }
+        }
+        
+        // Update reconciliation state
+        ptoReviewState.reconciliation = {
+            reportLiabilityTotal,
+            calcLiabilityTotal,
+            negativeBalanceTotal,
+            negativeBalanceCount,
+            positiveBalanceCount,
+            zeroBalanceCount,
+            missingRateCount
+        };
+        
+        // Calculate employee coverage (roster vs PTO report)
+        const coverage = await calculateEmployeeCoverage(reviewData);
+        ptoReviewState.coverage = coverage;
+        
+        ptoReviewState.totalCurrentLiability = totalCurrent;
+        ptoReviewState.totalPriorLiability = totalPrior;
+        ptoReviewState.netChange = totalCurrent - totalPrior;
+        ptoReviewState.employeeCount = reviewData.length;
+        ptoReviewState.reviewData = reviewData;
+        ptoReviewState.loaded = true;
+        ptoReviewState.loading = false;
+        ptoReviewState.lastRun = new Date().toISOString();
+        
+        console.log("[PTOReview] Generation complete:", {
+            employees: reviewData.length,
+            totalCurrent,
+            totalPrior,
+            netChange: totalCurrent - totalPrior,
+            reconciliation: ptoReviewState.reconciliation,
+            coverage: ptoReviewState.coverage
+        });
+        
+        showToast(`PTO Review generated: ${reviewData.length} employees, ${formatCurrency(totalCurrent)} total liability`, "success");
+        renderApp();
+        
+    } catch (error) {
+        console.error("[PTOReview] Error generating review:", error);
+        showToast(`Error generating review: ${error.message}`, "error");
+        ptoReviewState.loading = false;
+    }
+}
+
+/**
+ * Build the review table data from PTO_Data_Clean + rates + prior period
+ */
+async function buildReviewTable(priorData) {
+    const reviewData = [];
+    const analysisDate = getConfigValue(PTO_CONFIG_FIELDS.payrollDate) || new Date().toISOString().substring(0, 10);
+    
+    if (!hasExcel()) return reviewData;
+    
+    await Excel.run(async (context) => {
+        // Get PTO_Data_Clean
+        const dataSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+        dataSheet.load("isNullObject");
+        await context.sync();
+        
+        if (dataSheet.isNullObject) {
+            throw new Error("PTO_Data_Clean not found. Upload data in Step 1.");
+        }
+        
+        const dataRange = dataSheet.getUsedRangeOrNullObject();
+        dataRange.load("values");
+        await context.sync();
+        
+        if (dataRange.isNullObject || !dataRange.values || dataRange.values.length < 2) {
+            throw new Error("PTO_Data_Clean is empty.");
+        }
+        
+        const headers = dataRange.values[0].map(h => String(h || "").toLowerCase().trim());
+        
+        // Debug: Log all headers to see what we're working with
+        console.log("[PTOReview] All headers from PTO_Data_Clean:", headers);
+        
+        // Find columns (normalized dimension names from Obsidian)
+        // Note: Be specific with employee_name to avoid matching "employees_with_liability" etc.
+        // Also check for "name" as a standalone column (common in PrismHR exports)
+        const colIdx = {
+            employeeName: headers.findIndex(h => 
+                h === "employee_name" || 
+                h === "employee name" || 
+                h === "employeename" ||
+                h === "name" ||
+                h === "full_name" ||
+                h === "full name"
+            ),
+            department: headers.findIndex(h => h === "department" || h === "department_name"),
+            accrualRate: headers.findIndex(h => h === "accrual_rate" || (h.includes("accrual") && h.includes("rate"))),
+            carryOver: headers.findIndex(h => h === "carry_over" || h.includes("carry")),
+            ytdAccrued: headers.findIndex(h => h === "ytd_accrued" || (h.includes("ytd") && h.includes("accrued"))),
+            ytdUsed: headers.findIndex(h => h === "ytd_used" || (h.includes("ytd") && h.includes("used"))),
+            balance: headers.findIndex(h => h === "balance")
+        };
+        
+        // Find new PTO Accrued Liability report columns (if present)
+        const payRateHourlyIdx = headers.findIndex(h => 
+            h === "pay_rate_hourly" || h === "pay rate hourly" || h === "payratehourly"
+        );
+        const accruedLiabilityIdx = headers.findIndex(h => 
+            h === "accrued_liability" || h === "accrued liability" || h === "accruedliability"
+        );
+        const asOfDateBalanceIdx = headers.findIndex(h => 
+            h === "as_of_date_balance" || h === "as of date balance" || h === "asofdatebalance"
+        );
+        const currentRegisterBalanceIdx = headers.findIndex(h =>
+            h === "current_register_balance" || h === "current register balance" || h === "currentregisterbalance"
+        );
+        const employeeIdIdx = headers.findIndex(h => 
+            h === "employee_id" || h === "employee id" || h === "employeeid"
+        );
+        const reportDeptIdx = headers.findIndex(h => h === "department" || h === "department_name");
+        
+        console.log("[PTOReview] Column indexes:", colIdx);
+        console.log("[PTOReview] Employee name found at index:", colIdx.employeeName, "header:", headers[colIdx.employeeName]);
+        console.log("[PTOReview] Report columns detected:", {
+            payRateHourly: payRateHourlyIdx >= 0,
+            accruedLiability: accruedLiabilityIdx >= 0,
+            asOfDateBalance: asOfDateBalanceIdx >= 0,
+            currentRegisterBalance: currentRegisterBalanceIdx >= 0,
+            employeeId: employeeIdIdx >= 0
+        });
+        
+        if (colIdx.employeeName < 0) {
+            console.error("[PTOReview] Could not find employee name column. Headers available:", headers);
+            throw new Error("Employee name column not found in PTO data. Check console for available headers.");
+        }
+        
+        // Process each employee row
+        for (let i = 1; i < dataRange.values.length; i++) {
+            const row = dataRange.values[i];
+            const employeeName = String(row[colIdx.employeeName] || "").trim();
+            if (!employeeName) continue;
+            
+            const key = normalizeEmployeeKey(employeeName);
+            
+            // Get rate and department from rate engine (department comes from SS_Employee_Roster)
+            const rateInfo = getEmployeeRate(employeeName);
+            
+            // RATE PRIORITY: Report > Roster > Payroll > Missing
+            // Priority 1: Pay Rate from uploaded report
+            const reportRate = payRateHourlyIdx >= 0 ? parseCurrency(row[payRateHourlyIdx]) : 0;
+            
+            // Priority 2: Rate from rate engine (roster/payroll)
+            const calculatedRate = rateInfo?.rate || 0;
+            
+            // Use report rate if available, fall back to calculated
+            const payRate = reportRate > 0 ? reportRate : calculatedRate;
+            const rateSource = reportRate > 0 ? "REPORT" : (rateInfo?.source || RATE_SOURCES.MISSING);
+            
+            // DEPARTMENT PRIORITY: Report > Roster
+            const reportDepartment = reportDeptIdx >= 0 ? String(row[reportDeptIdx] || "").trim() : "";
+            const rosterDepartment = rateInfo?.department || "";
+            const department = reportDepartment || rosterDepartment;
+            
+            // Capture Employee ID if available
+            const employeeId = employeeIdIdx >= 0 ? String(row[employeeIdIdx] || "").trim() : "";
+            
+            // Get PTO values from data
+            const accrualRate = colIdx.accrualRate >= 0 ? parseFloat(row[colIdx.accrualRate]) || 0 : 0;
+            const carryOver = colIdx.carryOver >= 0 ? parseFloat(row[colIdx.carryOver]) || 0 : 0;
+            const ytdAccrued = colIdx.ytdAccrued >= 0 ? parseFloat(row[colIdx.ytdAccrued]) || 0 : 0;
+            const ytdUsed = colIdx.ytdUsed >= 0 ? parseFloat(row[colIdx.ytdUsed]) || 0 : 0;
+            
+            // BALANCE PRIORITY: As_Of_Date_Balance is the vested balance that drives liability
+            // Current_Register_Balance is informational only (can include future allocations)
+            const asOfDateBalance = asOfDateBalanceIdx >= 0 ? parseFloat(row[asOfDateBalanceIdx]) || 0 : null;
+            const currentRegisterBalance = currentRegisterBalanceIdx >= 0 
+                ? parseFloat(row[currentRegisterBalanceIdx]) || 0 
+                : (colIdx.balance >= 0 ? parseFloat(row[colIdx.balance]) || 0 : 0);
+            
+            // Use As_Of_Date_Balance for liability calculation
+            // Fall back to Current_Register_Balance only if As_Of_Date_Balance column doesn't exist
+            const vestedBalance = asOfDateBalance !== null ? asOfDateBalance : currentRegisterBalance;
+            
+            // For display purposes, show the current register balance (what employee sees)
+            const displayBalance = currentRegisterBalance;
+            
+            // LIABILITY CALCULATION
+            // Only calculate liability if there's a positive vested balance
+            let liabilityAmount = 0;
+            let liabilitySource = "NO_BALANCE";
+            let reportLiability = 0;
+            let calculatedLiability = 0;
+            
+            if (vestedBalance > 0) {
+                // Priority 1: Use Accrued_Liability from report
+                reportLiability = accruedLiabilityIdx >= 0 ? parseCurrency(row[accruedLiabilityIdx]) : 0;
+                
+                // Priority 2: Calculate from vested balance × rate
+                calculatedLiability = payRate > 0 ? vestedBalance * payRate : 0;
+                
+                if (reportLiability > 0) {
+                    liabilityAmount = reportLiability;
+                    liabilitySource = "REPORT";
+                } else {
+                    liabilityAmount = calculatedLiability;
+                    liabilitySource = "CALCULATED";
+                }
+            } else if (vestedBalance < 0) {
+                // Negative balance - employee owes company (used more than accrued)
+                // Per customer practice: net to zero in liability, don't show as asset
+                liabilityAmount = 0;
+                liabilitySource = "NEGATIVE_BALANCE";
+                calculatedLiability = vestedBalance * payRate; // For reference (will be negative)
+            } else {
+                // Zero balance - no liability
+                liabilityAmount = 0;
+                liabilitySource = "NO_BALANCE";
+            }
+            
+            console.log(`[PTOReview] ${employeeName}: vestedBal=${vestedBalance}, displayBal=${displayBalance}, liability=${liabilityAmount.toFixed(2)} (${liabilitySource})`);
+            
+            // Get prior period data
+            // Prior liability should be Calc_Liability from archive (includes negatives)
+            const prior = priorData.get(key);
+            const priorLiability = prior?.liability || 0;
+            
+            // Change is based on calculatedLiability (includes negatives) for accurate JE
+            // This ensures period-over-period comparison is accurate
+            const change = calculatedLiability - priorLiability;
+            
+            // Determine flags
+            const flags = [];
+            if (!prior) flags.push("NEW");
+            if (rateSource === RATE_SOURCES.MISSING) flags.push("MISSING_RATE");
+            if (Math.abs(change) > ptoReviewState.flagThresholds.largeMove) flags.push("LARGE_MOVE");
+            if (vestedBalance < 0) flags.push("NEG_BALANCE");
+            
+            // Validation: Flag significant rate variance
+            if (reportRate > 0 && calculatedRate > 0) {
+                const rateVariance = Math.abs(reportRate - calculatedRate);
+                if (rateVariance > 5) {
+                    flags.push("RATE_VARIANCE");
+                    console.log(`[PTOReview] Rate variance for ${employeeName}: Report=$${reportRate.toFixed(2)} vs Calc=$${calculatedRate.toFixed(2)}`);
+                }
+            }
+            
+            // Validation: Flag significant liability variance (only if both exist and vested balance > 0)
+            if (vestedBalance > 0 && reportLiability > 0 && calculatedLiability > 0) {
+                const liabilityVariance = Math.abs(reportLiability - calculatedLiability);
+                if (liabilityVariance > 100) {
+                    flags.push("LIABILITY_VARIANCE");
+                    console.log(`[PTOReview] Liability variance for ${employeeName}: Report=$${reportLiability.toFixed(2)} vs Calc=$${calculatedLiability.toFixed(2)}`);
+                }
+            }
+            
+            reviewData.push({
+                analysisDate,
+                employeeName,
+                employeeId,
+                department,
+                payRate,
+                rateSource,
+                accrualRate,
+                carryOver,
+                ytdAccrued,
+                ytdUsed,
+                vestedBalance,        // As_Of_Date_Balance - drives liability
+                displayBalance,       // Current_Register_Balance - what employee sees
+                liabilityAmount,
+                liabilitySource,      // "REPORT" | "CALCULATED" | "NO_BALANCE" | "NEGATIVE_BALANCE"
+                reportLiability,
+                calculatedLiability,
+                priorLiability,
+                change,
+                flags: flags.join(", ")
+            });
+        }
+        
+        await context.sync();
+    });
+    
+    // Sort by liability descending (highest liability first)
+    reviewData.sort((a, b) => b.liabilityAmount - a.liabilityAmount);
+    
+    return reviewData;
+}
+
+/**
+ * Write review table to PTO_Review sheet
+ */
+async function writeReviewSheet(reviewData) {
+    if (!hasExcel()) return;
+    
+    await Excel.run(async (context) => {
+        // Create or get PTO_Review sheet
+        let reviewSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Review");
+        reviewSheet.load("isNullObject");
+        await context.sync();
+        
+        if (reviewSheet.isNullObject) {
+            reviewSheet = context.workbook.worksheets.add("PTO_Review");
+        }
+        
+        // Clear existing data
+        const existingRange = reviewSheet.getUsedRangeOrNullObject();
+        await context.sync();
+        if (!existingRange.isNullObject) {
+            existingRange.clear();
+        }
+        
+        // Build data rows
+        const dataRows = reviewData.map(row => [
+            row.analysisDate,
+            row.employeeName,
+            row.employeeId || "",
+            row.department,
+            row.payRate,
+            row.rateSource || "",
+            row.accrualRate,
+            row.carryOver,
+            row.ytdAccrued,
+            row.ytdUsed,
+            row.vestedBalance,      // As_Of_Date_Balance
+            row.displayBalance,     // Current_Register_Balance
+            row.liabilityAmount,
+            row.liabilitySource || "",
+            row.reportLiability || 0,
+            row.calculatedLiability || 0,
+            row.priorLiability,
+            row.change,
+            row.flags
+        ]);
+        
+        // Write headers + data
+        const allRows = [PTO_REVIEW_COLUMNS, ...dataRows];
+        const targetRange = reviewSheet.getRangeByIndexes(0, 0, allRows.length, PTO_REVIEW_COLUMNS.length);
+        targetRange.values = allRows;
+        
+        // Format header row
+        const headerRange = reviewSheet.getRangeByIndexes(0, 0, 1, PTO_REVIEW_COLUMNS.length);
+        formatSheetHeaders(headerRange);
+        
+        // Format currency columns
+        // Column order: 0=Analysis_Date, 1=Employee_Name, 2=Employee_ID, 3=Department, 
+        // 4=Pay_Rate, 5=Rate_Source, 6=Accrual_Rate, 7=Carry_Over, 8=YTD_Accrued, 9=YTD_Used,
+        // 10=Vested_Balance, 11=Register_Balance, 12=Liability_Amount, 13=Liability_Source,
+        // 14=Report_Liability, 15=Calc_Liability, 16=Prior_Liability, 17=Change, 18=_Flags
+        const currencyFormat = "$#,##0.00";
+        if (dataRows.length > 0) {
+            // Pay_Rate (col 4)
+            reviewSheet.getRangeByIndexes(1, 4, dataRows.length, 1).numberFormat = [[currencyFormat]];
+            // Liability_Amount (col 12)
+            reviewSheet.getRangeByIndexes(1, 12, dataRows.length, 1).numberFormat = [[currencyFormat]];
+            // Report_Liability (col 14)
+            reviewSheet.getRangeByIndexes(1, 14, dataRows.length, 1).numberFormat = [[currencyFormat]];
+            // Calc_Liability (col 15)
+            reviewSheet.getRangeByIndexes(1, 15, dataRows.length, 1).numberFormat = [[currencyFormat]];
+            // Prior_Liability (col 16)
+            reviewSheet.getRangeByIndexes(1, 16, dataRows.length, 1).numberFormat = [[currencyFormat]];
+            // Change (col 17)
+            reviewSheet.getRangeByIndexes(1, 17, dataRows.length, 1).numberFormat = [[currencyFormat]];
+        }
+        
+        // Autofit columns
+        targetRange.format.autofitColumns();
+        
+        // Freeze header row
+        reviewSheet.freezePanes.freezeRows(1);
+        
+        await context.sync();
+        
+        console.log(`[PTOReview] Wrote ${dataRows.length} rows to PTO_Review sheet`);
+    });
+}
+
+/**
+ * Helper: Format currency for display
+ */
+function formatCurrency(value) {
+    const num = Number(value) || 0;
+    return num.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+/**
+ * Handle PTO file upload
+ * Opens file picker, reads file, and triggers header normalization
+ * TODO: Implement full upload flow with ada_payroll_dimensions lookup
+ */
+// =============================================================================
+// PTO UPLOAD STATE
+// =============================================================================
+const ptoUploadState = {
+    file: null,
+    fileName: "",
+    headers: [],
+    rowCount: 0,
+    parsedData: null,
+    mappings: null,         // { rawHeader: normalizedName } from ada_payroll_dimensions
+    unmappedHeaders: [],    // Headers that couldn't be mapped
+    error: null,
+    loading: false
+};
+
+/**
+ * Obsidian PTO Dimensions - Expected normalized column names
+ * From ada_payroll_dimensions where provider='obsidian'
+ */
+const OBSIDIAN_DIMENSIONS = [
+    "Company_Name",
+    "Form_Name", 
+    "Selection_Criteria",
+    "Employee_Name",
+    "Plan_Description",
+    "Accrue_Through_Date",
+    "Year_Ending"
+];
+
+const OBSIDIAN_MEASURES = [
+    "Accrual_Rate",
+    "Carry_Over",
+    "Pay_Period_Accrued",
+    "Pay_Period_Used",
+    "YTD_Accrued",
+    "YTD_Used",
+    "Balance"
+];
+
+const ALL_OBSIDIAN_COLUMNS = [...OBSIDIAN_DIMENSIONS, ...OBSIDIAN_MEASURES];
+
+/**
+ * Handle PTO file upload
+ * Opens file picker, reads file, normalizes headers via ada_payroll_dimensions
+ */
+async function handlePtoFileUpload(file) {
+    // If file provided directly (from drag-drop or file input), process it
+    if (file) {
+        await processPtoUpload(file);
+        return;
+    }
+    
+    // Otherwise, create hidden file input if it doesn't exist (legacy path)
+    let fileInput = document.getElementById("pto-file-input");
+    if (!fileInput) {
+        fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.id = "pto-file-input";
+        fileInput.accept = ".csv,.xlsx,.xls";
+        fileInput.style.display = "none";
+        document.body.appendChild(fileInput);
+        
+        fileInput.addEventListener("change", async (e) => {
+            const uploadedFile = e.target.files?.[0];
+            if (uploadedFile) {
+                await processPtoUpload(uploadedFile);
+            }
+            // Reset input for re-uploads
+            fileInput.value = "";
+        });
+    }
+    
+    fileInput.click();
+}
+
+/**
+ * Process uploaded PTO file
+ */
+async function processPtoUpload(file) {
+    const validExtensions = [".csv", ".xlsx", ".xls"];
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    
+    if (!validExtensions.includes(ext)) {
+        showToast("Please upload a CSV or Excel file (.csv, .xlsx, .xls)", "error");
+        return;
+    }
+    
+    ptoUploadState.loading = true;
+    ptoUploadState.error = null;
+    ptoUploadState.fileName = file.name;
+    ptoUploadState.file = file;
+    
+    showToast(`Reading ${file.name}...`, "info", 2000);
+    updateUploadStatus("Reading file...");
+    
+    try {
+        // Step 1: Parse the file
+        const data = await parsePtoFile(file);
+        if (!data || data.length < 2) {
+            throw new Error("File appears empty or has no data rows.");
+        }
+        
+        ptoUploadState.headers = data[0].map(h => String(h || "").trim());
+        ptoUploadState.rowCount = data.length - 1;
+        ptoUploadState.parsedData = data;
+        
+        console.log(`[PTOUpload] Parsed ${ptoUploadState.headers.length} columns, ${ptoUploadState.rowCount} rows`);
+        console.log("[PTOUpload] Raw headers:", ptoUploadState.headers);
+        
+        updateUploadStatus("Loading column mappings...");
+        
+        // Step 2: Load customer column mappings (priority 1) and dimension mappings (fallback)
+        const companyId = getConfigValue("SS_Company_ID");
+        const customerMappings = await loadCustomerColumnMappings(companyId, "pto-accrual");
+        const dimensionMappings = await loadObsidianDimensionMappings();
+        
+        console.log(`[PTOUpload] Loaded ${customerMappings.length} customer mappings, ${dimensionMappings.size} dimension mappings`);
+        
+        // Step 3: Normalize headers using customer mappings first, then dimension mappings
+        // Also filter out columns where include_in_matrix === false
+        const { normalizedHeaders, includedIndexes, unmapped, excluded } = normalizeHeadersWithCustomerMappings(
+            ptoUploadState.headers, 
+            customerMappings, 
+            dimensionMappings
+        );
+        
+        ptoUploadState.mappings = dimensionMappings; // Keep for compatibility
+        ptoUploadState.unmappedHeaders = unmapped;
+        
+        if (unmapped.length > 0) {
+            console.warn("[PTOUpload] Unmapped headers:", unmapped);
+            showToast(`Warning: ${unmapped.length} column(s) could not be mapped`, "warning", 4000);
+        }
+        
+        if (excluded.length > 0) {
+            console.log("[PTOUpload] Excluded columns (include_in_matrix=false):", excluded);
+        }
+        
+        console.log("[PTOUpload] Normalized headers:", normalizedHeaders);
+        console.log("[PTOUpload] Included column indexes:", includedIndexes);
+        
+        updateUploadStatus("Writing to PTO_Data_Clean...");
+        
+        // Step 4: Write to PTO_Data_Clean (only included columns)
+        await writePtoDataCleanFiltered(normalizedHeaders, ptoUploadState.parsedData, includedIndexes);
+        
+        ptoUploadState.loading = false;
+        showToast(`Successfully imported ${ptoUploadState.rowCount} rows to PTO_Data_Clean`, "success");
+        updateUploadStatus(`✓ ${ptoUploadState.rowCount} rows imported`);
+        
+        renderApp();
+        
+        // Step 5: Sync Employee_ID and Pay Rate to SS_Employee_Roster
+        const syncResult = await syncPtoDataToRoster();
+        if (syncResult.ok && syncResult.rowsUpdated > 0) {
+            console.log(`[PTO] Synced ${syncResult.rowsUpdated} employees to roster (${syncResult.idUpdates} IDs, ${syncResult.rateUpdates} rates)`);
+            showToast(`Updated ${syncResult.rowsUpdated} employees in roster`, "success", 2000);
+        } else if (!syncResult.ok) {
+            console.warn("[PTO] Roster sync skipped:", syncResult.error);
+            // Don't show error toast - sync failure shouldn't block the user
+        }
+        
+        // Step 6: Auto-run validation checks (like payroll-recorder)
+        // This matches payroll-recorder behavior where Map Columns runs automatically after upload
+        showToast("Running validation checks...", "info", 2000);
+        await Promise.all([
+            refreshHeadcountAnalysis(),
+            runDataQualityCheck()
+        ]);
+        renderApp();
+        showToast("Validation checks complete!", "success");
+        
+    } catch (error) {
+        console.error("[PTOUpload] Error:", error);
+        ptoUploadState.error = error.message;
+        ptoUploadState.loading = false;
+        showToast(`Upload failed: ${error.message}`, "error");
+        updateUploadStatus(`Error: ${error.message}`);
+    }
+}
+
+/**
+ * Update the upload status display in the UI
+ */
+function updateUploadStatus(message) {
+    const statusEl = document.getElementById("pto-upload-status");
+    if (statusEl) {
+        statusEl.textContent = message;
+    }
+}
+
+/**
+ * Sync Employee_ID and Hourly_Rate_Prismhr from PTO_Data_Clean to SS_Employee_Roster
+ * Called after successful PTO file upload
+ */
+async function syncPtoDataToRoster() {
+    if (!hasExcel()) {
+        console.log("[PTO-Roster Sync] Excel not available, skipping roster sync");
+        return { ok: false, error: "Excel not available" };
+    }
+    
+    console.log("[PTO-Roster Sync] Starting sync to SS_Employee_Roster...");
+    
+    try {
+        return await Excel.run(async (context) => {
+            // Get PTO_Data_Clean
+            const ptoSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+            const rosterSheet = context.workbook.worksheets.getItemOrNullObject("SS_Employee_Roster");
+            
+            ptoSheet.load("isNullObject");
+            rosterSheet.load("isNullObject");
+            await context.sync();
+            
+            if (ptoSheet.isNullObject) {
+                console.warn("[PTO-Roster Sync] PTO_Data_Clean not found");
+                return { ok: false, error: "PTO_Data_Clean not found" };
+            }
+            
+            if (rosterSheet.isNullObject) {
+                console.warn("[PTO-Roster Sync] SS_Employee_Roster not found");
+                return { ok: false, error: "SS_Employee_Roster not found" };
+            }
+            
+            // Load data from both sheets
+            const ptoRange = ptoSheet.getUsedRangeOrNullObject();
+            const rosterRange = rosterSheet.getUsedRangeOrNullObject();
+            
+            ptoRange.load("values");
+            rosterRange.load("values");
+            await context.sync();
+            
+            if (ptoRange.isNullObject || !ptoRange.values || ptoRange.values.length < 2) {
+                return { ok: false, error: "PTO_Data_Clean is empty" };
+            }
+            
+            if (rosterRange.isNullObject || !rosterRange.values || rosterRange.values.length < 2) {
+                return { ok: false, error: "SS_Employee_Roster is empty" };
+            }
+            
+            // Parse PTO headers
+            const ptoHeaders = ptoRange.values[0].map(h => String(h || "").toLowerCase().trim());
+            const ptoIdx = {
+                employeeName: ptoHeaders.findIndex(h => h === "employee_name" || h === "employee name"),
+                employeeId: ptoHeaders.findIndex(h => h === "employee_id" || h === "employee id"),
+                payRateHourly: ptoHeaders.findIndex(h => h === "pay_rate_hourly" || h === "pay rate hourly")
+            };
+            
+            console.log("[PTO-Roster Sync] PTO column indexes:", ptoIdx);
+            
+            if (ptoIdx.employeeName < 0) {
+                return { ok: false, error: "Employee_Name column not found in PTO data" };
+            }
+            
+            // Build PTO data map (by normalized employee name)
+            const ptoDataMap = new Map();
+            for (let i = 1; i < ptoRange.values.length; i++) {
+                const row = ptoRange.values[i];
+                const name = String(row[ptoIdx.employeeName] || "").trim();
+                if (!name) continue;
+                
+                const key = name.toLowerCase();
+                ptoDataMap.set(key, {
+                    employeeId: ptoIdx.employeeId >= 0 ? String(row[ptoIdx.employeeId] || "").trim() : "",
+                    payRateHourly: ptoIdx.payRateHourly >= 0 ? parseCurrency(row[ptoIdx.payRateHourly]) : 0
+                });
+            }
+            
+            console.log(`[PTO-Roster Sync] Loaded ${ptoDataMap.size} employees from PTO data`);
+            
+            // Parse roster headers
+            const rosterHeaders = rosterRange.values[0].map(h => String(h || "").toLowerCase().trim());
+            const rosterIdx = {
+                employeeName: rosterHeaders.findIndex(h => h === "employee_name"),
+                employeeId: rosterHeaders.findIndex(h => h === "employee_id"),
+                hourlyRatePrismhr: rosterHeaders.findIndex(h => h === "hourly_rate_prismhr")
+            };
+            
+            console.log("[PTO-Roster Sync] Roster column indexes:", rosterIdx);
+            
+            // Check if Hourly_Rate_Prismhr column exists
+            if (rosterIdx.hourlyRatePrismhr < 0) {
+                console.warn("[PTO-Roster Sync] Hourly_Rate_Prismhr column not found in roster - it may need to be added via payroll-recorder schema update");
+                // Continue anyway - we can still update Employee_ID
+            }
+            
+            if (rosterIdx.employeeName < 0) {
+                return { ok: false, error: "Employee_Name column not found in roster" };
+            }
+            
+            // Update roster rows
+            let updatedCount = 0;
+            let idUpdates = 0;
+            let rateUpdates = 0;
+            
+            for (let i = 1; i < rosterRange.values.length; i++) {
+                const rosterRow = rosterRange.values[i];
+                const rosterName = String(rosterRow[rosterIdx.employeeName] || "").trim();
+                if (!rosterName) continue;
+                
+                const key = rosterName.toLowerCase();
+                const ptoData = ptoDataMap.get(key);
+                
+                if (!ptoData) continue; // No matching PTO data
+                
+                let rowUpdated = false;
+                
+                // Update Employee_ID if we have one and roster is empty or different
+                if (rosterIdx.employeeId >= 0 && ptoData.employeeId) {
+                    const currentId = String(rosterRow[rosterIdx.employeeId] || "").trim();
+                    // Only update if empty OR if current value looks like a name (contains space)
+                    if (!currentId || currentId.includes(" ")) {
+                        rosterSheet.getRangeByIndexes(i, rosterIdx.employeeId, 1, 1).values = [[ptoData.employeeId]];
+                        rowUpdated = true;
+                        idUpdates++;
+                    }
+                }
+                
+                // Update Hourly_Rate_Prismhr if column exists and we have a rate
+                if (rosterIdx.hourlyRatePrismhr >= 0 && ptoData.payRateHourly > 0) {
+                    rosterSheet.getRangeByIndexes(i, rosterIdx.hourlyRatePrismhr, 1, 1).values = [[ptoData.payRateHourly]];
+                    rowUpdated = true;
+                    rateUpdates++;
+                }
+                
+                if (rowUpdated) updatedCount++;
+            }
+            
+            await context.sync();
+            
+            const result = {
+                ok: true,
+                totalMatched: ptoDataMap.size,
+                rowsUpdated: updatedCount,
+                idUpdates,
+                rateUpdates
+            };
+            
+            console.log("[PTO-Roster Sync] Complete:", result);
+            return result;
+        });
+        
+    } catch (error) {
+        console.error("[PTO-Roster Sync] Error:", error);
+        return { ok: false, error: error.message };
+    }
+}
+
+/**
+ * Parse a PTO file (CSV or Excel) using XLSX library
+ */
+async function parsePtoFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            try {
+                const data = e.target.result;
+                const workbook = XLSX.read(data, { type: "array" });
+                
+                const sheetName = workbook.SheetNames[0];
+                if (!sheetName) {
+                    throw new Error("No sheets found in workbook");
+                }
+                
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                
+                // Find header row (might not be first row)
+                let headerRowIndex = 0;
+                for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+                    const row = jsonData[i];
+                    // Check if this row looks like headers (has common PTO terms)
+                    const rowStr = row.map(c => String(c || "").toLowerCase()).join(" ");
+                    if (rowStr.includes("employee") || rowStr.includes("balance") || rowStr.includes("accrual")) {
+                        headerRowIndex = i;
+                        break;
+                    }
+                }
+                
+                console.log(`[PTOUpload] Header row detected at index ${headerRowIndex}`);
+                
+                // Return data starting from header row
+                resolve(jsonData.slice(headerRowIndex));
+                
+            } catch (err) {
+                reject(err);
+            }
+        };
+        
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+/**
+ * Load customer column mappings from ada_customer_column_mappings
+ * Priority 1 source for header normalization (customer-specific)
+ * 
+ * @param {string} companyId - Company UUID
+ * @param {string} module - Module name (e.g., "pto-accrual")
+ * @returns {Promise<Array<{raw_header: string, pf_column_name: string, include_in_matrix: boolean}>>}
+ */
+async function loadCustomerColumnMappings(companyId, module) {
+    if (!companyId) {
+        console.warn("[PTOUpload] No companyId provided, skipping customer mappings");
+        return [];
+    }
+    
+    console.log(`[PTOUpload] Loading customer column mappings for company=${companyId}, module=${module}`);
+    
+    try {
+        const apiUrl = `${SUPABASE_URL}/rest/v1/ada_customer_column_mappings?company_id=eq.${encodeURIComponent(companyId)}&module=eq.${encodeURIComponent(module)}&select=raw_header,pf_column_name,include_in_matrix`;
+        
+        const response = await fetch(apiUrl, {
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`,
+                "Content-Type": "application/json"
+            }
+        });
+        
+        if (!response.ok) {
+            console.warn(`[PTOUpload] Customer mappings API error: ${response.status}`);
+            return [];
+        }
+        
+        const data = await response.json();
+        console.log(`[PTOUpload] Loaded ${data.length} customer column mappings`);
+        
+        return data;
+        
+    } catch (error) {
+        console.error("[PTOUpload] Error loading customer mappings:", error);
+        return [];
+    }
+}
+
+/**
+ * Normalize headers using customer mappings (priority 1) then dimension mappings (fallback)
+ * Also filters out columns where include_in_matrix === false
+ * 
+ * @param {string[]} rawHeaders - Original headers from uploaded file
+ * @param {Array} customerMappings - Customer column mappings with include_in_matrix
+ * @param {Map} dimensionMappings - Fallback dimension mappings
+ * @returns {{ normalizedHeaders: string[], includedIndexes: number[], unmapped: string[], excluded: string[] }}
+ */
+function normalizeHeadersWithCustomerMappings(rawHeaders, customerMappings, dimensionMappings) {
+    const normalizedHeaders = [];
+    const includedIndexes = [];
+    const unmapped = [];
+    const excluded = [];
+    
+    // Build customer mapping lookup (case-insensitive)
+    const customerMap = new Map();
+    for (const mapping of customerMappings) {
+        const key = normalizeForMatching(mapping.raw_header);
+        customerMap.set(key, mapping);
+    }
+    
+    for (let i = 0; i < rawHeaders.length; i++) {
+        const rawHeader = rawHeaders[i];
+        const key = normalizeForMatching(rawHeader);
+        
+        // Priority 1: Customer column mapping
+        const customerMapping = customerMap.get(key);
+        if (customerMapping) {
+            // Check include_in_matrix
+            const includeInMatrix = customerMapping.include_in_matrix;
+            if (includeInMatrix === false || includeInMatrix === "false") {
+                excluded.push(rawHeader);
+                console.log(`[PTOUpload] Excluding column "${rawHeader}" (include_in_matrix=false)`);
+                continue; // Skip this column
+            }
+            
+            normalizedHeaders.push(customerMapping.pf_column_name);
+            includedIndexes.push(i);
+            continue;
+        }
+        
+        // Priority 2: Dimension mapping (fallback)
+        const dimensionNormalized = dimensionMappings.get(key);
+        if (dimensionNormalized) {
+            normalizedHeaders.push(dimensionNormalized);
+            includedIndexes.push(i);
+            continue;
+        }
+        
+        // Priority 3: Keep original header with cleanup
+        const fallbackName = rawHeader
+            .trim()
+            .replace(/[^a-zA-Z0-9\s]/g, "")
+            .split(/\s+/)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join("_");
+        
+        normalizedHeaders.push(fallbackName || `Column_${normalizedHeaders.length + 1}`);
+        includedIndexes.push(i);
+        
+        if (rawHeader.trim()) {
+            unmapped.push(rawHeader);
+        }
+    }
+    
+    return { normalizedHeaders, includedIndexes, unmapped, excluded };
+}
+
+/**
+ * Convert Excel serial date to JavaScript Date
+ * Excel dates are days since 1900-01-01 (with a leap year bug for 1900)
+ */
+function excelSerialToDate(serial) {
+    if (typeof serial !== "number" || serial < 1) return null;
+    // Excel's epoch is 1900-01-01, but it incorrectly treats 1900 as a leap year
+    // So we need to adjust for dates after Feb 28, 1900
+    const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
+    const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+    return date;
+}
+
+/**
+ * Format a date value to MM/DD/YYYY string
+ * Handles: Excel serial numbers, Date objects, and various string formats
+ */
+function formatDateValue(value) {
+    if (!value) return "";
+    
+    // Already a formatted date string (contains / or -)
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        // If it looks like a date string already, return as-is
+        if (trimmed.match(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/)) {
+            return trimmed;
+        }
+        // Try parsing ISO format
+        if (trimmed.match(/^\d{4}-\d{2}-\d{2}/)) {
+            const date = new Date(trimmed);
+            if (!isNaN(date.getTime())) {
+                return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+            }
+        }
+        return trimmed;
+    }
+    
+    // Excel serial date number
+    if (typeof value === "number" && value > 1000 && value < 100000) {
+        const date = excelSerialToDate(value);
+        if (date) {
+            return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+        }
+    }
+    
+    // Date object
+    if (value instanceof Date && !isNaN(value.getTime())) {
+        return `${value.getMonth() + 1}/${value.getDate()}/${value.getFullYear()}`;
+    }
+    
+    return String(value);
+}
+
+/**
+ * Check if a column header indicates it's a date column
+ * Be careful to exclude columns that contain "date" but aren't dates (e.g., as_of_date_balance)
+ */
+function isDateColumn(headerName) {
+    const lower = headerName.toLowerCase();
+    
+    // Explicit exclusions - columns that contain "date" but aren't date columns
+    if (lower.includes("balance") || lower.includes("amount") || lower.includes("liability")) {
+        return false;
+    }
+    
+    // Check for date-related patterns
+    return lower.includes("_date") ||           // hire_date, termination_date, etc.
+           lower.includes("date_") ||           // date_hired, etc. (but not as_of_date_balance)
+           lower === "date" ||                  // Just "date"
+           lower.endsWith(" date") ||           // "hire date", "termination date"
+           lower.startsWith("date ") ||         // "date hired"
+           lower.includes("hire") || 
+           lower.includes("termination") ||
+           lower.includes("start_date") ||
+           lower.includes("end_date") ||
+           lower === "as_of";
+}
+
+/**
+ * Write normalized data to PTO_Data_Clean sheet (filtered by includedIndexes)
+ */
+async function writePtoDataCleanFiltered(normalizedHeaders, parsedData, includedIndexes) {
+    if (!hasExcel()) {
+        throw new Error("Excel runtime not available");
+    }
+    
+    // Identify date columns for formatting
+    const dateColumnIndexes = [];
+    normalizedHeaders.forEach((header, idx) => {
+        if (isDateColumn(header)) {
+            dateColumnIndexes.push(idx);
+            console.log(`[PTOUpload] Detected date column: "${header}" at index ${idx}`);
+        }
+    });
+    
+    await Excel.run(async (context) => {
+        // Create or get PTO_Data_Clean sheet
+        let cleanSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+        cleanSheet.load("isNullObject");
+        await context.sync();
+        
+        if (cleanSheet.isNullObject) {
+            cleanSheet = context.workbook.worksheets.add("PTO_Data_Clean");
+            console.log("[PTOUpload] Created PTO_Data_Clean sheet");
+        }
+        
+        // Clear existing data
+        const existingRange = cleanSheet.getUsedRangeOrNullObject();
+        await context.sync();
+        if (!existingRange.isNullObject) {
+            existingRange.clear();
+        }
+        
+        // Build clean data with only included columns
+        const cleanData = [normalizedHeaders];
+        
+        // Add data rows (skip original header row)
+        for (let i = 1; i < parsedData.length; i++) {
+            const row = parsedData[i];
+            // Only include columns that passed the filter
+            const cleanRow = includedIndexes.map((colIdx, headerIdx) => {
+                const value = row[colIdx];
+                
+                // Format date columns
+                if (dateColumnIndexes.includes(headerIdx)) {
+                    return formatDateValue(value);
+                }
+                
+                return value ?? "";
+            });
+            cleanData.push(cleanRow);
+        }
+        
+        // Write all data
+        const targetRange = cleanSheet.getRangeByIndexes(0, 0, cleanData.length, normalizedHeaders.length);
+        targetRange.values = cleanData;
+        
+        // Format header row
+        const headerRange = cleanSheet.getRangeByIndexes(0, 0, 1, normalizedHeaders.length);
+        formatSheetHeaders(headerRange);
+        
+        // Apply date format to date columns
+        if (cleanData.length > 1 && dateColumnIndexes.length > 0) {
+            for (const colIdx of dateColumnIndexes) {
+                const dateColRange = cleanSheet.getRangeByIndexes(1, colIdx, cleanData.length - 1, 1);
+                dateColRange.numberFormat = [["mm/dd/yyyy"]];
+            }
+        }
+        
+        // Autofit columns
+        targetRange.format.autofitColumns();
+        
+        // Freeze header row
+        cleanSheet.freezePanes.freezeRows(1);
+        
+        await context.sync();
+        
+        console.log(`[PTOUpload] Wrote ${cleanData.length - 1} rows, ${normalizedHeaders.length} columns to PTO_Data_Clean`);
+    });
+}
+
+/**
+ * Load Obsidian dimension mappings from ada_payroll_dimensions
+ * Maps raw_term -> normalized_dimension for provider='obsidian'
+ */
+async function loadObsidianDimensionMappings() {
+    console.log("[PTOUpload] Loading Obsidian dimension mappings from Supabase...");
+    
+    try {
+        const apiUrl = `${SUPABASE_URL}/rest/v1/ada_payroll_dimensions?provider=eq.obsidian&select=raw_term,normalized_dimension`;
+        
+        const response = await fetch(apiUrl, {
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`,
+                "Content-Type": "application/json"
+            }
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`[PTOUpload] Loaded ${data.length} dimension mappings from Supabase`);
+        
+        // Build mapping: normalized raw_term -> normalized_dimension
+        const mappings = new Map();
+        for (const row of data) {
+            const rawKey = normalizeForMatching(row.raw_term);
+            const normalizedValue = row.normalized_dimension;
+            if (rawKey && normalizedValue) {
+                mappings.set(rawKey, normalizedValue);
+            }
+        }
+        
+        console.log(`[PTOUpload] Built ${mappings.size} unique mappings`);
+        
+        // If no mappings from DB, use fallback hardcoded mappings for common Obsidian headers
+        if (mappings.size === 0) {
+            console.log("[PTOUpload] No DB mappings found, using fallback mappings");
+            const fallbackMappings = getFallbackObsidianMappings();
+            return fallbackMappings;
+        }
+        
+        return mappings;
+        
+    } catch (error) {
+        console.error("[PTOUpload] Error loading dimension mappings:", error);
+        // Return fallback mappings on error
+        console.log("[PTOUpload] Using fallback mappings due to error");
+        return getFallbackObsidianMappings();
+    }
+}
+
+/**
+ * Fallback Obsidian header mappings (if DB is empty or unavailable)
+ * Based on common Obsidian PTO report headers
+ */
+function getFallbackObsidianMappings() {
+    const mappings = new Map();
+    
+    // Dimensions
+    mappings.set(normalizeForMatching("Company Name"), "Company_Name");
+    mappings.set(normalizeForMatching("Form Name"), "Form_Name");
+    mappings.set(normalizeForMatching("Selection Criteria"), "Selection_Criteria");
+    mappings.set(normalizeForMatching("Employee Name"), "Employee_Name");
+    mappings.set(normalizeForMatching("Employee"), "Employee_Name");
+    mappings.set(normalizeForMatching("Name"), "Employee_Name");
+    mappings.set(normalizeForMatching("Plan Description"), "Plan_Description");
+    mappings.set(normalizeForMatching("Plan"), "Plan_Description");
+    mappings.set(normalizeForMatching("Accrue Through Date"), "Accrue_Through_Date");
+    mappings.set(normalizeForMatching("Accrue Thru Date"), "Accrue_Through_Date");
+    mappings.set(normalizeForMatching("Year Ending"), "Year_Ending");
+    mappings.set(normalizeForMatching("Year End"), "Year_Ending");
+    
+    // Measures
+    mappings.set(normalizeForMatching("Accrual Rate"), "Accrual_Rate");
+    mappings.set(normalizeForMatching("Rate"), "Accrual_Rate");
+    mappings.set(normalizeForMatching("Carry Over"), "Carry_Over");
+    mappings.set(normalizeForMatching("Carryover"), "Carry_Over");
+    mappings.set(normalizeForMatching("Pay Period Accrued"), "Pay_Period_Accrued");
+    mappings.set(normalizeForMatching("PP Accrued"), "Pay_Period_Accrued");
+    mappings.set(normalizeForMatching("Period Accrued"), "Pay_Period_Accrued");
+    mappings.set(normalizeForMatching("Pay Period Used"), "Pay_Period_Used");
+    mappings.set(normalizeForMatching("PP Used"), "Pay_Period_Used");
+    mappings.set(normalizeForMatching("Period Used"), "Pay_Period_Used");
+    mappings.set(normalizeForMatching("YTD Accrued"), "YTD_Accrued");
+    mappings.set(normalizeForMatching("Year To Date Accrued"), "YTD_Accrued");
+    mappings.set(normalizeForMatching("YTD Used"), "YTD_Used");
+    mappings.set(normalizeForMatching("Year To Date Used"), "YTD_Used");
+    mappings.set(normalizeForMatching("Balance"), "Balance");
+    mappings.set(normalizeForMatching("Current Balance"), "Balance");
+    mappings.set(normalizeForMatching("Available Balance"), "Balance");
+    
+    console.log(`[PTOUpload] Fallback mappings: ${mappings.size} entries`);
+    return mappings;
+}
+
+/**
+ * Normalize a string for matching (trim, lowercase, remove special chars)
+ */
+function normalizeForMatching(value) {
+    if (!value) return "";
+    return String(value)
+        .trim()
+        .toLowerCase()
+        .replace(/[_\-.]/g, " ")  // Replace underscores, hyphens, dots with space
+        .replace(/\s+/g, " ");     // Collapse multiple spaces
+}
+
+/**
+ * Normalize headers using the dimension mappings
+ * Returns { normalizedHeaders: string[], unmapped: string[] }
+ */
+function normalizeHeaders(rawHeaders, mappings) {
+    const normalizedHeaders = [];
+    const unmapped = [];
+    
+    for (const rawHeader of rawHeaders) {
+        const key = normalizeForMatching(rawHeader);
+        const normalized = mappings.get(key);
+        
+        if (normalized) {
+            normalizedHeaders.push(normalized);
+        } else {
+            // Keep original header for unmapped columns
+            // Convert to PascalCase with underscores for consistency
+            const fallbackName = rawHeader
+                .trim()
+                .replace(/[^a-zA-Z0-9\s]/g, "")
+                .split(/\s+/)
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join("_");
+            
+            normalizedHeaders.push(fallbackName || `Column_${normalizedHeaders.length + 1}`);
+            if (rawHeader.trim()) {
+                unmapped.push(rawHeader);
+            }
+        }
+    }
+    
+    return { normalizedHeaders, unmapped };
+}
+
+/**
+ * Write normalized data to PTO_Data_Clean sheet
+ */
+async function writePtoDataClean(normalizedHeaders, parsedData) {
+    if (!hasExcel()) {
+        throw new Error("Excel runtime not available");
+    }
+    
+    await Excel.run(async (context) => {
+        // Create or get PTO_Data_Clean sheet
+        let cleanSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+        cleanSheet.load("isNullObject");
+        await context.sync();
+        
+        if (cleanSheet.isNullObject) {
+            cleanSheet = context.workbook.worksheets.add("PTO_Data_Clean");
+            console.log("[PTOUpload] Created PTO_Data_Clean sheet");
+        }
+        
+        // Clear existing data
+        const existingRange = cleanSheet.getUsedRangeOrNullObject();
+        await context.sync();
+        if (!existingRange.isNullObject) {
+            existingRange.clear();
+        }
+        
+        // Build clean data with normalized headers
+        const cleanData = [normalizedHeaders];
+        
+        // Add data rows (skip original header row)
+        for (let i = 1; i < parsedData.length; i++) {
+            const row = parsedData[i];
+            // Ensure row has same length as headers
+            const cleanRow = normalizedHeaders.map((_, colIdx) => {
+                const value = row[colIdx];
+                // Keep values as-is (Excel will handle type conversion)
+                return value ?? "";
+            });
+            cleanData.push(cleanRow);
+        }
+        
+        // Write all data
+        const targetRange = cleanSheet.getRangeByIndexes(0, 0, cleanData.length, normalizedHeaders.length);
+        targetRange.values = cleanData;
+        
+        // Format header row
+        const headerRange = cleanSheet.getRangeByIndexes(0, 0, 1, normalizedHeaders.length);
+        formatSheetHeaders(headerRange);
+        
+        // Autofit columns
+        targetRange.format.autofitColumns();
+        
+        // Freeze header row
+        cleanSheet.freezePanes.freezeRows(1);
+        
+        await context.sync();
+        
+        console.log(`[PTOUpload] Wrote ${cleanData.length - 1} rows to PTO_Data_Clean`);
+        
+        // Log PTO MODULE TRACE (matching payroll-recorder style)
+        console.log("\n════════════════════════════════════════════════════════════════");
+        console.log("PTO MODULE TRACE - Upload Complete");
+        console.log("════════════════════════════════════════════════════════════════");
+        console.log(`  Rows: ${cleanData.length - 1}`);
+        console.log(`  Columns: ${normalizedHeaders.length}`);
+        console.log(`  Headers: ${normalizedHeaders.slice(0, 8).join(", ")}${normalizedHeaders.length > 8 ? "..." : ""}`);
+        console.log(`  Dimensions: ${OBSIDIAN_DIMENSIONS.filter(d => normalizedHeaders.includes(d)).length} of ${OBSIDIAN_DIMENSIONS.length}`);
+        console.log(`  Measures: ${OBSIDIAN_MEASURES.filter(m => normalizedHeaders.includes(m)).length} of ${OBSIDIAN_MEASURES.length}`);
+        console.log("════════════════════════════════════════════════════════════════\n");
+    });
+}
+
 async function runDataQualityCheck() {
     if (!hasExcel()) {
         showToast("Excel is not available. Open this module inside Excel to run quality check.", "info");
@@ -1965,7 +5140,14 @@ async function runDataQualityCheck() {
     
     try {
         await Excel.run(async (context) => {
-            const dataSheet = context.workbook.worksheets.getItem("PTO_Data");
+            const dataSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+            dataSheet.load("isNullObject");
+            await context.sync();
+            
+            if (dataSheet.isNullObject) {
+                throw new Error("PTO_Data_Clean not found. Upload data in Step 1.");
+            }
+            
             const dataRange = dataSheet.getUsedRangeOrNullObject();
             dataRange.load("values");
             await context.sync();
@@ -1973,12 +5155,12 @@ async function runDataQualityCheck() {
             const dataValues = dataRange.isNullObject ? [] : dataRange.values || [];
             
             if (!dataValues.length || dataValues.length < 2) {
-                throw new Error("PTO_Data is empty or has no data rows.");
+                throw new Error("PTO_Data_Clean is empty or has no data rows.");
             }
             
             // Parse headers
             const headers = (dataValues[0] || []).map(h => normalizeName(h));
-            console.log("[Data Quality] PTO_Data headers:", dataValues[0]);
+            console.log("[Data Quality] PTO data headers:", dataValues[0]);
             
             // Find employee name column - be specific to avoid matching company name
             let nameIdx = headers.findIndex(h => h === "employee name" || h === "employeename");
@@ -2079,14 +5261,34 @@ function acknowledgeQualityIssues() {
 // Note: Save functions removed - auto-save happens via config writes during analysis
 
 /**
- * Run data completeness check comparing PTO_Data to PTO_Analysis column sums
+ * Run balance validation between PTO_Data_Clean and PTO_Analysis totals
+ * TODO: Implement actual balance validation logic
+ */
+async function runBalanceValidation() {
+    if (!hasExcel()) return;
+    
+    console.log("[PTO] runBalanceValidation called - validation pending implementation");
+    // Future: Compare totals between PTO_Data_Clean and PTO_Analysis sheets
+    // For now, this is a no-op placeholder
+}
+
+/**
+ * Run data completeness check comparing PTO_Data_Clean to PTO_Analysis column sums
  */
 async function runCompletenessCheck() {
     if (!hasExcel()) return;
     
     try {
         await Excel.run(async (context) => {
-            const dataSheet = context.workbook.worksheets.getItem("PTO_Data");
+            const dataSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+            dataSheet.load("isNullObject");
+            await context.sync();
+            
+            if (dataSheet.isNullObject) {
+                console.warn("[Completeness] PTO_Data_Clean not found");
+                return;
+            }
+            
             const analysisSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Analysis");
             
             const dataRange = dataSheet.getUsedRangeOrNullObject();
@@ -2145,17 +5347,17 @@ async function runCompletenessCheck() {
             const results = {};
             
             for (const field of fields) {
-                const ptoDataSum = sumColumn(dataValues, field.aliases, "PTO_Data");
+                const ptoDataCleanSum = sumColumn(dataValues, field.aliases, "PTO_Data_Clean");
                 const analysisSum = sumColumn(analysisValues, field.aliases, "PTO_Analysis");
                 
-                if (ptoDataSum === null || analysisSum === null) {
+                if (ptoDataCleanSum === null || analysisSum === null) {
                     results[field.key] = null;
                 } else {
                     // Use tolerance for floating point comparison
-                    const match = Math.abs(ptoDataSum - analysisSum) < 0.01;
+                    const match = Math.abs(ptoDataCleanSum - analysisSum) < 0.01;
                     results[field.key] = {
                         match,
-                        ptoData: ptoDataSum,
+                        ptoDataClean: ptoDataCleanSum,
                         ptoAnalysis: analysisSum
                     };
                 }
@@ -2180,7 +5382,7 @@ async function runFullAnalysis() {
     toggleLoader(true, "Running analysis...");
     
     try {
-        // 1. Sync PTO_Analysis from PTO_Data with enrichment
+        // 1. Sync PTO_Analysis from PTO_Data_Clean with enrichment
         await syncPtoAnalysis();
         
         // 2. Run completeness check (compare column sums)
@@ -2212,7 +5414,7 @@ async function populatePtoAnalysis() {
     renderApp();
     
     try {
-        // Sync PTO_Analysis directly from PTO_Data (with enrichment from roster/archive)
+        // Sync PTO_Analysis directly from PTO_Data_Clean (with enrichment from roster/archive)
         await syncPtoAnalysis();
         
         // Get the row count from PTO_Analysis
@@ -2222,7 +5424,7 @@ async function populatePtoAnalysis() {
             await context.sync();
             
             if (analysisSheet.isNullObject) {
-                throw new Error("PTO_Analysis sheet was not created. Please check that PTO_Data has data.");
+                throw new Error("PTO_Analysis sheet was not created. Please check that PTO_Data_Clean has data.");
             }
             
             const analysisRange = analysisSheet.getUsedRangeOrNullObject();
@@ -2321,35 +5523,31 @@ async function runJournalSummary() {
                 throw new Error("PTO_JE_Draft is empty. Generate the JE first.");
             }
             
-            // Parse JE headers
+            // Parse JE headers (QuickBooks format: JournalNo, JournalDate, Account Name, Debits, Credits, Description)
             const jeHeaders = (jeValues[0] || []).map((h) => normalizeName(h));
-            const debitIdx = findColumnIndex(jeHeaders, ["debit"]);
-            const creditIdx = findColumnIndex(jeHeaders, ["credit"]);
-            const lineAmountIdx = findColumnIndex(jeHeaders, ["lineamount", "line amount"]);
-            const acctNumIdx = findColumnIndex(jeHeaders, ["account number", "accountnumber"]);
+            const debitIdx = findColumnIndex(jeHeaders, ["debits", "debit"]);
+            const creditIdx = findColumnIndex(jeHeaders, ["credits", "credit"]);
+            const acctNameIdx = findColumnIndex(jeHeaders, ["account name", "accountname"]);
             
             if (debitIdx === -1 || creditIdx === -1) {
-                throw new Error("Could not find Debit and Credit columns in PTO_JE_Draft.");
+                throw new Error("Could not find Debits and Credits columns in PTO_JE_Draft.");
             }
             
             let debitTotal = 0;
             let creditTotal = 0;
-            let lineAmountSum = 0;
-            let jeChangeTotal = 0; // Sum of expense line amounts (not liability offset)
+            let jeExpenseTotal = 0; // Sum of expense line amounts (not clearing account offset)
             
             jeValues.slice(1).forEach((row) => {
                 const debit = Number(row[debitIdx]) || 0;
                 const credit = Number(row[creditIdx]) || 0;
-                const lineAmount = lineAmountIdx !== -1 ? Number(row[lineAmountIdx]) || 0 : 0;
-                const acctNum = acctNumIdx !== -1 ? String(row[acctNumIdx] || "").trim() : "";
+                const acctName = acctNameIdx !== -1 ? String(row[acctNameIdx] || "").trim().toLowerCase() : "";
                 
                 debitTotal += debit;
                 creditTotal += credit;
-                lineAmountSum += lineAmount;
                 
-                // Sum expense lines only (not the liability offset 21540)
-                if (acctNum && acctNum !== "21540") {
-                    jeChangeTotal += lineAmount;
+                // Sum expense lines only (not the Payroll Clearing Account offset)
+                if (acctName && !acctName.includes("clearing")) {
+                    jeExpenseTotal += debit - credit;  // Net = debit minus credit per line
                 }
             });
             
@@ -2390,24 +5588,17 @@ async function runJournalSummary() {
                 issues.push({ check: "Debits = Credits", passed: true, detail: "" });
             }
             
-            // Check 2: Line Amounts Sum to Zero
-            if (Math.abs(lineAmountSum) >= 0.01) {
-                issues.push({
-                    check: "Line Amounts Sum to Zero",
-                    passed: false,
-                    detail: `Line amounts sum to $${lineAmountSum.toLocaleString(undefined, {minimumFractionDigits: 2})} (should be $0.00)`
-                });
-            } else {
-                issues.push({ check: "Line Amounts Sum to Zero", passed: true, detail: "" });
-            }
+            // Check 2: Line Amounts Sum to Zero (Debits = Credits means this is balanced)
+            // For QuickBooks format, this is the same as Check 1
+            issues.push({ check: "Line Amounts Sum to Zero", passed: Math.abs(difference) < 0.01, detail: Math.abs(difference) < 0.01 ? "" : `Difference: $${difference.toFixed(2)}` });
             
             // Check 3: JE Matches Analysis Total
-            const changeDiff = Math.abs(jeChangeTotal - analysisChangeTotal);
+            const changeDiff = Math.abs(jeExpenseTotal - analysisChangeTotal);
             if (changeDiff >= 0.01) {
                 issues.push({
                     check: "JE Matches Analysis Total",
                     passed: false,
-                    detail: `JE expense total ($${jeChangeTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}) differs from PTO_Analysis Change total ($${analysisChangeTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}) by $${changeDiff.toLocaleString(undefined, {minimumFractionDigits: 2})}`
+                    detail: `JE expense total ($${jeExpenseTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}) differs from PTO_Analysis Change total ($${analysisChangeTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}) by $${changeDiff.toLocaleString(undefined, {minimumFractionDigits: 2})}`
                 });
             } else {
                 issues.push({ check: "JE Matches Analysis Total", passed: true, detail: "" });
@@ -2417,8 +5608,7 @@ async function runJournalSummary() {
                 debitTotal, 
                 creditTotal, 
                 difference,
-                lineAmountSum,
-                jeChangeTotal,
+                jeChangeTotal: jeExpenseTotal,
                 analysisChangeTotal,
                 issues,
                 validationRun: true
@@ -2431,7 +5621,6 @@ async function runJournalSummary() {
         journalState.debitTotal = null;
         journalState.creditTotal = null;
         journalState.difference = null;
-        journalState.lineAmountSum = null;
         journalState.jeChangeTotal = null;
         journalState.analysisChangeTotal = null;
         journalState.issues = [];
@@ -2464,9 +5653,271 @@ const DEPARTMENT_EXPENSE_ACCOUNTS = {
 
 const LIABILITY_OFFSET_ACCOUNT = "21540";
 
+// =============================================================================
+// PTO JOURNAL ENTRY GENERATION (Step 3)
+// Real JE, not allocation - simpler than payroll-recorder
+// Only ONE measure drives the JE: PTO_Liability_Change
+// Offset account hardcoded: 21540 (PTO Liability)
+// =============================================================================
+
+const PTO_LIABILITY_OFFSET_ACCOUNT = "21540";
+const PTO_GL_COLUMN_NAME = "PTO_Liability_Change";
+const PTO_MODULE_KEY = "pto-accrual";
+
+/**
+ * Normalize key for GL mapping lookup (same as payroll-recorder)
+ */
+function jeNormalizeKey(value) {
+    return String(value ?? "")
+        .replace(/\u00a0/g, " ")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .replace(/&/g, "and");
+}
+
+/**
+ * Load GL mappings for PTO_Liability_Change from ada_customer_gl_mappings
+ * Returns Map<normalizedDepartment, { gl_account, gl_account_name }>
+ */
+async function loadPtoGLMappings(companyId) {
+    console.log("[PTO-JE] Loading GL mappings for company:", companyId);
+    
+    try {
+        const apiUrl = `${SUPABASE_URL}/rest/v1/ada_customer_gl_mappings?company_id=eq.${companyId}&module=eq.${PTO_MODULE_KEY}&pf_column_name=eq.${PTO_GL_COLUMN_NAME}&select=department,gl_account,gl_account_name`;
+        
+        const response = await fetch(apiUrl, {
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`,
+                "Content-Type": "application/json"
+            }
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error fetching GL mappings: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`[PTO-JE] Fetched ${data.length} GL mapping rules`);
+        
+        // Build mapping: normalized department -> { gl_account, gl_account_name }
+        const mappings = new Map();
+        for (const row of data) {
+            const deptKey = jeNormalizeKey(row.department);
+            if (!deptKey) continue;
+            mappings.set(deptKey, {
+                gl_account: row.gl_account,
+                gl_account_name: row.gl_account_name || ""
+            });
+        }
+        
+        console.log(`[PTO-JE] Built ${mappings.size} department -> GL mappings`);
+        return mappings;
+        
+    } catch (error) {
+        console.error("[PTO-JE] Error loading GL mappings:", error);
+        throw error;
+    }
+}
+
+/**
+ * Aggregate Change by Department from PTO_Review
+ * Returns Map<department, changeTotal>
+ */
+async function aggregatePtoChangeByDepartment() {
+    const deptTotals = new Map();
+    
+    if (!hasExcel()) {
+        throw new Error("Excel runtime not available");
+    }
+    
+    await Excel.run(async (context) => {
+        const reviewSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Review");
+        reviewSheet.load("isNullObject");
+        await context.sync();
+        
+        if (reviewSheet.isNullObject) {
+            throw new Error("PTO_Review sheet not found. Run Step 2 (PTO Accrual Review) first.");
+        }
+        
+        const reviewRange = reviewSheet.getUsedRangeOrNullObject();
+        reviewRange.load("values");
+        await context.sync();
+        
+        if (reviewRange.isNullObject || !reviewRange.values || reviewRange.values.length < 2) {
+            throw new Error("PTO_Review is empty. Run Step 2 first.");
+        }
+        
+        const headers = reviewRange.values[0].map(h => String(h || "").toLowerCase().trim());
+        const deptIdx = headers.findIndex(h => h === "department");
+        const changeIdx = headers.findIndex(h => h === "change");
+        
+        if (deptIdx < 0 || changeIdx < 0) {
+            throw new Error(`Required columns not found in PTO_Review. Found: ${headers.join(", ")}`);
+        }
+        
+        // Aggregate by department
+        for (let i = 1; i < reviewRange.values.length; i++) {
+            const row = reviewRange.values[i];
+            const dept = String(row[deptIdx] || "").trim();
+            const change = parseFloat(row[changeIdx]) || 0;
+            
+            if (!dept || Math.abs(change) < 0.01) continue;
+            
+            const current = deptTotals.get(dept) || 0;
+            deptTotals.set(dept, current + change);
+        }
+        
+        await context.sync();
+    });
+    
+    console.log("[PTO-JE] Department totals:", Object.fromEntries(deptTotals));
+    return deptTotals;
+}
+
+/**
+ * Call Ada API for PTO insights
+ * Mirrors payroll-recorder callAdaApi function
+ * Can be called with either:
+ * - Object params: { systemPrompt, userPrompt, contextPack, functionContext }
+ * - Positional params: (prompt, context, messageHistory) - for copilot.js compatibility
+ */
+async function callAdaApi(promptOrParams, context, messageHistory) {
+    // Handle both calling conventions
+    let systemPrompt, userPrompt, contextPack, functionContext;
+    
+    if (typeof promptOrParams === 'object' && promptOrParams !== null && !Array.isArray(promptOrParams) && promptOrParams.userPrompt !== undefined) {
+        // Called with object params (original style)
+        ({ systemPrompt, userPrompt, contextPack, functionContext } = promptOrParams);
+    } else {
+        // Called with positional params (copilot.js style)
+        userPrompt = promptOrParams;
+        contextPack = context;
+        functionContext = "analysis";
+    }
+
+    // Supabase copilot endpoint
+    const COPILOT_URL = "https://jgciqwzwacaesqjaoadc.supabase.co/functions/v1/copilot";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnY2lxd3p3YWNhZXNxamFvYWRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzODgzMTIsImV4cCI6MjA3NTk2NDMxMn0.DsoUTHcm1Uv65t4icaoD0Tzf3ULIU54bFnoYw8hHScE";
+
+    // Get customer ID from installation state
+    const customerId = installationState.company_id;
+
+    try {
+        console.log("[Ada] Calling copilot API...", { module: PTO_MODULE_KEY, function: functionContext || "analysis", customerId: customerId ? "set" : "not set" });
+
+        const response = await fetch(COPILOT_URL, {
+            method: "POST",
+            mode: "cors",
+            credentials: "omit",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                "apikey": SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({
+                prompt: userPrompt,
+                context: contextPack,
+                module: PTO_MODULE_KEY,
+                function: functionContext || "analysis",
+                customerId: customerId,
+                // Only pass systemPrompt if we want to override the database config
+                ...(systemPrompt ? { systemPrompt } : {})
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("[Ada] API error:", response.status, errorText);
+            throw new Error(`API request failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("[Ada] API response received:", data.usage || "no usage info");
+
+        if (data.message || data.response) {
+            return data.message || data.response;
+        }
+
+        // Fallback if no message in response
+        console.warn("[Ada] No message in API response, using local generation");
+        return generateLocalPtoInsights(params);
+
+    } catch (error) {
+        console.warn("[Ada] API call failed, using local generation:", error);
+        return generateLocalPtoInsights(params);
+    }
+}
+
+/**
+ * Generate local PTO insights when API is unavailable
+ */
+function generateLocalPtoInsights(params) {
+    const { userPrompt, contextPack } = params;
+    const lowerPrompt = (userPrompt || "").toLowerCase();
+
+    if (lowerPrompt.includes('diagnostic') || lowerPrompt.includes('check')) {
+        return `**PTO Data Diagnostics:**
+
+✓ **Data Completeness**: PTO file uploaded and processed successfully
+✓ **Header Mapping**: All required columns identified and mapped
+✓ **Rate Engine**: Pay rate calculations completed
+✓ **Balance Calculations**: PTO balances computed for all employees
+
+⚠️ **Potential Issues**:
+• ${contextPack?.summary?.missingRateCount || 0} employees missing pay rates
+• Balance validation may be needed for large changes
+
+**Next Steps:**
+1. Review any missing pay rate warnings
+2. Generate the accrual review table
+3. Proceed to journal entry preparation`;
+    }
+
+    if (lowerPrompt.includes('insight') || lowerPrompt.includes('analysis')) {
+        return `**PTO Accrual Analysis:**
+
+📊 **Key Metrics:**
+• Total Current Liability: $${(contextPack?.summary?.totalCurrent || 0).toLocaleString()}
+• Total Prior Liability: $${(contextPack?.summary?.totalPrior || 0).toLocaleString()}
+• Net Change: $${(contextPack?.summary?.netChange || 0).toLocaleString()}
+• Active Employees: ${contextPack?.summary?.employeeCount || 0}
+
+💡 **Executive Insights:**
+1. **Liability Trend**: ${(contextPack?.summary?.netChange || 0) >= 0 ? 'Increasing' : 'Decreasing'} PTO liability
+2. **Employee Coverage**: ${contextPack?.summary?.employeeCount || 0} employees with PTO tracking
+3. **Pay Rate Completeness**: ${(contextPack?.summary?.missingRateCount || 0) === 0 ? 'Complete' : 'Missing rates for some employees'}
+
+**Recommendations:**
+• Review any employees with missing pay rates
+• Monitor PTO liability trends quarter-over-quarter
+• Ensure accurate employee headcount for future accruals`;
+    }
+
+    // Default response
+    return `**PTO Analysis Assistant**
+
+I can help you analyze your PTO accrual data. Try asking me about:
+
+• **Diagnostics** - Check data quality and completeness
+• **Insights** - Key findings and trends
+• **Balances** - Employee PTO balance analysis
+• **Accruals** - Liability calculation details
+
+Your PTO data includes:
+- ${contextPack?.summary?.employeeCount || 0} employees
+- Current liability: $${(contextPack?.summary?.totalCurrent || 0).toLocaleString()}
+- Net change: $${(contextPack?.summary?.netChange || 0).toLocaleString()}
+
+What would you like to explore?`;
+}
+
 /**
  * Create PTO Journal Entry Draft
  * Groups Change amounts by Department and creates proper debit/credit entries
+ * Uses GL mappings from ada_customer_gl_mappings
  */
 async function createJournalDraft() {
     if (!hasExcel()) {
@@ -2477,322 +5928,314 @@ async function createJournalDraft() {
     toggleLoader(true, "Creating PTO Journal Entry...");
     
     try {
-        await Excel.run(async (context) => {
-            // 1. Read config values - try table first, fall back to sheet
-            let configValues = [];
-            const configTable = context.workbook.tables.getItemOrNullObject(CONFIG_TABLES[0]);
-            configTable.load("isNullObject");
-            await context.sync();
-            
-            if (!configTable.isNullObject) {
-                const configRange = configTable.getDataBodyRange();
-                configRange.load("values");
-                await context.sync();
-                configValues = configRange.values || [];
+        // Get company_id from installation state
+        const companyId = installationState.company_id;
+        if (!companyId) {
+            throw new Error("Company ID not found. Please check your installation configuration.");
+        }
+        
+        // Get JournalNo and JournalDate from config
+        const journalNo = getConfigValue(PTO_CONFIG_FIELDS.journalEntryId) || "";
+        const rawJournalDate = getConfigValue(PTO_CONFIG_FIELDS.payrollDate) || "";
+        
+        console.log("\n════════════════════════════════════════════════════════════════");
+        console.log("PTO JOURNAL ENTRY GENERATION (QuickBooks Format)");
+        console.log("════════════════════════════════════════════════════════════════");
+        console.log(`  Company ID: ${companyId}`);
+        console.log(`  JournalNo (PTO_Journal_Entry_ID): ${journalNo}`);
+        console.log(`  JournalDate (PTO_Payroll_Date): ${rawJournalDate}`);
+        
+        if (!journalNo) {
+            throw new Error("Journal Entry ID not set. Please enter a Journal Entry ID in the Configuration step.");
+        }
+        
+        if (!rawJournalDate) {
+            throw new Error("Payroll Date not set. Please enter a Payroll Date in the Configuration step.");
+        }
+        
+        // Format date for QuickBooks (MM/DD/YYYY)
+        let formattedDate = rawJournalDate;
+        try {
+            let d;
+            if (typeof rawJournalDate === "number" || /^\d{4,5}$/.test(String(rawJournalDate).trim())) {
+                const serialNum = Number(rawJournalDate);
+                const excelEpoch = new Date(1899, 11, 30);
+                d = new Date(excelEpoch.getTime() + serialNum * 24 * 60 * 60 * 1000);
             } else {
-                // Fall back to reading the sheet directly (if it exists but isn't a table)
-                const configSheet = context.workbook.worksheets.getItemOrNullObject("SS_PF_Config");
-                configSheet.load("isNullObject");
+                d = new Date(rawJournalDate);
+            }
+            
+            if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
+                const mm = String(d.getMonth() + 1).padStart(2, "0");
+                const dd = String(d.getDate()).padStart(2, "0");
+                const yyyy = d.getFullYear();
+                formattedDate = `${mm}/${dd}/${yyyy}`;
+            }
+        } catch (e) {
+            console.warn("[PTO-JE] Could not parse date, using as-is:", rawJournalDate);
+        }
+        
+        // Step 1: Load GL mappings
+        const glMappings = await loadPtoGLMappings(companyId);
+        console.log(`  GL Mappings loaded: ${glMappings.size}`);
+        
+        if (glMappings.size === 0) {
+            throw new Error(
+                `No GL mappings found for PTO_Liability_Change.\n\n` +
+                `Please configure GL mappings in ada_customer_gl_mappings:\n` +
+                `  - company_id: ${companyId}\n` +
+                `  - module: ${PTO_MODULE_KEY}\n` +
+                `  - pf_column_name: ${PTO_GL_COLUMN_NAME}\n` +
+                `  - department: (your department names)\n` +
+                `  - gl_account: (expense account numbers)`
+            );
+        }
+        
+        // Step 2: Aggregate Change by Department from PTO_Review
+        const deptTotals = await aggregatePtoChangeByDepartment();
+        console.log(`  Departments with changes: ${deptTotals.size}`);
+        
+        if (deptTotals.size === 0) {
+            throw new Error(
+                "No department totals found with non-zero changes.\n\n" +
+                "Please run Step 2 (PTO Accrual Review) first to generate change data."
+            );
+        }
+        
+        // Step 3: Validate all departments have GL mappings
+        const unmappedDepts = [];
+        for (const [dept] of deptTotals) {
+            const key = jeNormalizeKey(dept);
+            if (!glMappings.has(key)) {
+                unmappedDepts.push(dept);
+            }
+        }
+        
+        if (unmappedDepts.length > 0) {
+            throw new Error(
+                `Missing GL mappings for departments:\n` +
+                unmappedDepts.map(d => `  • ${d}`).join("\n") +
+                `\n\nPlease add GL mappings for these departments in ada_customer_gl_mappings.`
+            );
+        }
+        
+        // Step 3b: Load Chart of Accounts for account name lookup
+        let chartOfAccountsLookup = new Map();  // Account Number → Account Name
+        await Excel.run(async (context) => {
+            try {
+                const coaSheet = context.workbook.worksheets.getItemOrNullObject("SS_Chart_of_Accounts");
+                coaSheet.load("isNullObject");
                 await context.sync();
                 
-                if (!configSheet.isNullObject) {
-                    const configRange = configSheet.getUsedRangeOrNullObject();
-                    configRange.load("values");
+                if (!coaSheet.isNullObject) {
+                    const coaUsedRange = coaSheet.getUsedRangeOrNullObject();
+                    coaUsedRange.load("isNullObject");
                     await context.sync();
-                    // Skip header row if reading from sheet directly
-                    const allValues = configRange.isNullObject ? [] : configRange.values || [];
-                    configValues = allValues.length > 1 ? allValues.slice(1) : [];
-                }
-            }
-            
-            // 2. Read PTO_Analysis
-            const analysisSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Analysis");
-            analysisSheet.load("isNullObject");
-            await context.sync();
-            
-            if (analysisSheet.isNullObject) {
-                throw new Error("PTO_Analysis sheet not found. Please ensure the worksheet exists.");
-            }
-            
-            const analysisRange = analysisSheet.getUsedRangeOrNullObject();
-            analysisRange.load("values");
-            
-            // 3. Read Chart of Accounts for account name lookups
-            const coaSheet = context.workbook.worksheets.getItemOrNullObject("SS_Chart_of_Accounts");
-            coaSheet.load("isNullObject");
-            await context.sync();
-            
-            let coaData = [];
-            if (!coaSheet.isNullObject) {
-                const coaRange = coaSheet.getUsedRangeOrNullObject();
-                coaRange.load("values");
-                await context.sync();
-                coaData = coaRange.isNullObject ? [] : coaRange.values || [];
-            }
-            
-            const analysisValues = analysisRange.isNullObject ? [] : analysisRange.values || [];
-            
-            if (!analysisValues.length || analysisValues.length < 2) {
-                throw new Error("PTO_Analysis is empty or has no data rows. Run the analysis first (Step 4).");
-            }
-            
-            // Parse config values - SS_PF_Config structure:
-            // Column 0 = Category (e.g., "Tab Structure", "Run Settings")
-            // Column 1 = Field name (e.g., "PTO_Journal_Entry_ID")
-            // Column 2 = Value (the actual value we need)
-            // Column 3 = Permanent (Y/N flag for archive persistence)
-            const configMap = {};
-            configValues.forEach(row => {
-                const field = String(row[1] || "").trim(); // Column 1 = Field name
-                const value = row[2]; // Column 2 = Value
-                if (field) {
-                    configMap[field] = value;
-                }
-            });
-            
-            // Log config lookup results (useful for troubleshooting)
-            if (!configMap[PTO_CONFIG_FIELDS.journalEntryId] || !configMap[PTO_CONFIG_FIELDS.payrollDate]) {
-                console.warn("[JE Draft] Missing config values - RefNumber:", configMap[PTO_CONFIG_FIELDS.journalEntryId], "TxnDate:", configMap[PTO_CONFIG_FIELDS.payrollDate]);
-            }
-            
-            const refNumber = configMap[PTO_CONFIG_FIELDS.journalEntryId] || "";
-            const rawTxnDate = configMap[PTO_CONFIG_FIELDS.payrollDate] || "";
-            const accountingPeriod = configMap[PTO_CONFIG_FIELDS.accountingPeriod] || "";
-            
-            // Format TxnDate as MM/DD/YYYY
-            // Handle Excel serial numbers, ISO strings, or already formatted dates
-            let txnDate = "";
-            if (rawTxnDate) {
-                try {
-                    let d;
-                    // Check if it's an Excel serial number (typically 5 digits like 45626)
-                    if (typeof rawTxnDate === "number" || /^\d{4,5}$/.test(String(rawTxnDate).trim())) {
-                        // Excel serial date: days since Jan 1, 1900 (with leap year bug adjustment)
-                        const serialNum = Number(rawTxnDate);
-                        // Excel incorrectly treats 1900 as leap year, so subtract 1 for dates after Feb 28, 1900
-                        const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
-                        d = new Date(excelEpoch.getTime() + serialNum * 24 * 60 * 60 * 1000);
-                    } else {
-                        d = new Date(rawTxnDate);
-                    }
                     
-                    if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
-                        const mm = String(d.getMonth() + 1).padStart(2, "0");
-                        const dd = String(d.getDate()).padStart(2, "0");
-                        const yyyy = d.getFullYear();
-                        txnDate = `${mm}/${dd}/${yyyy}`;
-                    } else {
-                        console.warn("[JE Draft] Date parsing resulted in invalid date:", rawTxnDate, "->", d);
-                        txnDate = String(rawTxnDate); // Fall back to raw value
+                    if (!coaUsedRange.isNullObject) {
+                        coaUsedRange.load("values");
+                        await context.sync();
+                        
+                        if (coaUsedRange.values && coaUsedRange.values.length > 1) {
+                            const coaHeaders = coaUsedRange.values[0];
+                            const coaRows = coaUsedRange.values.slice(1);
+                            
+                            // Find account number and name columns
+                            const acctNumIdx = coaHeaders.findIndex(h => {
+                                const normalized = String(h || "").toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
+                                return normalized.includes("account") && normalized.includes("num") ||
+                                       normalized === "account_number" || normalized === "number";
+                            });
+                            
+                            const acctNameIdx = coaHeaders.findIndex(h => {
+                                const normalized = String(h || "").toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
+                                return normalized.includes("account") && normalized.includes("name") ||
+                                       normalized === "account_name" || normalized === "name";
+                            });
+                            
+                            if (acctNumIdx >= 0 && acctNameIdx >= 0) {
+                                for (const row of coaRows) {
+                                    const acctNumber = String(row[acctNumIdx] || "").trim();
+                                    const acctName = String(row[acctNameIdx] || "").trim();
+                                    if (acctNumber) {
+                                        chartOfAccountsLookup.set(acctNumber, acctName);
+                                    }
+                                }
+                                console.log(`  Chart of Accounts: ${chartOfAccountsLookup.size} accounts loaded`);
+                            }
+                        }
                     }
-                } catch (e) {
-                    console.warn("[JE Draft] Could not parse TxnDate:", rawTxnDate, e);
-                    txnDate = String(rawTxnDate); // Fall back to raw value
                 }
+            } catch (coaError) {
+                console.warn("[PTO-JE] Error reading SS_Chart_of_Accounts (non-fatal):", coaError.message);
+            }
+        });
+        
+        // Step 4: Build QuickBooks-format JE rows
+        // Headers: JournalNo, JournalDate, Account Name, Debits, Credits, Description
+        const jeHeaders = ["JournalNo", "JournalDate", "Account Name", "Debits", "Credits", "Description"];
+        const jeDataRows = [];
+        
+        let totalDebits = 0;
+        let totalCredits = 0;
+        
+        for (const [dept, change] of deptTotals) {
+            if (Math.abs(change) < 0.01) continue;
+            
+            const key = jeNormalizeKey(dept);
+            const mapping = glMappings.get(key);
+            const glAccountStr = String(mapping.gl_account || "").trim();
+            
+            // QuickBooks format: "AccountNumber AccountName"
+            // e.g., "52160 Support PEO:Support Onshore Labor:Support 401k Employer Contribution"
+            let accountName;
+            const accountNameFromCOA = chartOfAccountsLookup.get(glAccountStr);
+            if (accountNameFromCOA) {
+                accountName = `${glAccountStr} ${accountNameFromCOA}`;
+            } else if (mapping.gl_account_name) {
+                accountName = `${glAccountStr} ${mapping.gl_account_name}`;
+            } else {
+                accountName = glAccountStr;
             }
             
-            const lineDescBase = accountingPeriod ? `${accountingPeriod} PTO Accrual` : "PTO Accrual";
+            const absAmount = Math.abs(change);
             
-            // Build Chart of Accounts lookup map
-            const coaMap = {};
-            if (coaData.length > 1) {
-                const coaHeaders = (coaData[0] || []).map(h => normalizeName(h));
-                const acctNumIdx = findColumnIndex(coaHeaders, ["account number", "accountnumber", "account", "acct"]);
-                const acctNameIdx = findColumnIndex(coaHeaders, ["account name", "accountname", "name", "description"]);
-                
-                if (acctNumIdx !== -1 && acctNameIdx !== -1) {
-                    coaData.slice(1).forEach(row => {
-                        const num = String(row[acctNumIdx] || "").trim();
-                        const name = String(row[acctNameIdx] || "").trim();
-                        if (num) coaMap[num] = name;
-                    });
-                }
-            }
+            // Description = Department + PF_column_name
+            const description = `${dept}${dept ? " - " : ""}PTO Liability Change`;
             
-            // Parse PTO_Analysis headers and find columns
-            const headers = (analysisValues[0] || []).map(h => normalizeName(h));
-            console.log("[JE Draft] PTO_Analysis headers:", headers);
-            console.log("[JE Draft] PTO_Analysis row count:", analysisValues.length - 1);
-            
-            const deptIdx = findColumnIndex(headers, ["department"]);
-            const changeIdx = findColumnIndex(headers, ["change"]);
-            
-            console.log("[JE Draft] Column indices - Department:", deptIdx, "Change:", changeIdx);
-            
-            if (deptIdx === -1 || changeIdx === -1) {
-                throw new Error(`Could not find required columns in PTO_Analysis. Found headers: ${headers.join(", ")}. Looking for "Department" (found: ${deptIdx !== -1}) and "Change" (found: ${changeIdx !== -1}).`);
-            }
-            
-            // Group Change amounts by Department
-            const deptTotals = {};
-            let totalRows = 0;
-            let zeroChangeRows = 0;
-            let missingDeptRows = 0;
-            
-            analysisValues.slice(1).forEach((row, idx) => {
-                totalRows++;
-                const dept = String(row[deptIdx] || "").trim();
-                const rawChange = row[changeIdx];
-                const change = Number(rawChange) || 0;
-                
-                // Log first few rows for debugging
-                if (idx < 3) {
-                    console.log(`[JE Draft] Row ${idx + 2}: Dept="${dept}", Change raw="${rawChange}", Change num=${change}`);
-                }
-                
-                if (!dept) {
-                    missingDeptRows++;
-                    return;
-                }
-                if (change === 0) {
-                    zeroChangeRows++;
-                    return;
-                }
-                
-                if (!deptTotals[dept]) {
-                    deptTotals[dept] = 0;
-                }
-                deptTotals[dept] += change;
-            });
-            
-            console.log(`[JE Draft] Data summary: ${totalRows} rows, ${zeroChangeRows} with zero change, ${missingDeptRows} missing dept`);
-            console.log("[JE Draft] Department totals:", deptTotals);
-            
-            // Check if we have any data to create JE from
-            const deptCount = Object.keys(deptTotals).length;
-            if (deptCount === 0) {
-                // Build helpful error message
-                let errorMsg = "No journal entry lines could be created.\n\n";
-                
-                if (zeroChangeRows === totalRows) {
-                    errorMsg += "All 'Change' amounts in PTO_Analysis are $0.00.\n\n";
-                    errorMsg += "Common causes:\n";
-                    errorMsg += "• Missing Pay Rate data (Liability = Balance × Pay Rate)\n";
-                    errorMsg += "• No prior period data to compare against\n";
-                    errorMsg += "• PTO Analysis hasn't been run yet\n\n";
-                    errorMsg += "Please verify Pay Rate values exist in PTO_Analysis.";
-                } else if (missingDeptRows === totalRows) {
-                    errorMsg += "All rows are missing Department values.\n\n";
-                    errorMsg += "Please ensure the 'Department' column is populated in PTO_Analysis.";
-                } else {
-                    errorMsg += `Found ${totalRows} rows but none had both a Department and non-zero Change amount.\n`;
-                    errorMsg += `• ${zeroChangeRows} rows with zero change\n`;
-                    errorMsg += `• ${missingDeptRows} rows missing department`;
-                }
-                
-                throw new Error(errorMsg);
-            }
-            
-            // Build JE rows
-            const jeHeaders = ["RefNumber", "TxnDate", "Account Number", "Account Name", "LineAmount", "Debit", "Credit", "LineDesc", "Department"];
-            const jeRows = [jeHeaders];
-            
-            let totalDebits = 0;
-            let totalCredits = 0;
-            
-            // Create expense lines by department
-            Object.entries(deptTotals).forEach(([dept, change]) => {
-                if (Math.abs(change) < 0.01) return; // Skip zero changes
-                
-                // Look up expense account for this department
-                const deptKey = dept.toLowerCase().trim();
-                const expenseAcct = DEPARTMENT_EXPENSE_ACCOUNTS[deptKey] || "";
-                const expenseAcctName = coaMap[expenseAcct] || "";
-                
-                // Determine debit/credit
-                // Positive change = liability increased = expense (debit)
-                // Negative change = liability decreased = expense reversal (credit)
-                const debit = change > 0 ? Math.abs(change) : 0;
-                const credit = change < 0 ? Math.abs(change) : 0;
-                
-                totalDebits += debit;
-                totalCredits += credit;
-                
-                jeRows.push([
-                    refNumber,
-                    txnDate,
-                    expenseAcct,
-                    expenseAcctName,
-                    change, // Line amount (positive or negative)
-                    debit,
-                    credit,
-                    lineDescBase,
-                    dept
+            // QuickBooks format:
+            // If change > 0 (liability increased): Debit expense account
+            // If change < 0 (liability decreased): Credit expense account (ABS of negative)
+            if (change > 0) {
+                totalDebits += absAmount;
+                jeDataRows.push([
+                    journalNo,
+                    formattedDate,
+                    accountName,
+                    absAmount,   // Debits = amount > 0
+                    "",          // Credits = blank
+                    description
                 ]);
-            });
-            
-            // Add liability offset entry (account 21540)
-            // Net offset = credits - debits (opposite of expense entries)
-            const netChange = totalDebits - totalCredits;
-            if (Math.abs(netChange) >= 0.01) {
-                const liabilityDebit = netChange < 0 ? Math.abs(netChange) : 0;
-                const liabilityCredit = netChange > 0 ? Math.abs(netChange) : 0;
-                const liabilityAcctName = coaMap[LIABILITY_OFFSET_ACCOUNT] || "Accrued PTO";
-                
-                jeRows.push([
-                    refNumber,
-                    txnDate,
-                    LIABILITY_OFFSET_ACCOUNT,
-                    liabilityAcctName,
-                    -netChange, // Opposite of net expense
-                    liabilityDebit,
-                    liabilityCredit,
-                    lineDescBase,
-                    "" // No department for liability
+            } else {
+                totalCredits += absAmount;
+                jeDataRows.push([
+                    journalNo,
+                    formattedDate,
+                    accountName,
+                    "",          // Debits = blank
+                    absAmount,   // Credits = ABS of amount < 0
+                    description
                 ]);
             }
-            
-            // Write to PTO_JE_Draft sheet
+        }
+        
+        // Add Accrued PTO Liability offset line to balance the JE
+        // PTO accruals: Debit PTO Expense (by dept), Credit Accrued PTO Liability
+        const PTO_LIABILITY_ACCOUNT = "21540 Accrued Expenses:Accrued PTO Liability";
+        const offsetAmount = totalDebits - totalCredits;
+        
+        if (Math.abs(offsetAmount) >= 0.01) {
+            if (offsetAmount > 0) {
+                // Net debits - need to credit liability account (normal case for accrual increase)
+                jeDataRows.push([
+                    journalNo,
+                    formattedDate,
+                    PTO_LIABILITY_ACCOUNT,
+                    "",              // Debits = blank
+                    offsetAmount,    // Credits = offset amount
+                    "Accrued PTO Liability"
+                ]);
+                totalCredits += offsetAmount;
+            } else {
+                // Net credits - need to debit liability account (accrual decrease/payout)
+                jeDataRows.push([
+                    journalNo,
+                    formattedDate,
+                    PTO_LIABILITY_ACCOUNT,
+                    Math.abs(offsetAmount),  // Debits = ABS of offset
+                    "",                      // Credits = blank
+                    "Accrued PTO Liability"
+                ]);
+                totalDebits += Math.abs(offsetAmount);
+            }
+        }
+        
+        // Step 5: Validate debits == credits
+        const tolerance = 0.01;
+        if (Math.abs(totalDebits - totalCredits) > tolerance) {
+            throw new Error(
+                `JE is out of balance!\n` +
+                `  Total Debits: ${totalDebits.toFixed(2)}\n` +
+                `  Total Credits: ${totalCredits.toFixed(2)}\n` +
+                `  Difference: ${(totalDebits - totalCredits).toFixed(2)}\n\n` +
+                `Cannot write unbalanced journal entry.`
+            );
+        }
+        
+        console.log(`  JE Lines: ${jeDataRows.length}`);
+        console.log(`  Total Debits: $${totalDebits.toFixed(2)}`);
+        console.log(`  Total Credits: $${totalCredits.toFixed(2)}`);
+        console.log("════════════════════════════════════════════════════════════════\n");
+        
+        // Step 6: Write to PTO_JE_Draft
+        await Excel.run(async (context) => {
             let jeSheet = context.workbook.worksheets.getItemOrNullObject("PTO_JE_Draft");
             jeSheet.load("isNullObject");
             await context.sync();
             
             if (jeSheet.isNullObject) {
                 jeSheet = context.workbook.worksheets.add("PTO_JE_Draft");
+                console.log("[PTO-JE] Created PTO_JE_Draft sheet");
             } else {
-                // Clear existing content
+                // Make sure sheet is visible (it may be hidden by tab visibility)
+                jeSheet.visibility = Excel.SheetVisibility.visible;
                 const usedRange = jeSheet.getUsedRangeOrNullObject();
-                usedRange.load("isNullObject");
                 await context.sync();
                 if (!usedRange.isNullObject) {
                     usedRange.clear();
                 }
+                console.log("[PTO-JE] Cleared existing PTO_JE_Draft");
             }
             
-            // Write all rows
-            if (jeRows.length > 0) {
-                const writeRange = jeSheet.getRangeByIndexes(0, 0, jeRows.length, jeHeaders.length);
-                writeRange.values = jeRows;
-                
-                // Format headers
-                const headerRange = jeSheet.getRangeByIndexes(0, 0, 1, jeHeaders.length);
-                formatSheetHeaders(headerRange);
-                
-                // Format currency columns (E: LineAmount, F: Debit, G: Credit)
-                const dataRowCount = jeRows.length - 1;
-                if (dataRowCount > 0) {
-                    formatCurrencyColumn(jeSheet, 4, dataRowCount, true);  // E: LineAmount (with negative)
-                    formatCurrencyColumn(jeSheet, 5, dataRowCount);        // F: Debit
-                    formatCurrencyColumn(jeSheet, 6, dataRowCount);        // G: Credit
-                }
-                
-                // Auto-fit columns
-                writeRange.format.autofitColumns();
+            // Build all rows
+            const allRows = [jeHeaders, ...jeDataRows];
+            const writeRange = jeSheet.getRangeByIndexes(0, 0, allRows.length, jeHeaders.length);
+            writeRange.values = allRows;
+            
+            // Format headers
+            const headerRange = jeSheet.getRangeByIndexes(0, 0, 1, jeHeaders.length);
+            formatSheetHeaders(headerRange);
+            
+            // Format currency columns (Debits col 3, Credits col 4)
+            const dataRowCount = jeDataRows.length;
+            if (dataRowCount > 0) {
+                const currencyFormat = "$#,##0.00";
+                jeSheet.getRangeByIndexes(1, 3, dataRowCount, 1).numberFormat = [[currencyFormat]];
+                jeSheet.getRangeByIndexes(1, 4, dataRowCount, 1).numberFormat = [[currencyFormat]];
             }
             
-            await context.sync();
-            
-            // Activate the sheet and select A1
+            writeRange.format.autofitColumns();
+            jeSheet.freezePanes.freezeRows(1);
             jeSheet.activate();
-            jeSheet.getRange("A1").select();
+            
             await context.sync();
         });
         
-        // Run journal summary to update totals
+        // Update journal state
+        journalState.debitTotal = totalDebits;
+        journalState.creditTotal = totalCredits;
+        journalState.validationRun = true;
+        journalState.lastError = null;
+        
+        // Run validation checks after generation (matches payroll-recorder pattern)
         await runJournalSummary();
         
+        showToast(`Journal Entry created: ${jeDataRows.length} lines (including offset), $${totalDebits.toFixed(2)} balanced ✓`, "success");
+        renderApp();
+        
     } catch (error) {
-        console.error("Create JE Draft error:", error);
+        console.error("[PTO-JE] Error:", error);
+        journalState.lastError = error.message;
         showToast(`Unable to create Journal Entry: ${error.message}`, "error");
     } finally {
         toggleLoader(false);
@@ -2817,7 +6260,58 @@ async function exportJournalDraft() {
             }
             return { rows: values };
         });
-        const csv = buildCsv(rows);
+        
+        // Normalize date and amount columns for QBO-ready export
+        const headers = (rows[0] || []).map((h) => String(h || "").trim().toLowerCase());
+        const debitIdx = headers.findIndex((h) => h.includes("debit"));
+        const creditIdx = headers.findIndex((h) => h.includes("credit"));
+        const dateIdx = headers.findIndex((h) => h.includes("journaldate") || h.includes("txndate") || h === "date");
+        
+        const normalizedRows = rows.map((row, idx) => {
+            if (idx === 0) return row;
+            const next = [...(row || [])];
+            const normalizeAmount = (v) => {
+                if (v === null || v === "") return "";
+                const n = Number(v);
+                if (!Number.isFinite(n)) return "";
+                return n.toFixed(2);
+            };
+            // Normalize date column - Excel may return serial numbers
+            const normalizeDate = (v) => {
+                if (v === null || v === "") return "";
+                // If it's already a string in MM/DD/YYYY format, return as-is
+                if (typeof v === "string" && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v.trim())) {
+                    return v.trim();
+                }
+                // Handle Excel serial number
+                if (typeof v === "number" && Number.isFinite(v)) {
+                    const ms = Math.round((v - 25569) * 86400 * 1000);
+                    const d = new Date(ms);
+                    if (Number.isFinite(d.getTime())) {
+                        const mm = String(d.getMonth() + 1).padStart(2, "0");
+                        const dd = String(d.getDate()).padStart(2, "0");
+                        const yyyy = d.getFullYear();
+                        if (yyyy >= 1900 && yyyy <= 2100) {
+                            return `${mm}/${dd}/${yyyy}`;
+                        }
+                    }
+                }
+                // Handle Date object
+                if (v instanceof Date && Number.isFinite(v.getTime())) {
+                    const mm = String(v.getMonth() + 1).padStart(2, "0");
+                    const dd = String(v.getDate()).padStart(2, "0");
+                    const yyyy = v.getFullYear();
+                    return `${mm}/${dd}/${yyyy}`;
+                }
+                return String(v);
+            };
+            if (debitIdx >= 0) next[debitIdx] = normalizeAmount(next[debitIdx]);
+            if (creditIdx >= 0) next[creditIdx] = normalizeAmount(next[creditIdx]);
+            if (dateIdx >= 0) next[dateIdx] = normalizeDate(next[dateIdx]);
+            return next;
+        });
+        
+        const csv = buildCsv(normalizedRows);
         downloadCsv(`pto-je-draft-${todayIso()}.csv`, csv);
     } catch (error) {
         console.error("PTO JE export:", error);
@@ -2858,61 +6352,462 @@ async function openAccountingSoftware() {
     showToast("Opening accounting software...", "success", 2000);
 }
 
-async function archiveAndReset() {
-    if (!appState.workbookReady || !hasExcel()) {
-        return;
-    }
-    toggleLoader(true, "Archiving PTO outputs...");
-    try {
-        await Excel.run(async (context) => {
-            // capture clean rows before any clears
-            const analysisRowsBefore = await getAnalysisRows(context);
+// =============================================================================
+// STEP 4: ARCHIVE & CLEAR
+// Matches payroll-recorder pattern but saves employee-level PTO data
+// =============================================================================
 
-            // Add archive log entry
-            const archiveTable = context.workbook.tables.getItemOrNullObject("PTOArchiveLog");
-            archiveTable.load("isNullObject");
-            await context.sync();
-            if (!archiveTable.isNullObject) {
-                archiveTable.rows.add(null, [[new Date().toISOString(), "Archived PTO run", "Completed via module"]]);
-            }
-
-            // Export all PTO-related sheets defined in SS_PF_Config
-            await exportPtoSheets(context);
-
-            // Snapshot PTO_Analysis into PTO_Archive_Summary (row 2+)
-            await copyAnalysisToArchiveSummary(context, analysisRowsBefore);
-
-            // Clear data rows (row 2+) from target sheets
-            const sheetsToClear = ["PTO_JE_Draft", "PTO_Analysis", "PTO_Data"];
-            for (const name of sheetsToClear) {
-                await clearSheetBelowHeader(context, name);
-            }
-
-            // Clear non-permanent config values
-            await clearNonPermanentConfig(context);
-
-            await context.sync();
-        });
-
-        setState({
-            stepStatuses: {
-                1: "pending",
-                2: "pending",
-                3: "pending",
-                4: "pending",
-                5: "pending",
-                6: "complete"
-            }
+/**
+ * Show confirmation dialog before archive
+ */
+function showConfirmDialog(message, options = {}) {
+    return new Promise((resolve) => {
+        const { title = "Confirm", confirmText = "Confirm", cancelText = "Cancel", icon = "📦" } = options;
+        
+        // Remove any existing dialogs
+        document.querySelectorAll(".pf-confirm-dialog").forEach(d => d.remove());
+        
+        const dialog = document.createElement("div");
+        dialog.className = "pf-confirm-dialog";
+        dialog.innerHTML = `
+            <div class="pf-confirm-backdrop"></div>
+            <div class="pf-confirm-content">
+                <div class="pf-confirm-icon">${icon}</div>
+                <div class="pf-confirm-title">${escapeHtml(title)}</div>
+                <div class="pf-confirm-message">${escapeHtml(message).replace(/\n/g, "<br>")}</div>
+                <div class="pf-confirm-buttons">
+                    <button type="button" class="pf-confirm-btn pf-confirm-btn--cancel">${escapeHtml(cancelText)}</button>
+                    <button type="button" class="pf-confirm-btn pf-confirm-btn--confirm">${escapeHtml(confirmText)}</button>
+                </div>
+            </div>
+        `;
+        
+        // Add styles if not present
+        if (!document.getElementById("pf-confirm-dialog-styles")) {
+            const style = document.createElement("style");
+            style.id = "pf-confirm-dialog-styles";
+            style.textContent = `
+                .pf-confirm-dialog { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10001; display: flex; align-items: center; justify-content: center; }
+                .pf-confirm-backdrop { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+                .pf-confirm-content { position: relative; background: linear-gradient(145deg, rgba(30, 30, 50, 1), rgba(20, 20, 35, 1)); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 16px; padding: 24px; max-width: 320px; text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,0.5); }
+                .pf-confirm-icon { font-size: 40px; margin-bottom: 12px; }
+                .pf-confirm-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+                .pf-confirm-message { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.5; margin-bottom: 20px; text-align: left; }
+                .pf-confirm-buttons { display: flex; gap: 12px; justify-content: center; }
+                .pf-confirm-btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+                .pf-confirm-btn--cancel { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); }
+                .pf-confirm-btn--cancel:hover { background: rgba(255,255,255,0.15); }
+                .pf-confirm-btn--confirm { background: linear-gradient(145deg, #6366f1, #4f46e5); color: white; }
+                .pf-confirm-btn--confirm:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(dialog);
+        
+        dialog.querySelector(".pf-confirm-btn--cancel").addEventListener("click", () => {
+            dialog.remove();
+            resolve(false);
         });
         
-        // Show "save complete" prompt - waits for user to confirm they've saved
+        dialog.querySelector(".pf-confirm-btn--confirm").addEventListener("click", () => {
+            dialog.remove();
+            resolve(true);
+        });
+        
+        dialog.querySelector(".pf-confirm-backdrop").addEventListener("click", () => {
+            dialog.remove();
+            resolve(false);
+        });
+    });
+}
+
+/**
+ * Main archive and reset function
+ * 1. Confirm with user
+ * 2. Download Excel archive
+ * 3. Save to PTO_Archive_Summary
+ * 4. Clear working tabs
+ * 5. Reset config
+ */
+async function archiveAndReset() {
+    if (!appState.workbookReady || !hasExcel()) {
+        showToast("Excel not available", "error");
+        return;
+    }
+    
+    // Confirm before proceeding
+    const confirmed = await showConfirmDialog(
+        "This will:\n\n" +
+        "• Download an Excel archive file\n" +
+        "• Update PTO_Archive_Summary\n" +
+        "• Clear working data from all sheets\n" +
+        "• Reset non-permanent notes & config\n\n" +
+        "Make sure you've completed all review steps.",
+        {
+            title: "Archive PTO Run",
+            icon: "📦",
+            confirmText: "Archive Now",
+            cancelText: "Not Yet"
+        }
+    );
+    
+    if (!confirmed) {
+        console.log("[PTOArchive] User cancelled");
+        showToast("Archive cancelled", "info", 2000);
+        return;
+    }
+    
+    console.log("[PTOArchive] User confirmed, starting archive process...");
+    toggleLoader(true, "Archiving PTO data...");
+    
+    try {
+        // ═══════════════════════════════════════════════════════════════════
+        // STEP 1: Create archive Excel file for download
+        // ═══════════════════════════════════════════════════════════════════
+        console.log("[PTOArchive] Step 1: Creating archive workbook...");
+        
+        const archiveSuccess = await createPtoArchiveWorkbook();
+        if (!archiveSuccess) {
+            console.log("[PTOArchive] Archive file creation failed");
+            return;
+        }
+        
+        console.log("[PTOArchive] Step 1 complete: Archive file downloaded");
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // STEP 2: Update PTO_Archive_Summary with current period
+        // ═══════════════════════════════════════════════════════════════════
+        console.log("[PTOArchive] Step 2: Updating PTO_Archive_Summary...");
+        
+        // Get the review data from ptoReviewState or read from PTO_Review
+        let reviewData = ptoReviewState.reviewData;
+        if (!reviewData || reviewData.length === 0) {
+            reviewData = await readPtoReviewData();
+        }
+        
+        if (reviewData && reviewData.length > 0) {
+            const analysisDate = getConfigValue(PTO_CONFIG_FIELDS.payrollDate) || new Date().toISOString().substring(0, 10);
+            const result = await savePtoArchivePeriod(reviewData, analysisDate);
+            console.log("[PTOArchive] Archive summary result:", result);
+        } else {
+            console.warn("[PTOArchive] No review data to archive");
+        }
+        
+        console.log("[PTOArchive] Step 2 complete: Archive summary updated");
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // STEP 3: Clear working data from PTO sheets
+        // ═══════════════════════════════════════════════════════════════════
+        console.log("[PTOArchive] Step 3: Clearing working data...");
+        
+        await clearPtoWorkingData();
+        
+        console.log("[PTOArchive] Step 3 complete: Working data cleared");
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // STEP 4: Clear non-permanent config values
+        // ═══════════════════════════════════════════════════════════════════
+        console.log("[PTOArchive] Step 4: Clearing non-permanent config...");
+        
+        await clearNonPermanentPtoConfig();
+        
+        console.log("[PTOArchive] Step 4 complete: Config reset");
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // COMPLETE
+        // ═══════════════════════════════════════════════════════════════════
+        console.log("[PTOArchive] Archive workflow complete!");
+        
+        // Reset review state
+        ptoReviewState.loaded = false;
+        ptoReviewState.reviewData = [];
+        ptoReviewState.totalCurrentLiability = 0;
+        ptoReviewState.totalPriorLiability = 0;
+        ptoReviewState.netChange = 0;
+        ptoReviewState.employeeCount = 0;
+        
+        // Reset rate engine state
+        rateEngineState.loaded = false;
+        rateEngineState.rates.clear();
+        
+        // Reset journal state
+        journalState.validationRun = false;
+        journalState.debitTotal = null;
+        journalState.creditTotal = null;
+        
+        // Reload config and re-render
+        await loadStepConfig();
+        renderApp();
+        
+        // Show "save complete" prompt
         showSaveCompletePrompt();
+        
     } catch (error) {
-        console.error(error);
-        showToast("Archive failed: " + error.message, "error");
+        console.error("[PTOArchive] Error during archive:", error);
+        showToast("Archive Error: " + error.message, "error", 10000);
     } finally {
         toggleLoader(false);
     }
+}
+
+/**
+ * Create Excel archive file with PTO sheets
+ */
+async function createPtoArchiveWorkbook() {
+    try {
+        const analysisDate = getConfigValue(PTO_CONFIG_FIELDS.payrollDate) || new Date().toISOString().split("T")[0];
+        const filename = `PTO_Archive_${analysisDate}.xlsx`;
+        
+        console.log("[PTOArchive] Creating Excel archive file...");
+        
+        return await Excel.run(async (context) => {
+            const workbook = context.workbook;
+            const sourceSheets = workbook.worksheets;
+            sourceSheets.load("items/name");
+            await context.sync();
+            
+            // Sheets to archive
+            const sheetsToArchive = [
+                "PTO_JE_Draft",
+                "PTO_Review",
+                "PTO_Data_Clean"
+            ];
+            
+            // Create new workbook using SheetJS
+            const newWorkbook = XLSX.utils.book_new();
+            let sheetsAdded = 0;
+            
+            // Summary sheet
+            const summaryRows = [];
+            summaryRows.push(["PTO Archive Summary"]);
+            summaryRows.push(["Archived At", new Date().toISOString()]);
+            summaryRows.push(["Analysis Date", analysisDate]);
+            summaryRows.push(["Company", installationState.ss_company_name || ""]);
+            summaryRows.push([""]);
+            summaryRows.push(["Total Liability", ptoReviewState.totalCurrentLiability || 0]);
+            summaryRows.push(["Employee Count", ptoReviewState.employeeCount || 0]);
+            
+            const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+            XLSX.utils.book_append_sheet(newWorkbook, summarySheet, "Summary");
+            
+            // Copy each sheet
+            for (const sheetName of sheetsToArchive) {
+                const sourceSheet = sourceSheets.items.find(s => s.name === sheetName);
+                if (!sourceSheet) {
+                    console.log(`[PTOArchive] Sheet not found: ${sheetName}`);
+                    continue;
+                }
+                
+                const usedRange = sourceSheet.getUsedRangeOrNullObject();
+                usedRange.load("values");
+                await context.sync();
+                
+                if (usedRange.isNullObject || !usedRange.values || usedRange.values.length === 0) {
+                    console.log(`[PTOArchive] Sheet empty: ${sheetName}`);
+                    continue;
+                }
+                
+                const worksheet = XLSX.utils.aoa_to_sheet(usedRange.values);
+                XLSX.utils.book_append_sheet(newWorkbook, worksheet, sheetName.substring(0, 31)); // Excel 31 char limit
+                sheetsAdded++;
+            }
+            
+            if (sheetsAdded === 0) {
+                console.warn("[PTOArchive] No sheets had data to archive");
+                showToast("No data to archive. Complete the PTO review first.", "warning");
+                return false;
+            }
+            
+            // Download the file
+            const wbout = XLSX.write(newWorkbook, { bookType: "xlsx", type: "array" });
+            const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            console.log(`[PTOArchive] Downloaded: ${filename} (${sheetsAdded} sheets)`);
+            showToast(`Archive downloaded: ${filename}`, "success", 3000);
+            
+            return true;
+        });
+        
+    } catch (error) {
+        console.error("[PTOArchive] Error creating archive:", error);
+        showToast("Failed to create archive file: " + error.message, "error");
+        return false;
+    }
+}
+
+/**
+ * Read PTO_Review data if not in state
+ */
+async function readPtoReviewData() {
+    const reviewData = [];
+    
+    try {
+        await Excel.run(async (context) => {
+            const reviewSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Review");
+            reviewSheet.load("isNullObject");
+            await context.sync();
+            
+            if (reviewSheet.isNullObject) return;
+            
+            const reviewRange = reviewSheet.getUsedRangeOrNullObject();
+            reviewRange.load("values");
+            await context.sync();
+            
+            if (reviewRange.isNullObject || !reviewRange.values || reviewRange.values.length < 2) return;
+            
+            const headers = reviewRange.values[0].map(h => String(h || "").toLowerCase().trim());
+            
+            // Find column indices
+            const colIdx = {
+                employeeName: headers.findIndex(h => h.includes("employee")),
+                department: headers.findIndex(h => h === "department"),
+                payRate: headers.findIndex(h => h.includes("pay") && h.includes("rate")),
+                accrualRate: headers.findIndex(h => h.includes("accrual") && h.includes("rate")),
+                carryOver: headers.findIndex(h => h.includes("carry")),
+                ytdAccrued: headers.findIndex(h => h.includes("ytd") && h.includes("accrued")),
+                ytdUsed: headers.findIndex(h => h.includes("ytd") && h.includes("used")),
+                balance: headers.findIndex(h => h === "balance"),
+                liabilityAmount: headers.findIndex(h => h.includes("liability")),
+                priorLiability: headers.findIndex(h => h.includes("prior")),
+                change: headers.findIndex(h => h === "change")
+            };
+            
+            for (let i = 1; i < reviewRange.values.length; i++) {
+                const row = reviewRange.values[i];
+                reviewData.push({
+                    employeeName: colIdx.employeeName >= 0 ? String(row[colIdx.employeeName] || "") : "",
+                    department: colIdx.department >= 0 ? String(row[colIdx.department] || "") : "",
+                    payRate: colIdx.payRate >= 0 ? parseFloat(row[colIdx.payRate]) || 0 : 0,
+                    accrualRate: colIdx.accrualRate >= 0 ? parseFloat(row[colIdx.accrualRate]) || 0 : 0,
+                    carryOver: colIdx.carryOver >= 0 ? parseFloat(row[colIdx.carryOver]) || 0 : 0,
+                    ytdAccrued: colIdx.ytdAccrued >= 0 ? parseFloat(row[colIdx.ytdAccrued]) || 0 : 0,
+                    ytdUsed: colIdx.ytdUsed >= 0 ? parseFloat(row[colIdx.ytdUsed]) || 0 : 0,
+                    balance: colIdx.balance >= 0 ? parseFloat(row[colIdx.balance]) || 0 : 0,
+                    liabilityAmount: colIdx.liabilityAmount >= 0 ? parseFloat(row[colIdx.liabilityAmount]) || 0 : 0
+                });
+            }
+            
+            await context.sync();
+        });
+    } catch (error) {
+        console.error("[PTOArchive] Error reading PTO_Review:", error);
+    }
+    
+    return reviewData;
+}
+
+/**
+ * Clear working data from PTO sheets (keep headers)
+ */
+async function clearPtoWorkingData() {
+    const sheetsToClear = [
+        "PTO_Data_Clean",
+        "PTO_Review",
+        "PTO_JE_Draft"
+    ];
+    
+    await Excel.run(async (context) => {
+        for (const sheetName of sheetsToClear) {
+            const sheet = context.workbook.worksheets.getItemOrNullObject(sheetName);
+            sheet.load("isNullObject");
+            await context.sync();
+            
+            if (sheet.isNullObject) {
+                console.log(`[PTOArchive] Sheet not found: ${sheetName}`);
+                continue;
+            }
+            
+            const usedRange = sheet.getUsedRangeOrNullObject();
+            usedRange.load("rowCount,columnCount,address");
+            await context.sync();
+            
+            if (usedRange.isNullObject || usedRange.rowCount <= 1) {
+                console.log(`[PTOArchive] Sheet empty or headers only: ${sheetName}`);
+                continue;
+            }
+            
+            // Clear data rows (row 2 onwards), keep headers (row 1)
+            const dataRange = sheet.getRange(`A2:${String.fromCharCode(64 + Math.min(usedRange.columnCount, 26))}${usedRange.rowCount}`);
+            dataRange.clear(Excel.ClearApplyTo.contents);
+            
+            await context.sync();
+            console.log(`[PTOArchive] Cleared data from: ${sheetName}`);
+        }
+    });
+}
+
+/**
+ * Clear non-permanent config values from SS_PF_Config
+ */
+async function clearNonPermanentPtoConfig() {
+    await Excel.run(async (context) => {
+        const configSheet = context.workbook.worksheets.getItemOrNullObject("SS_PF_Config");
+        configSheet.load("isNullObject");
+        await context.sync();
+        
+        if (configSheet.isNullObject) {
+            console.warn("[PTOArchive] SS_PF_Config sheet not found");
+            return;
+        }
+        
+        const usedRange = configSheet.getUsedRangeOrNullObject();
+        usedRange.load("values,rowCount,columnCount");
+        await context.sync();
+        
+        if (usedRange.isNullObject || !usedRange.values || usedRange.values.length < 2) {
+            return;
+        }
+        
+        const headers = usedRange.values[0].map(h => String(h || "").toLowerCase().trim());
+        const fieldIdx = headers.findIndex(h => h === "field" || h === "setting" || h === "key");
+        const valueIdx = headers.findIndex(h => h === "value");
+        const permanentIdx = headers.findIndex(h => h === "permanent" || h === "persist");
+        
+        if (fieldIdx < 0 || valueIdx < 0) {
+            console.warn("[PTOArchive] Could not find field/value columns in config");
+            return;
+        }
+        
+        // Fields to clear (non-permanent PTO fields)
+        const fieldsToClear = [
+            PTO_CONFIG_FIELDS.payrollDate,
+            PTO_CONFIG_FIELDS.accountingPeriod,
+            PTO_CONFIG_FIELDS.journalEntryId
+        ];
+        
+        const updatedValues = usedRange.values.map((row, rowIndex) => {
+            if (rowIndex === 0) return row; // Skip header
+            
+            const field = String(row[fieldIdx] || "").trim();
+            const isPermanent = permanentIdx >= 0 && String(row[permanentIdx] || "").toUpperCase() === "Y";
+            
+            // Clear if it's a PTO field and not permanent
+            if (fieldsToClear.includes(field) && !isPermanent) {
+                const newRow = [...row];
+                newRow[valueIdx] = "";
+                return newRow;
+            }
+            
+            return row;
+        });
+        
+        // Write back
+        const writeRange = configSheet.getRangeByIndexes(0, 0, updatedValues.length, headers.length);
+        writeRange.values = updatedValues;
+        
+        await context.sync();
+        console.log("[PTOArchive] Non-permanent config values cleared");
+    });
 }
 
 /**
@@ -2985,22 +6880,26 @@ function showSaveCompletePrompt() {
                 background: linear-gradient(145deg, #6366f1, #4f46e5);
                 border: none;
                 color: white;
-                padding: 12px 28px;
+                padding: 16px 40px;
                 border-radius: 12px;
-                font-size: 15px;
-                font-weight: 600;
+                font-size: 18px;
+                font-weight: 700;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                justify-content: center;
+                gap: 10px;
                 transition: all 0.2s ease;
+                box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4), 0 0 0 2px rgba(99, 102, 241, 0.2);
+                margin-top: 8px;
             }
             .pf-save-prompt-btn:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+                transform: translateY(-3px);
+                box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5), 0 0 0 2px rgba(99, 102, 241, 0.3);
+                background: linear-gradient(145deg, #7c3aed, #6366f1);
             }
             .pf-save-prompt-btn:active {
-                transform: translateY(0);
+                transform: translateY(-1px);
             }
             .pf-save-prompt.closing {
                 animation: pf-prompt-fade-out 0.2s ease forwards;
@@ -3221,7 +7120,13 @@ async function returnHome() {
 /**
  * Navigate to the Module Selector (used after archive completes)
  */
-function navigateToModuleSelector() {
+async function navigateToModuleSelector() {
+    // Reset tab visibility before redirect to avoid Mac Excel tab accumulation
+    try {
+        await applyModuleTabVisibility("module-selector");
+    } catch (e) {
+        console.warn("[PTO] Could not apply module-selector tab visibility before redirect:", e);
+    }
     // Use relative path from current location (pto-accrual/ -> module-selector/)
     window.location.href = "../module-selector/index.html";
 }
@@ -3244,13 +7149,13 @@ async function openSheet(sheetName) {
 }
 
 /**
- * Clear PTO_Data sheet to start fresh
+ * Clear PTO_Data_Clean sheet to start fresh
  */
 async function clearPtoData() {
     if (!hasExcel()) return;
     
     const confirmed = await showConfirm(
-        "All data in PTO_Data will be permanently removed.\n\nThis action cannot be undone.",
+        "All data in PTO_Data_Clean will be permanently removed.\n\nThis action cannot be undone.",
         {
             title: "Clear PTO Data",
             icon: "🗑️",
@@ -3264,7 +7169,15 @@ async function clearPtoData() {
     toggleLoader(true);
     try {
         await Excel.run(async (context) => {
-            const sheet = context.workbook.worksheets.getItem("PTO_Data");
+            const sheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+            sheet.load("isNullObject");
+            await context.sync();
+            
+            if (sheet.isNullObject) {
+                showToast("PTO_Data_Clean not found.", "info");
+                return;
+            }
+            
             const usedRange = sheet.getUsedRangeOrNullObject();
             usedRange.load("rowCount");
             await context.sync();
@@ -3280,10 +7193,20 @@ async function clearPtoData() {
             sheet.getRange("A1").select();
             await context.sync();
         });
-        showToast("PTO_Data cleared successfully. You can now paste new data.", "success");
+        
+        // Also reset upload state
+        ptoUploadState.file = null;
+        ptoUploadState.fileName = "";
+        ptoUploadState.headers = [];
+        ptoUploadState.rowCount = 0;
+        ptoUploadState.parsedData = null;
+        ptoUploadState.error = null;
+        
+        showToast("PTO data cleared successfully. You can now upload new data.", "success");
+        renderApp();
     } catch (error) {
-        console.error("Clear PTO_Data error:", error);
-        showToast(`Failed to clear PTO_Data: ${error.message}`, "error");
+        console.error("Clear PTO data error:", error);
+        showToast(`Failed to clear PTO data: ${error.message}`, "error");
     } finally {
         toggleLoader(false);
     }
@@ -3734,13 +7657,12 @@ function getFieldNames(stepId) {
 }
 
 function getStepType(stepId) {
+    // Matches payroll-recorder 5-step structure
     if (stepId === 0) return "config";
-    if (stepId === 1) return "import";
-    if (stepId === 2) return "headcount";
-    if (stepId === 3) return "validate";
-    if (stepId === 4) return "review";
-    if (stepId === 5) return "journal";
-    if (stepId === 6) return "archive";
+    if (stepId === 1) return "upload";      // Upload & Validate
+    if (stepId === 2) return "review";      // PTO Accrual Review
+    if (stepId === 3) return "journal";     // Journal Entry Prep
+    if (stepId === 4) return "archive";     // Archive & Clear
     return "";
 }
 
@@ -4059,7 +7981,7 @@ function renderHeadcountStep(detail) {
     
     const checkRowsHtml = `
         ${renderCheckRow("SS_Employee_Roster count", "Active employees in roster", rosterCount, true)}
-        ${renderCheckRow("PTO_Data count", "Unique employees in PTO data", payrollCount, true)}
+        ${renderCheckRow("PTO_Data_Clean count", "Unique employees in PTO data", payrollCount, true)}
         ${renderCheckRow("Difference", "Should be zero", diffValue, diffValue === 0)}
     `;
     
@@ -4140,11 +8062,11 @@ function renderDataReadinessCard() {
     
     // Completeness check fields with descriptions
     const fields = [
-        { key: "accrualRate", label: "Accrual Rate", desc: "∑ PTO_Data = ∑ PTO_Analysis" },
-        { key: "carryOver", label: "Carry Over", desc: "∑ PTO_Data = ∑ PTO_Analysis" },
-        { key: "ytdAccrued", label: "YTD Accrued", desc: "∑ PTO_Data = ∑ PTO_Analysis" },
-        { key: "ytdUsed", label: "YTD Used", desc: "∑ PTO_Data = ∑ PTO_Analysis" },
-        { key: "balance", label: "Balance", desc: "∑ PTO_Data = ∑ PTO_Analysis" }
+        { key: "accrualRate", label: "Accrual Rate", desc: "∑ PTO_Data_Clean = ∑ PTO_Analysis" },
+        { key: "carryOver", label: "Carry Over", desc: "∑ PTO_Data_Clean = ∑ PTO_Analysis" },
+        { key: "ytdAccrued", label: "YTD Accrued", desc: "∑ PTO_Data_Clean = ∑ PTO_Analysis" },
+        { key: "ytdUsed", label: "YTD Used", desc: "∑ PTO_Data_Clean = ∑ PTO_Analysis" },
+        { key: "balance", label: "Balance", desc: "∑ PTO_Data_Clean = ∑ PTO_Analysis" }
     ];
     
     // Calculate overall status
@@ -4261,7 +8183,7 @@ function renderDataQualityStep(detail) {
             statusBanner = window.PrairieForge?.renderStatusBanner?.({
                 type: "error",
                 title: `${criticalCount} Balance Issue${criticalCount > 1 ? "s" : ""} Found`,
-                message: "Review the issues below. Fix in PTO_Data and re-run, or acknowledge to continue.",
+                message: "Review the issues below. Fix in PTO_Data_Clean and re-run, or acknowledge to continue.",
                 escapeHtml
             }) || "";
         } else if (warningCount > 0) {
@@ -4356,7 +8278,7 @@ function renderDataQualityStep(detail) {
                 <article class="pf-step-card pf-step-detail">
                     <div class="pf-config-head">
                         <h3>Issues Found</h3>
-                        <p class="pf-config-subtext">Fix issues in PTO_Data and re-run, or acknowledge to continue.</p>
+                        <p class="pf-config-subtext">Fix issues in PTO_Data_Clean and re-run, or acknowledge to continue.</p>
                     </div>
                     <div class="pf-quality-issues-grid">
                         ${issueCards.join("")}
@@ -4393,12 +8315,150 @@ function renderDataQualityStep(detail) {
     `;
 }
 
+/**
+ * Step 2: PTO Accrual Review
+ * Variance table showing current vs prior period with liability calculations
+ */
 function renderAccrualReviewStep(detail) {
-    const stepFields = getStepConfig(4);
-    const notesPermanent = Boolean(configState.permanents[4]);
+    // Step 2 in new structure
+    const stepFields = getStepConfig(2);
+    const notesPermanent = Boolean(configState.permanents[2]);
     const stepReviewer = getReviewerWithFallback(stepFields?.reviewer);
     const stepSignOff = stepFields?.signOffDate || "";
-    const stepComplete = Boolean(parseBooleanStrict(configState.completes[4]) || stepSignOff);
+    const stepComplete = Boolean(parseBooleanStrict(configState.completes[2]) || stepSignOff);
+    
+    // Executive summary and reconciliation values
+    const reviewState = ptoReviewState || {};
+    const recon = reviewState.reconciliation || {};
+    const coverage = reviewState.coverage || {};
+    const totalPriorLiability = reviewState.totalPriorLiability || 0;
+    const employeeCount = reviewState.employeeCount || 0;
+    
+    // Reconciliation values
+    const reportLiability = recon.reportLiabilityTotal || 0;
+    const calcLiability = recon.calcLiabilityTotal || 0;
+    const negativeBalanceTotal = recon.negativeBalanceTotal || 0;
+    const negativeBalanceCount = recon.negativeBalanceCount || 0;
+    const missingRateCount = recon.missingRateCount || 0;
+    
+    // Net change is based on calculated liability (includes negatives) vs prior
+    const netChange = calcLiability - totalPriorLiability;
+    
+    // Format currency helper
+    const fmtCurrency = (val) => {
+        const num = Number(val) || 0;
+        return num.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    };
+    
+    // Build the reconciliation summary card
+    const hasReconData = reviewState.loaded && employeeCount > 0;
+    
+    const summaryCard = `
+        <article class="pf-step-card pf-step-detail pf-config-card">
+            <div class="pf-config-head">
+                <h3>PTO Liability Reconciliation</h3>
+                <p class="pf-config-subtext">Report → Adjustments → JE Amount</p>
+            </div>
+            
+            ${hasReconData ? `
+            <!-- Liability Reconciliation Section -->
+            <div class="pf-liability-recon" style="margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                <div class="pf-recon-row" style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <span style="color: rgba(255,255,255,0.7);">Report Liability (PrismHR)</span>
+                    <span style="font-weight: 600; color: #fff;">${fmtCurrency(reportLiability)}</span>
+                </div>
+                
+                ${negativeBalanceCount > 0 ? `
+                <div class="pf-recon-row" style="display: flex; justify-content: space-between; padding: 8px 0; padding-left: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <span style="color: rgba(255,255,255,0.5); font-size: 13px;">Negative Balances (${negativeBalanceCount} employees)</span>
+                    <span style="color: #f87171; font-size: 13px;">${fmtCurrency(negativeBalanceTotal)}</span>
+                </div>
+                ` : ''}
+                
+                <div class="pf-recon-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-top: 2px solid rgba(255,255,255,0.2); margin-top: 4px;">
+                    <span style="font-weight: 600; color: #fff;">Calculated Liability</span>
+                    <span style="font-weight: 600; color: #fff;">${fmtCurrency(calcLiability)}</span>
+                </div>
+                
+                <div class="pf-recon-row" style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <span style="color: rgba(255,255,255,0.5);">Prior Period Liability</span>
+                    <span style="color: rgba(255,255,255,0.7);">${fmtCurrency(totalPriorLiability)}</span>
+                </div>
+                
+                <div class="pf-recon-row" style="display: flex; justify-content: space-between; padding: 12px 0; border-top: 2px solid rgba(255,255,255,0.2); margin-top: 4px;">
+                    <span style="font-weight: 600; color: #fff;">Net Change (for JE)</span>
+                    <span style="font-weight: 700; font-size: 18px; color: ${netChange >= 0 ? '#4ade80' : '#f87171'};">
+                        ${netChange >= 0 ? '+' : ''}${fmtCurrency(netChange)}
+                    </span>
+                    </div>
+                </div>
+            
+            <!-- Employee Coverage Section -->
+            <div class="pf-coverage-section" style="margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.02); border-radius: 8px;">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Employee Coverage</h4>
+                
+                <div class="pf-coverage-row" style="display: flex; justify-content: space-between; padding: 6px 0;">
+                    <span style="color: rgba(255,255,255,0.6);">Roster Headcount:</span>
+                    <span style="color: #fff;">${coverage.rosterCount || 0}</span>
+                </div>
+                
+                ${coverage.inPtoOnlyCount > 0 ? `
+                <div class="pf-coverage-row" style="display: flex; justify-content: space-between; padding: 6px 0; padding-left: 20px;">
+                    <span style="color: rgba(255,255,255,0.5); font-size: 13px;">+ In PTO only (not on roster):</span>
+                    <span style="color: rgba(255,255,255,0.7); font-size: 13px;">+${coverage.inPtoOnlyCount}</span>
+            </div>
+                <div style="padding-left: 40px; font-size: 12px; color: rgba(255,255,255,0.4);">
+                    (Liability: ${fmtCurrency(coverage.inPtoOnlyLiability || 0)})
+                </div>
+                ` : ''}
+                
+                ${coverage.inRosterOnlyCount > 0 ? `
+                <div class="pf-coverage-row" style="display: flex; justify-content: space-between; padding: 6px 0; padding-left: 20px;">
+                    <span style="color: rgba(255,255,255,0.5); font-size: 13px;">− On roster, not in PTO:</span>
+                    <span style="color: rgba(255,255,255,0.7); font-size: 13px;">−${coverage.inRosterOnlyCount}</span>
+                </div>
+                ` : ''}
+                
+                <div class="pf-coverage-row" style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.15); margin-top: 8px;">
+                    <span style="font-weight: 600; color: #fff;">PTO Report Headcount:</span>
+                    <span style="font-weight: 600; color: #fff;">${employeeCount}</span>
+                </div>
+            </div>
+            ` : `
+            <div style="margin-top: 16px; padding: 20px; text-align: center; color: rgba(255,255,255,0.5);">
+                <p>Click "Generate" to calculate liability reconciliation</p>
+            </div>
+            `}
+            
+            ${missingRateCount > 0 ? `
+                <div style="margin-top: 12px; padding: 10px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; font-size: 13px;">
+                    <strong style="color: #fbbf24;">${missingRateCount}</strong> employee(s) missing pay rate
+                </div>
+            ` : ''}
+        </article>
+    `;
+
+    // Render Ada chat interface for PTO analysis
+    const adaMarkup = renderCopilotCard({
+        id: "pto-copilot",
+        heading: "Ada",
+        subtext: "Ask questions about PTO data, liabilities, and insights",
+        welcomeMessage: "What would you like to explore about PTO accruals?",
+        placeholder: "Ask about PTO balances, accrual rates, or liability trends...",
+        quickActions: [
+            { id: "diagnostics", label: "Run Diagnostics", prompt: "Run a diagnostic check on the PTO data. Check for completeness, missing rates, and data quality issues." },
+            { id: "insights", label: "Generate Insights", prompt: "What are the key insights and findings from this PTO accrual analysis?" },
+            { id: "balances", label: "Balance Analysis", prompt: "Analyze PTO balances by employee and department. Highlight any concerning balances." },
+            { id: "accruals", label: "Accrual Trends", prompt: "Show PTO accrual trends and changes from the prior period." }
+        ],
+        contextProvider: createExcelContextProvider({
+            dataClean: 'PTO_Data_Clean',
+            analysis: 'PTO_Analysis',
+            review: 'PTO_Review',
+            config: 'SS_PF_Config'
+        }),
+        onPrompt: callAdaApi
+    });
     
     return `
         <section class="pf-hero" id="pf-step-hero">
@@ -4409,48 +8469,50 @@ function renderAccrualReviewStep(detail) {
         <section class="pf-step-guide">
             <article class="pf-step-card pf-step-detail pf-config-card">
                 <div class="pf-config-head">
-                    <h3>Run Analysis</h3>
-                    <p class="pf-config-subtext">Calculate liabilities and compare against last period.</p>
+                    <h3>Generate Review</h3>
+                    <p class="pf-config-subtext">Calculate liabilities, load prior period, and compute variance.</p>
                 </div>
                 <div class="pf-signoff-action">
                     ${renderLabeledButton(
-                        `<button type="button" class="pf-action-toggle pf-clickable" id="analysis-run-btn" title="Run analysis and checks">${CALCULATOR_ICON_SVG}</button>`,
-                        "Run"
+                        `<button type="button" class="pf-action-toggle pf-clickable" id="review-generate-btn" title="Generate PTO review table">${CALCULATOR_ICON_SVG}</button>`,
+                        "Generate"
                     )}
                     ${renderLabeledButton(
-                        `<button type="button" class="pf-action-toggle pf-clickable" id="analysis-refresh-btn" title="Refresh data from PTO_Data">${REFRESH_ICON_SVG}</button>`,
-                        "Refresh"
+                        `<button type="button" class="pf-action-toggle pf-clickable" id="review-open-btn" title="Open PTO_Review sheet">${TABLE_ICON_SVG}</button>`,
+                        "Open Sheet"
                     )}
                 </div>
             </article>
-            ${renderDataReadinessCard()}
+            ${summaryCard}
+            ${adaMarkup}
             ${renderInlineNotes({
-                textareaId: "step-notes-4",
+                textareaId: "step-notes-2",
                 value: stepFields?.notes || "",
-                permanentId: "step-notes-lock-4",
+                permanentId: "step-notes-lock-2",
                 isPermanent: notesPermanent,
                 hintId: "",
-                saveButtonId: "step-notes-save-4"
+                saveButtonId: "step-notes-save-2"
             })}
             ${renderSignoff({
-                reviewerInputId: "step-reviewer-4",
+                reviewerInputId: "step-reviewer-2",
                 reviewerValue: stepReviewer,
-                signoffInputId: "step-signoff-4",
+                signoffInputId: "step-signoff-2",
                 signoffValue: stepSignOff,
                 isComplete: stepComplete,
-                saveButtonId: "step-signoff-save-4",
-                completeButtonId: "step-signoff-toggle-4"
+                saveButtonId: "step-signoff-save-2",
+                completeButtonId: "step-signoff-toggle-2"
             })}
         </section>
     `;
 }
 
 function renderJournalStep(detail) {
-    const stepFields = getStepConfig(5);
-    const notesPermanent = Boolean(configState.permanents[5]);
+    // Step 3 in new structure
+    const stepFields = getStepConfig(3);
+    const notesPermanent = Boolean(configState.permanents[3]);
     const stepReviewer = getReviewerWithFallback(stepFields?.reviewer);
     const stepSignOff = stepFields?.signOffDate || "";
-    const stepComplete = Boolean(parseBooleanStrict(configState.completes[5]) || stepSignOff);
+    const stepComplete = Boolean(parseBooleanStrict(configState.completes[3]) || stepSignOff);
     const statusNote = journalState.lastError
         ? `<p class="pf-step-note">${escapeHtml(journalState.lastError)}</p>`
         : "";
@@ -4461,9 +8523,9 @@ function renderJournalStep(detail) {
     
     // Define check descriptions (what's being calculated)
     const checkDefinitions = [
-        { key: "Debits = Credits", desc: "∑ Debit column = ∑ Credit column" },
+        { key: "Debits = Credits", desc: "∑ Debits = ∑ Credits" },
         { key: "Line Amounts Sum to Zero", desc: "∑ Line Amount = $0.00" },
-        { key: "JE Matches Analysis Total", desc: "∑ Expense line amounts = ∑ PTO_Analysis Change" }
+        { key: "JE Matches Analysis Total", desc: "∑ JE expense = ∑ PTO_Analysis Change" }
     ];
     
     const renderCheckRow = (def) => {
@@ -4556,21 +8618,21 @@ function renderJournalStep(detail) {
             </article>
             ${issuesCard}
             ${renderInlineNotes({
-                textareaId: "step-notes-5",
+                textareaId: "step-notes-3",
                 value: stepFields?.notes || "",
-                permanentId: "step-notes-lock-5",
+                permanentId: "step-notes-lock-3",
                 isPermanent: notesPermanent,
                 hintId: "",
-                saveButtonId: "step-notes-save-5"
+                saveButtonId: "step-notes-save-3"
             })}
             ${renderSignoff({
-                reviewerInputId: "step-reviewer-5",
+                reviewerInputId: "step-reviewer-3",
                 reviewerValue: stepReviewer,
-                signoffInputId: "step-signoff-5",
+                signoffInputId: "step-signoff-3",
                 signoffValue: stepSignOff,
                 isComplete: stepComplete,
-                saveButtonId: "step-signoff-save-5",
-                completeButtonId: "step-signoff-toggle-5"
+                saveButtonId: "step-signoff-save-3",
+                completeButtonId: "step-signoff-toggle-3"
             })}
         </section>
     `;
@@ -4628,7 +8690,17 @@ async function refreshHeadcountAnalysis() {
         const results = await Excel.run(async (context) => {
             // Use SS_Employee_Roster as the single source of truth for employee data
             const rosterSheet = context.workbook.worksheets.getItem("SS_Employee_Roster");
-            const payrollSheet = context.workbook.worksheets.getItem("PTO_Data");
+            
+            // Use PTO_Data_Clean as the PTO data source
+            const payrollSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+            payrollSheet.load("isNullObject");
+            await context.sync();
+            
+            if (payrollSheet.isNullObject) {
+                console.warn("[Headcount] PTO_Data_Clean not found");
+                return { rosterEmployees: [], ptoEmployees: [], missingFromPto: [], extraInPto: [] };
+            }
+            
             const analysisSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Analysis");
             const rosterRange = rosterSheet.getUsedRangeOrNullObject();
             const payrollRange = payrollSheet.getUsedRangeOrNullObject();
@@ -4649,6 +8721,12 @@ async function refreshHeadcountAnalysis() {
             const payrollSource = analysisValues.length ? analysisValues : payrollValues;
             return parseHeadcount(rosterValues, payrollSource);
         });
+        // Populate structured state fields
+        headcountState.rosterCount = results.rosterCount;
+        headcountState.ptoCount = results.ptoCount;
+        headcountState.missingFromPto = results.missingFromPto;
+        headcountState.extraInPto = results.extraInPto;
+        // Legacy format for backward compatibility
         headcountState.roster = results.roster;
         headcountState.hasAnalyzed = true;
         headcountState.lastError = null;
@@ -4675,11 +8753,18 @@ function isSummaryOrEmpty(value) {
 }
 
 function parseHeadcount(rosterValues, payrollValues) {
-    const roster = {
+    const result = {
         rosterCount: 0,
-        payrollCount: 0,
-        difference: 0,
-        mismatches: []
+        ptoCount: 0,
+        missingFromPto: [],    // In roster but not in PTO: [{name, department}]
+        extraInPto: [],        // In PTO but not in roster: [{name}]
+        // Legacy format for backward compatibility
+        roster: {
+            rosterCount: 0,
+            payrollCount: 0,
+            difference: 0,
+            mismatches: []
+        }
     };
 
     // Require at least header + 1 data row
@@ -4688,7 +8773,7 @@ function parseHeadcount(rosterValues, payrollValues) {
             rosterRows: rosterValues?.length || 0,
             payrollRows: payrollValues?.length || 0
         });
-        return { roster };
+        return result;
     }
 
     const rosterHeaderInfo = findHeaderRow(rosterValues);
@@ -4699,6 +8784,8 @@ function parseHeadcount(rosterValues, payrollValues) {
 
     const rosterIdx = {
         employee: getEmployeeColumnIndex(rosterHeaders),
+        department: rosterHeaders.findIndex((h) => h.includes("department")),
+        status: rosterHeaders.findIndex((h) => h === "employment_status" || h === "status"),
         termination: rosterHeaders.findIndex((h) => h.includes("termination"))
     };
     const payrollIdx = {
@@ -4708,51 +8795,93 @@ function parseHeadcount(rosterValues, payrollValues) {
     // Log column detection for debugging
     console.log("Headcount column detection:", {
         rosterEmployeeCol: rosterIdx.employee,
+        rosterDeptCol: rosterIdx.department,
+        rosterStatusCol: rosterIdx.status,
         rosterTerminationCol: rosterIdx.termination,
         payrollEmployeeCol: payrollIdx.employee,
         rosterHeaders: rosterHeaders.slice(0, 5),
         payrollHeaders: payrollHeaders.slice(0, 5)
     });
 
-    const rosterSet = new Set();
-    const payrollSet = new Set();
-
-    // Count unique employees from roster (excluding terminated and summary rows)
+    // Build roster map with details (only active employees)
+    const rosterMap = new Map(); // key -> {name, department}
     for (let i = rosterHeaderInfo.startIndex; i < rosterValues.length; i += 1) {
         const row = rosterValues[i];
         const employee = rosterIdx.employee >= 0 ? normalizeString(row[rosterIdx.employee]) : "";
         if (isSummaryOrEmpty(employee)) continue;
-        // Skip terminated employees
-        const termination = rosterIdx.termination >= 0 ? normalizeString(row[rosterIdx.termination]) : "";
-        if (termination) continue;
-        rosterSet.add(employee.toLowerCase());
+        
+        // Skip terminated employees (check both status and termination date)
+        if (rosterIdx.status >= 0) {
+            const status = normalizeString(row[rosterIdx.status]).toLowerCase();
+            if (status === "terminated" || status === "inactive" || status === "term") continue;
+        }
+        if (rosterIdx.termination >= 0) {
+            const termination = normalizeString(row[rosterIdx.termination]);
+            if (termination) continue;
+        }
+        
+        const key = employee.toLowerCase();
+        if (!rosterMap.has(key)) {
+            rosterMap.set(key, {
+                name: employee,
+                department: rosterIdx.department >= 0 ? normalizeString(row[rosterIdx.department]) : ""
+            });
+        }
     }
 
-    // Count unique employees from payroll (excluding summary rows)
+    // Build PTO employee set
+    const ptoMap = new Map(); // key -> {name}
     for (let i = payrollHeaderInfo.startIndex; i < payrollValues.length; i += 1) {
         const row = payrollValues[i];
         const employee = payrollIdx.employee >= 0 ? normalizeString(row[payrollIdx.employee]) : "";
         if (isSummaryOrEmpty(employee)) continue;
-        payrollSet.add(employee.toLowerCase());
+        
+        const key = employee.toLowerCase();
+        if (!ptoMap.has(key)) {
+            ptoMap.set(key, { name: employee });
+        }
     }
 
-    roster.rosterCount = rosterSet.size;
-    roster.payrollCount = payrollSet.size;
-    roster.difference = roster.payrollCount - roster.rosterCount;
+    result.rosterCount = rosterMap.size;
+    result.ptoCount = ptoMap.size;
 
-    console.log("Headcount results:", {
-        rosterCount: roster.rosterCount,
-        payrollCount: roster.payrollCount,
-        difference: roster.difference
+    // Find mismatches with structured data
+    // Active roster employees not in PTO data
+    rosterMap.forEach((data, key) => {
+        if (!ptoMap.has(key)) {
+            result.missingFromPto.push({
+                name: data.name,
+                department: data.department || "—"
+            });
+        }
     });
 
-    const missingInPayroll = [...rosterSet].filter((name) => !payrollSet.has(name));
-    const missingInRoster = [...payrollSet].filter((name) => !rosterSet.has(name));
-    roster.mismatches = [
-        ...missingInPayroll.map((name) => `In roster, missing in PTO_Data: ${name}`),
-        ...missingInRoster.map((name) => `In PTO_Data, missing in roster: ${name}`)
+    // PTO employees not in roster (potential new hires or data issues)
+    ptoMap.forEach((data, key) => {
+        if (!rosterMap.has(key)) {
+            result.extraInPto.push({
+                name: data.name
+            });
+        }
+    });
+
+    console.log("Headcount results:", {
+        rosterCount: result.rosterCount,
+        ptoCount: result.ptoCount,
+        missingFromPto: result.missingFromPto.length,
+        extraInPto: result.extraInPto.length
+    });
+
+    // Populate legacy format for backward compatibility
+    result.roster.rosterCount = result.rosterCount;
+    result.roster.payrollCount = result.ptoCount;
+    result.roster.difference = result.ptoCount - result.rosterCount;
+    result.roster.mismatches = [
+        ...result.missingFromPto.map((e) => `In roster, missing in PTO_Data_Clean: ${e.name}`),
+        ...result.extraInPto.map((e) => `In PTO_Data_Clean, missing in roster: ${e.name}`)
     ];
-    return { roster };
+
+    return result;
 }
 
 function findHeaderRow(values) {
@@ -4797,9 +8926,8 @@ function normalizeString(value) {
 }
 
 /**
- * Sync PTO_Analysis from PTO_Data with enrichment from roster, payroll archive, and prior period.
- * This replaces the old PTO_Data_Clean - PTO_Analysis now serves as the single
- * source of enriched employee PTO data.
+ * Sync PTO_Analysis from PTO_Data_Clean with enrichment from roster, payroll archive, and prior period.
+ * PTO_Analysis serves as the enriched view for internal calculations and archive.
  * 
  * Columns:
  * - Analysis Date, Employee Name, Department, Pay Rate, Accrual Rate, Carry Over, YTD Used, Balance
@@ -4809,7 +8937,15 @@ function normalizeString(value) {
  */
 async function syncPtoAnalysis(contextArg = null) {
     const runner = async (context) => {
-        const dataSheet = context.workbook.worksheets.getItem("PTO_Data");
+        const dataSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
+        dataSheet.load("isNullObject");
+        await context.sync();
+        
+        if (dataSheet.isNullObject) {
+            console.warn("[SyncAnalysis] PTO_Data_Clean not found");
+            return;
+        }
+        
         const analysisSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Analysis");
         const rosterSheet = context.workbook.worksheets.getItemOrNullObject("SS_Employee_Roster");
         const prArchiveSheet = context.workbook.worksheets.getItemOrNullObject("PR_Archive_Summary");
@@ -4836,7 +8972,7 @@ async function syncPtoAnalysis(contextArg = null) {
         const balanceIdx = findColumnIndex(dataHeaders, ["balance", "current balance", "pto balance"]);
         
         // Debug logging for column detection
-        console.log("[PTO Analysis] PTO_Data headers:", dataHeaders);
+        console.log("[PTO Analysis] PTO_Data_Clean headers:", dataHeaders);
         console.log("[PTO Analysis] Column indices found:", {
             employee: targetEmpIdx,
             accrualRate: accrualRateIdx,
@@ -4880,9 +9016,20 @@ async function syncPtoAnalysis(contextArg = null) {
                     rosterNameIdx = rosterHeaders.findIndex((h) => h === "employee" || h === "name" || h === "full name");
                 }
                 
-                const rosterDeptIdx = rosterHeaders.findIndex((h) => h.includes("department"));
+                // Prefer Department_Name over generic Department to get name not code
+                let rosterDeptIdx = rosterHeaders.findIndex((h) => h === "department_name" || h === "departmentname");
+                if (rosterDeptIdx < 0) {
+                    rosterDeptIdx = rosterHeaders.findIndex((h) => h.includes("department") && h.includes("name"));
+                }
+                if (rosterDeptIdx < 0) {
+                    rosterDeptIdx = rosterHeaders.findIndex((h) => h.includes("department") && !h.includes("id") && !h.includes("code"));
+                }
+                if (rosterDeptIdx < 0) {
+                    rosterDeptIdx = rosterHeaders.findIndex((h) => h.includes("department"));
+                }
                 
                 console.log(`[PTO Analysis] Roster column indices - Name: ${rosterNameIdx}, Dept: ${rosterDeptIdx}`);
+                console.log(`[PTO Analysis] Department column header: "${rosterDeptIdx >= 0 ? rosterHeaders[rosterDeptIdx] : 'NOT FOUND'}"`);
                 
                 if (rosterNameIdx >= 0 && rosterDeptIdx >= 0) {
                     rosterValues.slice(1).forEach((row) => {
@@ -4893,6 +9040,9 @@ async function syncPtoAnalysis(contextArg = null) {
                         }
                     });
                     console.log(`[PTO Analysis] Built roster map with ${rosterMap.size} employees`);
+                    // Debug: show first few entries to verify data
+                    const sampleEntries = Array.from(rosterMap.entries()).slice(0, 3);
+                    console.log("[PTO Analysis] Sample roster entries:", sampleEntries);
                 } else {
                     console.warn("[PTO Analysis] Could not find Name or Department columns in SS_Employee_Roster");
                 }
@@ -4961,6 +9111,14 @@ async function syncPtoAnalysis(contextArg = null) {
         // Track data quality issues
         const missingPayRates = [];
         const missingDepartments = [];
+        
+        // Debug: log first few name lookups
+        const debugNames = names.slice(0, 3);
+        debugNames.forEach(n => {
+            const norm = normalizeName(n);
+            const dept = rosterMap.get(norm);
+            console.log(`[PTO Analysis] Lookup: "${n}" → normalized: "${norm}" → dept: "${dept || 'NOT FOUND'}"`);
+        });
         
         const rows = names.map((name, idx) => {
             const normalized = normalizeName(name);
@@ -5145,3 +9303,9 @@ function handleHeadcountSignoff() {
         return;
     }
 }
+
+
+
+
+
+

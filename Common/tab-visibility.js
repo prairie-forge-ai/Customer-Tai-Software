@@ -4,6 +4,14 @@ const CONFIG_SHEET_NAME = "SS_PF_Config";
 const PREFIX_CATEGORY = "module-prefix";
 const SYSTEM_MODULE = "system"; // Special module key for SS_ prefix
 
+const MODULE_SELECTOR_KEY = "module-selector";
+const MODULE_SELECTOR_HOMEPAGE_SHEET = "SS_Homepage";
+const QUICK_ACCESS_SHEET_NAMES = [
+    "SS_Employee_Roster",
+    "SS_Chart_of_Accounts",
+    "SS_PF_Config"
+];
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // PREFIX-BASED TAB VISIBILITY
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -137,8 +145,17 @@ async function getPrefixConfig() {
 }
 
 /**
- * Apply tab visibility based on module prefixes
- * @param {string} moduleKey - The module being activated (e.g., "payroll-recorder")
+ * Apply tab visibility based on module
+ * 
+ * RULES:
+ * - Module Selector: Show SS_Homepage only, hide all PR_*, PTO_*, other SS_*
+ * - Payroll-Recorder: Show all PR_* tabs, hide all SS_*, PTO_*
+ * - PTO-Accrual: Show all PTO_* tabs, hide all SS_*, PR_*
+ * 
+ * SS_* tabs can be opened manually from any module (via buttons),
+ * but auto-hide when leaving that context.
+ * 
+ * @param {string} moduleKey - The module being activated
  */
 export async function applyModuleTabVisibility(moduleKey) {
     if (!hasExcelRuntime()) return;
@@ -148,63 +165,78 @@ export async function applyModuleTabVisibility(moduleKey) {
     
     try {
         const prefixConfig = await getPrefixConfig();
-        
+        const allPrefixes = Object.keys(prefixConfig)
+            .map((p) => String(p ?? "").trim().toUpperCase())
+            .filter(Boolean)
+            .sort((a, b) => b.length - a.length);
+
+        const moduleKeyToPrefix = buildModuleKeyToPrefix(prefixConfig);
+        const activePrefix = normalizedModuleKey === normalizeToken(MODULE_SELECTOR_KEY)
+            ? null
+            : (moduleKeyToPrefix[normalizedModuleKey] ?? null);
+
+        if (normalizedModuleKey !== normalizeToken(MODULE_SELECTOR_KEY) && !activePrefix) {
+            console.warn(`[Tab Visibility] No active prefix found for moduleKey="${normalizedModuleKey}". Skipping visibility changes.`);
+            return;
+        }
+
         await Excel.run(async (context) => {
             const worksheets = context.workbook.worksheets;
             worksheets.load("items/name,visibility");
             await context.sync();
             
-            // Build reverse map: moduleKey → [prefixes]
-            const modulePrefixes = {};
-            for (const [prefix, module] of Object.entries(prefixConfig)) {
-                if (!modulePrefixes[module]) modulePrefixes[module] = [];
-                modulePrefixes[module].push(prefix);
-            }
-            
-            // Get prefixes for the active module
-            const activePrefixes = modulePrefixes[normalizedModuleKey] || [];
-            const systemPrefixes = modulePrefixes[SYSTEM_MODULE] || [];
-            
-            // Get all OTHER module prefixes (to hide)
-            const otherPrefixes = [];
-            for (const [module, prefixes] of Object.entries(modulePrefixes)) {
-                if (module !== normalizedModuleKey && module !== SYSTEM_MODULE) {
-                    otherPrefixes.push(...prefixes);
-                }
-            }
-            
-            console.log(`[Tab Visibility] Active prefixes: ${activePrefixes.join(", ")}`);
-            console.log(`[Tab Visibility] Other module prefixes (to hide): ${otherPrefixes.join(", ")}`);
-            console.log(`[Tab Visibility] System prefixes (always hide): ${systemPrefixes.join(", ")}`);
-            
             const toShow = [];
             const toHide = [];
+            const shownSheetNames = [];
+            const hiddenSheetNames = [];
             
             worksheets.items.forEach((sheet) => {
                 const sheetName = sheet.name;
                 const upperName = sheetName.toUpperCase();
                 
-                // Check if sheet matches active module prefix → SHOW
-                const matchesActive = activePrefixes.some(p => upperName.startsWith(p));
+                // Determine visibility based on module rules
+                let shouldShow = false;
+                let shouldHide = false;
                 
-                // Check if sheet matches other module prefix → HIDE
-                const matchesOther = otherPrefixes.some(p => upperName.startsWith(p));
+                const isQuickAccessSheet = QUICK_ACCESS_SHEET_NAMES.some((n) => upperName === n.toUpperCase());
+
+                if (normalizedModuleKey === normalizeToken(MODULE_SELECTOR_KEY)) {
+                    // Module Selector: Only SS_Homepage visible, hide ALL other sheets
+                    if (upperName === MODULE_SELECTOR_HOMEPAGE_SHEET.toUpperCase()) {
+                        shouldShow = true;
+                    } else {
+                        shouldHide = true;
+                    }
+                } else {
+                    // Module state: show ONLY sheets with the active module prefix; hide sheets with other known prefixes
+                    const matchedPrefix = findMatchingPrefix(upperName, allPrefixes);
+                    
+                    if (matchedPrefix) {
+                        if (matchedPrefix === activePrefix) {
+                            shouldShow = true;
+                        } else {
+                            shouldHide = true;
+                        }
+                    }
+                    
+                    // Always hide Quick Access sheets on module entry/switch (unless explicitly opened later)
+                    if (isQuickAccessSheet) {
+                        shouldShow = false;
+                        shouldHide = true;
+                    }
+                }
                 
-                // Check if sheet matches system prefix → ALWAYS HIDE
-                const matchesSystem = systemPrefixes.some(p => upperName.startsWith(p));
-                
-                if (matchesActive) {
+                if (shouldShow) {
                     toShow.push(sheet);
-                    console.log(`[Tab Visibility] SHOW: ${sheetName} (matches active module prefix)`);
-                } else if (matchesSystem) {
+                    console.log(`[Tab Visibility] SHOW: ${sheetName}`);
+                    shownSheetNames.push(sheetName);
+                } else if (shouldHide) {
                     toHide.push(sheet);
-                    console.log(`[Tab Visibility] HIDE: ${sheetName} (system sheet)`);
-                } else if (matchesOther) {
-                    toHide.push(sheet);
-                    console.log(`[Tab Visibility] HIDE: ${sheetName} (other module prefix)`);
+                    console.log(`[Tab Visibility] HIDE: ${sheetName}`);
+                    hiddenSheetNames.push(sheetName);
                 } else {
                     // Non-prefixed sheet - leave as-is
-                    console.log(`[Tab Visibility] SKIP: ${sheetName} (no prefix match, leaving as-is)`);
+                    console.log(`[Tab Visibility] SKIP: ${sheetName} (no prefix match)`);
                 }
             });
             
@@ -214,13 +246,17 @@ export async function applyModuleTabVisibility(moduleKey) {
             }
             await context.sync();
             
-            // Count visible sheets to ensure we don't hide all of them
-            const visibleCount = worksheets.items.filter(
+            // Count how many sheets will remain visible after hiding
+            // We need at least 1 visible sheet (Excel requirement)
+            const currentlyVisible = worksheets.items.filter(
                 s => s.visibility === Excel.SheetVisibility.visible
-            ).length;
+            );
+            const sheetsToRemainVisible = currentlyVisible.filter(
+                s => !toHide.includes(s)
+            );
             
-            // Then hide tabs (ensure at least one stays visible)
-            if (visibleCount > toHide.length) {
+            // Only hide if at least one sheet will remain visible
+            if (sheetsToRemainVisible.length >= 1) {
                 for (const sheet of toHide) {
                     try {
                         sheet.visibility = Excel.SheetVisibility.hidden;
@@ -234,6 +270,12 @@ export async function applyModuleTabVisibility(moduleKey) {
             }
             
             console.log(`[Tab Visibility] Done! Showed ${toShow.length}, hid ${toHide.length} tabs`);
+            console.log("[Tab Visibility] Summary:", {
+                moduleKey: normalizedModuleKey,
+                activePrefix,
+                shownSheets: shownSheetNames,
+                hiddenSheets: hiddenSheetNames
+            });
         });
     } catch (error) {
         console.warn(`[Tab Visibility] Error applying visibility:`, error);
@@ -386,6 +428,26 @@ function normalizeToken(value) {
         .replace(/[\s_]+/g, "-");
 }
 
+function buildModuleKeyToPrefix(prefixConfig) {
+    const result = {};
+    for (const [prefixRaw, moduleRaw] of Object.entries(prefixConfig ?? {})) {
+        const prefix = String(prefixRaw ?? "").trim().toUpperCase();
+        const moduleKey = normalizeToken(moduleRaw);
+        if (!prefix || !moduleKey) continue;
+        if (!result[moduleKey]) {
+            result[moduleKey] = prefix;
+        }
+    }
+    return result;
+}
+
+function findMatchingPrefix(upperSheetName, allPrefixes) {
+    for (const prefix of allPrefixes) {
+        if (upperSheetName.startsWith(prefix)) return prefix;
+    }
+    return null;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // VALIDATION (for config sheet validation tools)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -471,6 +533,40 @@ export async function validateConfigSheet() {
     return results;
 }
 
+/**
+ * Temporarily show and activate a specific sheet
+ * Used by Quick Access to open system sheets like SS_Employee_Roster
+ * @param {string} sheetName - The exact name of the sheet to show
+ * @returns {Promise<boolean>} True if successful
+ */
+export async function showAndActivateSheet(sheetName) {
+    if (!hasExcelRuntime()) return false;
+    
+    try {
+        await Excel.run(async (context) => {
+            const sheet = context.workbook.worksheets.getItemOrNullObject(sheetName);
+            await context.sync();
+            
+            if (sheet.isNullObject) {
+                console.warn(`[Tab Visibility] Sheet "${sheetName}" not found`);
+                return false;
+            }
+            
+            // Make visible and activate
+            sheet.visibility = Excel.SheetVisibility.visible;
+            sheet.activate();
+            await context.sync();
+            
+            console.log(`[Tab Visibility] Showed and activated: ${sheetName}`);
+            return true;
+        });
+        return true;
+    } catch (error) {
+        console.error(`[Tab Visibility] Error showing sheet "${sheetName}":`, error);
+        return false;
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GLOBAL EXPORTS (for console access)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -480,4 +576,5 @@ if (typeof window !== "undefined") {
     window.PrairieForge.showAllSheets = showAllSheets;
     window.PrairieForge.unhideSystemSheets = unhideSystemSheets;
     window.PrairieForge.applyModuleTabVisibility = applyModuleTabVisibility;
+    window.PrairieForge.showAndActivateSheet = showAndActivateSheet;
 }

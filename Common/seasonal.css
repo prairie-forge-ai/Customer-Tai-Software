@@ -1,0 +1,300 @@
+/**
+ * Prairie Forge Seasonal Effects
+ * Centralized seasonal/holiday effects shared across all modules
+ * 
+ * USAGE:
+ * 1. Add these divs inside your .pf-root container:
+ *    <div class="pf-holiday-snow"></div>
+ *    <div class="pf-holiday-lights"></div>
+ * 
+ * 2. To disable: add .pf-no-holiday class to .pf-root
+ * 
+ * SEASONS:
+ * - Winter/Christmas (Dec): .pf-season-winter - snow + lights
+ * - Fall (Oct-Nov): .pf-season-fall - falling leaves (future)
+ * - Spring (Mar-May): .pf-season-spring - cherry blossoms (future)
+ * - Summer (Jun-Aug): .pf-season-summer - sunshine (future)
+ */
+
+/* ==========================================================================
+   WINTER / CHRISTMAS - Snow + Lights 🎄
+   Active by default in December
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   FALLING SNOW - 3 layers with parallax effect
+   -------------------------------------------------------------------------- */
+
+.pf-holiday-snow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+/* Layer 1: Large flakes (closest, fastest) - 18s */
+.pf-holiday-snow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200%;
+    height: 200%;
+    background-image:
+        radial-gradient(4px 4px at 100px 50px, rgba(255, 255, 255, 0.9) 50%, transparent 50%),
+        radial-gradient(3px 3px at 300px 150px, rgba(255, 255, 255, 0.85) 50%, transparent 50%),
+        radial-gradient(4px 4px at 500px 80px, rgba(255, 255, 255, 0.9) 50%, transparent 50%),
+        radial-gradient(3px 3px at 700px 200px, rgba(255, 255, 255, 0.8) 50%, transparent 50%),
+        radial-gradient(4px 4px at 900px 120px, rgba(255, 255, 255, 0.85) 50%, transparent 50%),
+        radial-gradient(3px 3px at 150px 280px, rgba(255, 255, 255, 0.9) 50%, transparent 50%),
+        radial-gradient(4px 4px at 400px 350px, rgba(255, 255, 255, 0.8) 50%, transparent 50%),
+        radial-gradient(3px 3px at 650px 400px, rgba(255, 255, 255, 0.85) 50%, transparent 50%),
+        radial-gradient(4px 4px at 850px 320px, rgba(255, 255, 255, 0.9) 50%, transparent 50%),
+        radial-gradient(3px 3px at 50px 450px, rgba(255, 255, 255, 0.8) 50%, transparent 50%);
+    background-size: 1000px 500px;
+    animation: pf-snow-fall-fast 18s linear infinite;
+    opacity: 0.7;
+}
+
+/* Layer 2: Medium flakes (mid-distance) - 28s */
+.pf-holiday-snow::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200%;
+    height: 200%;
+    background-image:
+        radial-gradient(2.5px 2.5px at 80px 30px, rgba(255, 255, 255, 0.7) 50%, transparent 50%),
+        radial-gradient(2px 2px at 200px 100px, rgba(255, 255, 255, 0.6) 50%, transparent 50%),
+        radial-gradient(2.5px 2.5px at 350px 180px, rgba(255, 255, 255, 0.65) 50%, transparent 50%),
+        radial-gradient(2px 2px at 480px 60px, rgba(255, 255, 255, 0.7) 50%, transparent 50%),
+        radial-gradient(2.5px 2.5px at 620px 220px, rgba(255, 255, 255, 0.6) 50%, transparent 50%),
+        radial-gradient(2px 2px at 750px 140px, rgba(255, 255, 255, 0.65) 50%, transparent 50%),
+        radial-gradient(2.5px 2.5px at 900px 280px, rgba(255, 255, 255, 0.7) 50%, transparent 50%),
+        radial-gradient(2px 2px at 120px 350px, rgba(255, 255, 255, 0.6) 50%, transparent 50%),
+        radial-gradient(2.5px 2.5px at 280px 420px, rgba(255, 255, 255, 0.65) 50%, transparent 50%),
+        radial-gradient(2px 2px at 550px 380px, rgba(255, 255, 255, 0.7) 50%, transparent 50%),
+        radial-gradient(2.5px 2.5px at 700px 450px, rgba(255, 255, 255, 0.6) 50%, transparent 50%),
+        radial-gradient(2px 2px at 850px 400px, rgba(255, 255, 255, 0.65) 50%, transparent 50%);
+    background-size: 1000px 500px;
+    animation: pf-snow-fall-medium 28s linear infinite;
+    opacity: 0.5;
+}
+
+/* Layer 3: Small flakes (far, slowest) - via the main element background - 45s */
+.pf-holiday-snow {
+    background-image:
+        radial-gradient(1.5px 1.5px at 50px 20px, rgba(255, 255, 255, 0.5) 50%, transparent 50%),
+        radial-gradient(1px 1px at 130px 80px, rgba(255, 255, 255, 0.4) 50%, transparent 50%),
+        radial-gradient(1.5px 1.5px at 220px 140px, rgba(255, 255, 255, 0.45) 50%, transparent 50%),
+        radial-gradient(1px 1px at 310px 50px, rgba(255, 255, 255, 0.5) 50%, transparent 50%),
+        radial-gradient(1.5px 1.5px at 400px 200px, rgba(255, 255, 255, 0.4) 50%, transparent 50%),
+        radial-gradient(1px 1px at 490px 110px, rgba(255, 255, 255, 0.45) 50%, transparent 50%),
+        radial-gradient(1.5px 1.5px at 580px 170px, rgba(255, 255, 255, 0.5) 50%, transparent 50%),
+        radial-gradient(1px 1px at 670px 240px, rgba(255, 255, 255, 0.4) 50%, transparent 50%),
+        radial-gradient(1.5px 1.5px at 760px 90px, rgba(255, 255, 255, 0.45) 50%, transparent 50%),
+        radial-gradient(1px 1px at 850px 160px, rgba(255, 255, 255, 0.5) 50%, transparent 50%),
+        radial-gradient(1.5px 1.5px at 940px 220px, rgba(255, 255, 255, 0.4) 50%, transparent 50%),
+        radial-gradient(1px 1px at 100px 300px, rgba(255, 255, 255, 0.45) 50%, transparent 50%),
+        radial-gradient(1.5px 1.5px at 250px 380px, rgba(255, 255, 255, 0.5) 50%, transparent 50%),
+        radial-gradient(1px 1px at 400px 420px, rgba(255, 255, 255, 0.4) 50%, transparent 50%),
+        radial-gradient(1.5px 1.5px at 600px 350px, rgba(255, 255, 255, 0.45) 50%, transparent 50%),
+        radial-gradient(1px 1px at 800px 400px, rgba(255, 255, 255, 0.5) 50%, transparent 50%);
+    background-size: 1000px 500px;
+    animation: pf-snow-fall-slow 45s linear infinite;
+}
+
+/* Snow animations with slight horizontal drift */
+@keyframes pf-snow-fall-fast {
+    0% {
+        transform: translate(0, -50%);
+    }
+    100% {
+        transform: translate(-40px, 0);
+    }
+}
+
+@keyframes pf-snow-fall-medium {
+    0% {
+        transform: translate(0, -50%);
+    }
+    100% {
+        transform: translate(30px, 0);
+    }
+}
+
+@keyframes pf-snow-fall-slow {
+    0% {
+        background-position: 0 0;
+    }
+    100% {
+        background-position: -20px 500px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   CHRISTMAS LIGHTS - Draped string with curved swag effect
+   -------------------------------------------------------------------------- */
+
+.pf-holiday-lights {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 80px;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
+}
+
+/* The curved string/wire - using SVG for smooth curves */
+.pf-holiday-lights::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 60' preserveAspectRatio='none'%3E%3Cpath d='M0,8 Q150,35 300,12 Q450,35 600,12 Q750,35 900,12 Q1050,35 1200,8' stroke='rgba(60,60,60,0.7)' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-size: 100% 60px;
+    background-repeat: no-repeat;
+}
+
+/* The light bulbs - positioned along the curve (swag pattern) */
+.pf-holiday-lights::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background-image:
+        /* Swag 1: 0-25% */
+        radial-gradient(ellipse 6px 8px at 2% 12px, #ff4444 0%, #ff4444 40%, rgba(255, 68, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 6% 22px, #44dd44 0%, #44dd44 40%, rgba(68, 221, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 10% 28px, #ffcc44 0%, #ffcc44 40%, rgba(255, 204, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 14% 30px, #4488ff 0%, #4488ff 40%, rgba(68, 136, 255, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 18% 28px, #ff4444 0%, #ff4444 40%, rgba(255, 68, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 22% 20px, #44dd44 0%, #44dd44 40%, rgba(68, 221, 68, 0.4) 60%, transparent 70%),
+        /* Swag 2: 25-50% */
+        radial-gradient(ellipse 6px 8px at 27% 14px, #ffcc44 0%, #ffcc44 40%, rgba(255, 204, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 31% 22px, #4488ff 0%, #4488ff 40%, rgba(68, 136, 255, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 35% 28px, #ff4444 0%, #ff4444 40%, rgba(255, 68, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 39% 30px, #44dd44 0%, #44dd44 40%, rgba(68, 221, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 43% 28px, #ffcc44 0%, #ffcc44 40%, rgba(255, 204, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 47% 20px, #4488ff 0%, #4488ff 40%, rgba(68, 136, 255, 0.4) 60%, transparent 70%),
+        /* Swag 3: 50-75% */
+        radial-gradient(ellipse 6px 8px at 52% 14px, #ff4444 0%, #ff4444 40%, rgba(255, 68, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 56% 22px, #44dd44 0%, #44dd44 40%, rgba(68, 221, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 60% 28px, #ffcc44 0%, #ffcc44 40%, rgba(255, 204, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 64% 30px, #4488ff 0%, #4488ff 40%, rgba(68, 136, 255, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 68% 28px, #ff4444 0%, #ff4444 40%, rgba(255, 68, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 72% 20px, #44dd44 0%, #44dd44 40%, rgba(68, 221, 68, 0.4) 60%, transparent 70%),
+        /* Swag 4: 75-100% */
+        radial-gradient(ellipse 6px 8px at 77% 14px, #ffcc44 0%, #ffcc44 40%, rgba(255, 204, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 81% 22px, #4488ff 0%, #4488ff 40%, rgba(68, 136, 255, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 85% 28px, #ff4444 0%, #ff4444 40%, rgba(255, 68, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 89% 30px, #44dd44 0%, #44dd44 40%, rgba(68, 221, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 93% 28px, #ffcc44 0%, #ffcc44 40%, rgba(255, 204, 68, 0.4) 60%, transparent 70%),
+        radial-gradient(ellipse 6px 8px at 97% 18px, #4488ff 0%, #4488ff 40%, rgba(68, 136, 255, 0.4) 60%, transparent 70%);
+    background-repeat: no-repeat;
+    filter: blur(0.3px);
+    animation: pf-twinkle 3s ease-in-out infinite;
+}
+
+/* Glow layer behind the lights */
+.pf-holiday-lights {
+    background: 
+        /* Swag 1 glows */
+        radial-gradient(ellipse 25px 18px at 2% 12px, rgba(255, 68, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 6% 22px, rgba(68, 221, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 10% 28px, rgba(255, 204, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 14% 30px, rgba(68, 136, 255, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 18% 28px, rgba(255, 68, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 22% 20px, rgba(68, 221, 68, 0.12) 0%, transparent 70%),
+        /* Swag 2 glows */
+        radial-gradient(ellipse 25px 18px at 27% 14px, rgba(255, 204, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 31% 22px, rgba(68, 136, 255, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 35% 28px, rgba(255, 68, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 39% 30px, rgba(68, 221, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 43% 28px, rgba(255, 204, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 47% 20px, rgba(68, 136, 255, 0.12) 0%, transparent 70%),
+        /* Swag 3 glows */
+        radial-gradient(ellipse 25px 18px at 52% 14px, rgba(255, 68, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 56% 22px, rgba(68, 221, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 60% 28px, rgba(255, 204, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 64% 30px, rgba(68, 136, 255, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 68% 28px, rgba(255, 68, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 72% 20px, rgba(68, 221, 68, 0.12) 0%, transparent 70%),
+        /* Swag 4 glows */
+        radial-gradient(ellipse 25px 18px at 77% 14px, rgba(255, 204, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 81% 22px, rgba(68, 136, 255, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 85% 28px, rgba(255, 68, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 89% 30px, rgba(68, 221, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 93% 28px, rgba(255, 204, 68, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 25px 18px at 97% 18px, rgba(68, 136, 255, 0.12) 0%, transparent 70%);
+    background-repeat: no-repeat;
+}
+
+/* Lights twinkle animation */
+@keyframes pf-twinkle {
+    0%, 100% { opacity: 0.9; }
+    25% { opacity: 1; }
+    50% { opacity: 0.75; }
+    75% { opacity: 0.95; }
+}
+
+/* --------------------------------------------------------------------------
+   Layout & Controls
+   -------------------------------------------------------------------------- */
+
+/* Ensure main content renders above effects */
+.pf-root {
+    position: relative;
+}
+
+.pf-root > *:not(.pf-holiday-snow):not(.pf-holiday-lights) {
+    position: relative;
+    z-index: 2;
+}
+
+/* Disable holiday effects by adding this class to .pf-root */
+.pf-no-holiday .pf-holiday-snow,
+.pf-no-holiday .pf-holiday-lights {
+    display: none;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    .pf-holiday-snow,
+    .pf-holiday-snow::before,
+    .pf-holiday-snow::after {
+        animation: none !important;
+    }
+    .pf-holiday-lights::after {
+        animation: none;
+        opacity: 0.8;
+    }
+}
+
+/* ==========================================================================
+   FUTURE SEASONS (placeholders)
+   ========================================================================== */
+
+/* Fall - Falling Leaves 🍂 (Oct-Nov)
+.pf-season-fall .pf-seasonal-effect { ... }
+*/
+
+/* Spring - Cherry Blossoms 🌸 (Mar-May)
+.pf-season-spring .pf-seasonal-effect { ... }
+*/
+
+/* Summer - Sunshine ☀️ (Jun-Aug)
+.pf-season-summer .pf-seasonal-effect { ... }
+*/
+
