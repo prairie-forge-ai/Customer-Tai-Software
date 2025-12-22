@@ -8631,7 +8631,9 @@ function normalizeJoinKey(value) {
     return String(value)
         .trim()
         .toLowerCase()
-        .replace(/\s+/g, " ");  // Collapse multiple spaces
+        .replace(/\s+/g, " ")           // Collapse multiple spaces
+        .replace(/[.,'"]/g, "")          // Remove punctuation (match normalizeEmployeeName)
+        .replace(/\s+(jr|sr|ii|iii|iv)$/i, " $1");  // Normalize suffixes
 }
 
 /**
