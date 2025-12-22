@@ -3586,7 +3586,7 @@ body {
     font-size: 13px;
     line-height: 1.6;
     color: var(--text-primary);
-    z-index: 1000;
+    z-index: 9999;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-4px);
