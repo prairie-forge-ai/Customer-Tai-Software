@@ -1481,7 +1481,11 @@ function renderArchiveStep(detail) {
     const allComplete = completionItems.every((item) => item.complete);
     const incompleteCount = completionItems.filter(i => !i.complete).length;
     
-    // Step completion cards - matches payroll-recorder style
+    // Debug: Log completion status
+    console.log("[Archive Step] Completion check:", completionItems.map(i => `Step ${i.id}: ${i.complete}`).join(", "));
+    console.log("[Archive Step] All complete:", allComplete, "Incomplete count:", incompleteCount);
+    
+    // Step completion cards - matches payroll-recorder style exactly
     const statusList = completionItems
         .map(
             (item) => `
@@ -1514,9 +1518,11 @@ function renderArchiveStep(detail) {
                     <h3>Archive & Reset</h3>
                     <p class="pf-config-subtext">Create an archive of this module's sheets and clear work tabs.</p>
                 </div>
-                ${!allComplete ? `<p class="pf-step-note pf-step-note--info">⚠️ Complete all ${incompleteCount} remaining step(s) before archiving.</p>` : ""}
+                ${!allComplete ? `<p class="pf-step-note pf-step-note--info">Complete all ${incompleteCount} remaining step(s) before archiving. Click the checkmark on each step's sign-off section.</p>` : `<p class="pf-step-note" style="color: #22c55e;">All steps complete. Ready to archive!</p>`}
                 <div class="pf-pill-row pf-config-actions">
-                    <button type="button" class="pf-pill-btn" id="archive-run-btn" ${allComplete ? "" : "disabled"}>Archive</button>
+                    <button type="button" class="pf-pill-btn ${allComplete ? 'pf-cta-button' : ''}" id="archive-run-btn" ${allComplete ? "" : "disabled"} style="${allComplete ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                        ${allComplete ? 'Archive Now' : 'Archive (Complete Steps First)'}
+                    </button>
                 </div>
             </article>
         </section>
@@ -3368,18 +3374,15 @@ function applyDefaultRateToMissing(defaultRate = DEFAULT_HOURLY_RATE) {
 // PTO ARCHIVE SUMMARY - Prior Period Storage (mirrors PR_Archive_Summary)
 // =============================================================================
 
+// PTO Archive only needs essential columns for journal entry calculation:
+// - Employee identification (ID + Name)
+// - Balance as of that period (for prior period comparison)
+// Note: loadPriorPeriodData() still supports reading legacy columns for backward compatibility
 const PTO_ARCHIVE_COLUMNS = [
     "Analysis_Date",
-    "Employee_Key",
-    "Employee_Name",
-    "Department",
-    "Pay_Rate",
-    "Accrual_Rate",
-    "Carry_Over",
-    "YTD_Accrued",
-    "YTD_Used",
-    "Vested_Balance",      // As_Of_Date_Balance - what drives liability
-    "Calc_Liability"       // Calculated liability (includes negatives) - used for prior period comparison
+    "Employee_ID",          // Employee identifier (for matching)
+    "Employee_Name",        // Human-readable name
+    "Vested_Balance"        // Balance as of this period - drives liability calculation
 ];
 
 const PTO_ARCHIVE_MAX_PERIODS = 5;
@@ -3477,15 +3480,16 @@ async function loadPriorPeriodData() {
             
             const headers = archiveRange.values[0].map(h => String(h || "").toLowerCase().trim());
             const dateIdx = headers.findIndex(h => h === "analysis_date" || h.includes("date"));
-            const keyIdx = headers.findIndex(h => h === "employee_key");
+            // Support both new (employee_id) and legacy (employee_key) column names
+            const idIdx = headers.findIndex(h => h === "employee_id" || h === "employee_key");
             const nameIdx = headers.findIndex(h => h === "employee_name" || h.includes("employee"));
-            // Prefer Calc_Liability (includes negatives) for accurate period-over-period comparison
-            // Fall back to Liability_Amount for backwards compatibility with old archives
+            // Primary: use Vested_Balance for liability calculation
+            // Fallback: Calc_Liability or Liability_Amount for backwards compatibility
+            const balanceIdx = headers.findIndex(h => h === "vested_balance" || h === "balance");
             const liabilityIdx = headers.findIndex(h => h === "calc_liability" || h === "liability_amount" || h.includes("liability"));
             const rateIdx = headers.findIndex(h => h === "pay_rate" || h.includes("rate"));
-            const balanceIdx = headers.findIndex(h => h === "vested_balance" || h === "balance");
             
-            if (nameIdx < 0 && keyIdx < 0) {
+            if (nameIdx < 0 && idIdx < 0) {
                 console.warn("[PTOArchive] No employee identifier column");
                 return;
             }
@@ -3495,16 +3499,17 @@ async function loadPriorPeriodData() {
             
             for (let i = 1; i < archiveRange.values.length; i++) {
                 const row = archiveRange.values[i];
-                const key = keyIdx >= 0 
-                    ? String(row[keyIdx] || "").trim()
+                const key = idIdx >= 0 
+                    ? String(row[idIdx] || "").trim()
                     : normalizeEmployeeKey(String(row[nameIdx] || ""));
                 
                 if (!key) continue;
                 
                 const analysisDate = dateIdx >= 0 ? String(row[dateIdx] || "") : "";
-                const liability = liabilityIdx >= 0 ? parseFloat(row[liabilityIdx]) || 0 : 0;
-                const rate = rateIdx >= 0 ? parseFloat(row[rateIdx]) || 0 : 0;
+                // Use balance for liability calculation, fallback to legacy liability column
                 const balance = balanceIdx >= 0 ? parseFloat(row[balanceIdx]) || 0 : 0;
+                const liability = liabilityIdx >= 0 ? parseFloat(row[liabilityIdx]) || 0 : balance;
+                const rate = rateIdx >= 0 ? parseFloat(row[rateIdx]) || 0 : 0;
                 
                 if (!employeePeriods.has(key)) {
                     employeePeriods.set(key, []);
@@ -3555,7 +3560,10 @@ async function savePtoArchivePeriod(reviewData, analysisDate) {
             
             const headersLower = headers.map(h => h.toLowerCase());
             const dateIdx = headersLower.indexOf("analysis_date");
-            const keyIdx = headersLower.indexOf("employee_key");
+            // Support both new (employee_id) and legacy (employee_key) column names
+            const empIdIdx = headersLower.indexOf("employee_id") >= 0 
+                ? headersLower.indexOf("employee_id") 
+                : headersLower.indexOf("employee_key");
             
             // Group existing data by period
             const periodMap = new Map();
@@ -3574,24 +3582,33 @@ async function savePtoArchivePeriod(reviewData, analysisDate) {
             periodMap.delete(normalizedDate);
             
             // Add new period
-            // IMPORTANT: Store Calc_Liability (includes negatives) for accurate period-over-period comparison
-            // Do NOT store Liability_Amount which zeros out negative balances
+            // Simplified archive: only store essential columns for journal entry calculation
+            // Employee_ID, Employee_Name, and Vested_Balance are all that's needed
+            // to calculate prior period liability for the next period's journal entry
             const newRows = reviewData.map(emp => {
                 const rowData = new Array(headers.length).fill("");
                 headers.forEach((col, idx) => {
                     const colLower = col.toLowerCase();
                     if (colLower === "analysis_date") rowData[idx] = normalizedDate;
-                    else if (colLower === "employee_key") rowData[idx] = normalizeEmployeeKey(emp.employeeName);
+                    // Support both old (employee_key) and new (employee_id) column names
+                    else if (colLower === "employee_id" || colLower === "employee_key") {
+                        rowData[idx] = emp.employeeId || normalizeEmployeeKey(emp.employeeName);
+                    }
                     else if (colLower === "employee_name") rowData[idx] = emp.employeeName || "";
+                    // Vested balance is what drives liability calculation
+                    else if (colLower === "vested_balance" || colLower === "balance") {
+                        rowData[idx] = emp.vestedBalance ?? emp.balance ?? 0;
+                    }
+                    // Legacy columns - still write if they exist in older archive sheets
                     else if (colLower === "department") rowData[idx] = emp.department || "";
                     else if (colLower === "pay_rate") rowData[idx] = emp.payRate || 0;
                     else if (colLower === "accrual_rate") rowData[idx] = emp.accrualRate || 0;
                     else if (colLower === "carry_over") rowData[idx] = emp.carryOver || 0;
                     else if (colLower === "ytd_accrued") rowData[idx] = emp.ytdAccrued || 0;
                     else if (colLower === "ytd_used") rowData[idx] = emp.ytdUsed || 0;
-                    // Store vested balance and calculated liability (includes negatives)
-                    else if (colLower === "vested_balance" || colLower === "balance") rowData[idx] = emp.vestedBalance ?? emp.balance ?? 0;
-                    else if (colLower === "calc_liability" || colLower === "liability_amount") rowData[idx] = emp.calculatedLiability ?? emp.liabilityAmount ?? 0;
+                    else if (colLower === "calc_liability" || colLower === "liability_amount") {
+                        rowData[idx] = emp.calculatedLiability ?? emp.liabilityAmount ?? 0;
+                    }
                 });
                 return rowData;
             });
