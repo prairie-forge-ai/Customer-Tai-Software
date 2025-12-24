@@ -8,6 +8,8 @@
  *   import { formatXlsxWorksheet, applyXlsxHeaderStyle, XLSX_FORMATS } from "../../Common/xlsx-formatting.js";
  */
 
+import * as XLSX from "xlsx";
+
 // Standard number format codes for SheetJS
 export const XLSX_FORMATS = {
     currency: "$#,##0.00",
