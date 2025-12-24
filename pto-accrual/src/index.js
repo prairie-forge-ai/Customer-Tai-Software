@@ -4929,34 +4929,44 @@ async function writePtoDataCleanFiltered(normalizedHeaders, parsedData, included
 }
 
 /**
- * Load Obsidian dimension mappings from ada_payroll_dimensions
+ * Load Obsidian dimension mappings from ada_payroll_dimensions via edge function
  * Maps raw_term -> normalized_dimension for provider='obsidian'
  */
 async function loadObsidianDimensionMappings() {
-    console.log("[PTOUpload] Loading Obsidian dimension mappings from Supabase...");
+    console.log("[PTOUpload] Loading Obsidian dimension mappings via edge function...");
     
     try {
-        const apiUrl = `${SUPABASE_URL}/rest/v1/ada_payroll_dimensions?provider=eq.obsidian&select=raw_term,normalized_dimension`;
+        const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/column-mapper`;
         
-        const response = await fetch(apiUrl, {
+        const response = await fetch(edgeFunctionUrl, {
+            method: "POST",
             headers: {
                 "apikey": SUPABASE_KEY,
                 "Authorization": `Bearer ${SUPABASE_KEY}`,
                 "Content-Type": "application/json"
-            }
+            },
+            body: JSON.stringify({
+                action: "get_dimensions",
+                provider: "obsidian"
+            })
         });
         
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`API error: ${response.status} - ${errorText}`);
+            throw new Error(`Edge function error: ${response.status} - ${errorText}`);
         }
         
-        const data = await response.json();
-        console.log(`[PTOUpload] Loaded ${data.length} dimension mappings from Supabase`);
+        const result = await response.json();
+        
+        if (!result.success || !result.dimensions) {
+            throw new Error("Edge function returned unsuccessful response");
+        }
+        
+        console.log(`[PTOUpload] Loaded ${result.dimensions.length} dimension mappings from edge function`);
         
         // Build mapping: normalized raw_term -> normalized_dimension
         const mappings = new Map();
-        for (const row of data) {
+        for (const row of result.dimensions) {
             const rawKey = normalizeForMatching(row.raw_term);
             const normalizedValue = row.normalized_dimension;
             if (rawKey && normalizedValue) {

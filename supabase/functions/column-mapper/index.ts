@@ -55,8 +55,9 @@ interface ColumnMapperRequest {
   company_id?: string | null;
   module?: string;
   mappings?: Array<{ raw_header: string; target: string; kind?: MappingKind }>;
-  action: "analyze" | "save" | "get_options" | "get_expense_taxonomy" | "bootstrap" | "debug";
+  action: "analyze" | "save" | "get_options" | "get_expense_taxonomy" | "bootstrap" | "debug" | "get_dimensions";
   installation_key?: string;
+  provider?: string;
 }
 
 type MappingKind = "amount" | "dimension" | "ambiguous";
@@ -1052,6 +1053,53 @@ serve(async (req) => {
     }
     
     // ========================================================================
+    // Action: GET_DIMENSIONS - Return dimension mappings for a provider
+    // ========================================================================
+    if (action === "get_dimensions") {
+      const { provider } = body;
+      
+      console.log(`[GetDimensions] Fetching dimensions for provider: ${provider || "all"}`);
+      
+      try {
+        let query = supabase
+          .from("ada_payroll_dimensions")
+          .select("raw_term, normalized_dimension");
+        
+        // Filter by provider if specified
+        if (provider) {
+          query = query.eq("provider", provider);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error("[GetDimensions] Error fetching dimensions:", error);
+          return new Response(
+            JSON.stringify({ success: false, error: error.message }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        console.log(`[GetDimensions] Found ${data?.length || 0} dimension mappings`);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            dimensions: data || [],
+            count: data?.length || 0
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (e) {
+        console.error("[GetDimensions] Exception:", e);
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to fetch dimensions" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+    
+    // ========================================================================
     // Action: BOOTSTRAP - Auto-load company metadata from installation key
     // ========================================================================
     if (action === "bootstrap") {
@@ -1104,7 +1152,7 @@ serve(async (req) => {
     }
     
     return new Response(
-      JSON.stringify({ error: "Invalid action. Use 'analyze', 'save', 'get_options', 'get_expense_taxonomy', or 'bootstrap'" }),
+      JSON.stringify({ error: "Invalid action. Use 'analyze', 'save', 'get_options', 'get_expense_taxonomy', 'get_dimensions', or 'bootstrap'" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
     
