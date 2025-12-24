@@ -34,6 +34,7 @@ import { renderInlineNotes, renderSignoff, renderLabeledButton, updateLockButton
 import { canCompleteStep, showBlockedToast } from "../../Common/workflow-validation.js";
 import { loadConfigFromTable, saveConfigValue, hasExcelRuntime } from "../../Common/gateway.js";
 import { formatSheetHeaders, formatCurrencyColumn, formatNumberColumn, formatDateColumn, NUMBER_FORMATS } from "../../Common/sheet-formatting.js";
+import { formatXlsxWorksheet, setXlsxColumnWidths, XLSX_COLUMN_WIDTHS } from "../../Common/xlsx-formatting.js";
 
 // Build script injects the current commit hash at bundle time
 // Fallback to "dev" when running outside bundle (tests, lint)
@@ -6667,11 +6668,11 @@ async function createPtoArchiveWorkbook() {
             
             const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
             
-            // Set column widths for better readability
-            summarySheet['!cols'] = [
-                { wch: 25 },  // Label column
-                { wch: 50 }   // Value column
-            ];
+            // Format summary sheet with proper column widths
+            setXlsxColumnWidths(summarySheet, [
+                XLSX_COLUMN_WIDTHS.extraWide,  // Label column
+                XLSX_COLUMN_WIDTHS.description  // Value column
+            ]);
             
             XLSX.utils.book_append_sheet(newWorkbook, summarySheet, "Archive_Summary");
             sheetsAdded++;
@@ -6692,6 +6693,17 @@ async function createPtoArchiveWorkbook() {
                 
                 if (!usedRange.isNullObject && usedRange.values && usedRange.values.length > 0) {
                     const worksheet = XLSX.utils.aoa_to_sheet(usedRange.values);
+                    
+                    // Apply formatting: headers, column widths, number formats
+                    if (usedRange.values.length > 0) {
+                        const headers = usedRange.values[0];
+                        const rowCount = usedRange.values.length;
+                        formatXlsxWorksheet(worksheet, headers, rowCount, {
+                            autoFormat: true,
+                            autoSize: true
+                        });
+                    }
+                    
                     XLSX.utils.book_append_sheet(newWorkbook, worksheet, sheetName);
                     sheetsAdded++;
                     console.log(`[PTOArchive] Added sheet: ${sheetName} (${usedRange.values.length} rows)`);

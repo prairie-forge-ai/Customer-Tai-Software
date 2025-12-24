@@ -47,6 +47,7 @@ import {
 import { canCompleteStep, showBlockedToast } from "../../Common/workflow-validation.js";
 import { initializeOffice } from "../../Common/gateway.js";
 import { formatSheetHeaders, formatCurrencyColumn, formatDateColumn, NUMBER_FORMATS } from "../../Common/sheet-formatting.js";
+import { formatXlsxWorksheet, setXlsxColumnWidths, XLSX_COLUMN_WIDTHS } from "../../Common/xlsx-formatting.js";
 
 const MODULE_KEY = "payroll-recorder";
 const MODULE_ALIAS_TOKENS = ["payroll", "payroll recorder", "payroll review", "pr"];
@@ -14486,6 +14487,13 @@ async function createArchiveWorkbook() {
             summaryRows.push(["Archive File", filename]);
 
             const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+            
+            // Format summary sheet with proper column widths
+            setXlsxColumnWidths(summarySheet, [
+                XLSX_COLUMN_WIDTHS.extraWide,  // Label column
+                XLSX_COLUMN_WIDTHS.description  // Value column
+            ]);
+            
             XLSX.utils.book_append_sheet(newWorkbook, summarySheet, "Archive_Summary");
             sheetsAdded++;
             
@@ -14503,6 +14511,16 @@ async function createArchiveWorkbook() {
                 if (!usedRange.isNullObject && usedRange.values && usedRange.values.length > 0) {
                     // Convert to SheetJS worksheet
                     const worksheet = XLSX.utils.aoa_to_sheet(usedRange.values);
+                    
+                    // Apply formatting: headers, column widths, number formats
+                    if (usedRange.values.length > 0) {
+                        const headers = usedRange.values[0];
+                        const rowCount = usedRange.values.length;
+                        formatXlsxWorksheet(worksheet, headers, rowCount, {
+                            autoFormat: true,
+                            autoSize: true
+                        });
+                    }
                     
                     // Add to workbook
                     XLSX.utils.book_append_sheet(newWorkbook, worksheet, sheetName);
