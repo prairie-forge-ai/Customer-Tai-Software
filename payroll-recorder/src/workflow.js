@@ -5109,6 +5109,42 @@ function renderJournalStep(detail) {
                     )}
                 </div>
             </article>
+            
+            <!-- Info Modal for JE Export Instructions -->
+            <div id="je-info-modal" class="pf-modal-overlay" style="display: none;">
+                <div class="pf-modal-content">
+                    <div class="pf-modal-header">
+                        <h3>📋 QuickBooks Import Instructions</h3>
+                        <button type="button" class="pf-modal-close" id="je-info-close">&times;</button>
+                    </div>
+                    <div class="pf-modal-body">
+                        <ol style="margin: 0 0 16px 20px; padding: 0; line-height: 1.8;">
+                            <li style="margin-bottom: 12px;">
+                                <strong>Assign bank feed transaction</strong><br>
+                                <span style="color: #9ca3af;">Assign the bank feed transaction to uncategorized expense (no need to separate this out like in the past)</span>
+                            </li>
+                            <li style="margin-bottom: 12px;">
+                                <strong>Export CSV file</strong><br>
+                                <span style="color: #9ca3af;">Click the Export button above and save the .csv file to your desktop (or other temporary folder)</span>
+                            </li>
+                            <li style="margin-bottom: 12px;">
+                                <strong>Upload to QuickBooks</strong><br>
+                                <span style="color: #9ca3af;">Click the ⚙️ icon → Import Data → Journal Entry → Upload a file to import data. Map any fields that don't automap.</span>
+                            </li>
+                        </ol>
+                        <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 16px 0;">
+                        <div style="font-size: 13px; color: #9ca3af; line-height: 1.6;">
+                            <p style="margin: 0 0 12px 0;">
+                                <strong style="color: #fbbf24;">💡 Note:</strong> The journal entry will also be booked to uncategorized expense. If everything goes as planned, uncategorized expense should be zero after recording the bank transaction and this journal entry.
+                            </p>
+                            <p style="margin: 0;">
+                                If there are differences, they may indicate a fee that was charged but not presented in the payroll report. This should be recorded as a separate journal entry.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             ${stepFields ? `
                 ${renderInlineNotes({
                     textareaId: "step-notes-input",
@@ -5941,6 +5977,19 @@ function bindStepInteractions(stepId) {
         document.getElementById("je-info-btn")?.addEventListener("click", () => {
             const modal = document.getElementById("je-info-modal");
             if (modal) modal.style.display = "flex";
+        });
+        
+        // Info modal close button
+        document.getElementById("je-info-close")?.addEventListener("click", () => {
+            const modal = document.getElementById("je-info-modal");
+            if (modal) modal.style.display = "none";
+        });
+        
+        // Close modal when clicking overlay background
+        document.getElementById("je-info-modal")?.addEventListener("click", (e) => {
+            if (e.target.id === "je-info-modal") {
+                e.target.style.display = "none";
+            }
         });
         
         // Sign-off navigation buttons (Prev/Next at bottom of step)
