@@ -5094,41 +5094,13 @@ function renderJournalStep(detail) {
                         <h3>Export Journal Entry</h3>
                         <p class="pf-config-subtext">Download journal entry as CSV for QuickBooks import.</p>
                     </div>
-                    <div class="pf-info-tooltip-container" style="position: absolute; top: 0; right: 0;">
-                        <button type="button" class="pf-info-icon-btn" aria-label="Export instructions">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="16" x2="12" y2="12"></line>
-                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                            </svg>
-                        </button>
-                        <div class="pf-info-tooltip">
-                            <div style="font-size: 14px; font-weight: 600; color: #a5b4fc; margin-bottom: 12px;">📋 Quick Reminder</div>
-                            <ol style="margin: 0 0 0 20px; padding: 0; list-style-type: decimal;">
-                                <li style="margin-bottom: 10px; padding-left: 4px;">
-                                    <strong>Assign bank feed</strong><br>
-                                    <span style="color: #d1d5db;">Assign the bank feed transaction to uncategorized expense (no need to separate this out like in the past)</span>
-                                </li>
-                                <li style="margin-bottom: 10px; padding-left: 4px;">
-                                    <strong>Export CSV</strong><br>
-                                    <span style="color: #d1d5db;">Export this .csv file and save to your desktop (or other temporary folder)</span>
-                                </li>
-                                <li style="margin-bottom: 10px; padding-left: 4px;">
-                                    <strong>Upload to QuickBooks</strong><br>
-                                    <span style="color: #d1d5db;">Click the <span style="font-size: 15px;">⚙️</span> icon → Import Data → Journal Entry → Upload a file to import data. Map any fields that don't automap.</span>
-                                </li>
-                            </ol>
-                            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 14px 0;">
-                            <div style="font-size: 12px; color: #9ca3af; line-height: 1.5;">
-                                <p style="margin: 0 0 10px 0;">
-                                    <strong style="color: #fbbf24;">💡 Note:</strong> The journal entry will also be booked to uncategorized expense. If everything goes as planned, uncategorized expense should be zero after recording the bank transaction and this journal entry.
-                                </p>
-                                <p style="margin: 0;">
-                                    If there are differences, they may indicate a fee that was charged but not presented in the payroll report. This should be a separate journal entry.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <button type="button" class="pf-info-icon-btn" id="je-info-btn" aria-label="Export instructions" style="position: absolute; top: 0; right: 0;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </button>
                 </div>
                 <div class="pf-signoff-action">
                     ${renderLabeledButton(
@@ -5964,6 +5936,12 @@ function bindStepInteractions(stepId) {
         document.getElementById("je-save-btn")?.addEventListener("click", () => saveJournalSummary());
         document.getElementById("je-create-btn")?.addEventListener("click", () => createJournalEntryDraftV2());
         document.getElementById("je-export-btn")?.addEventListener("click", () => exportJournalDraft());
+        
+        // Info modal toggle
+        document.getElementById("je-info-btn")?.addEventListener("click", () => {
+            const modal = document.getElementById("je-info-modal");
+            if (modal) modal.style.display = "flex";
+        });
         
         // Sign-off navigation buttons (Prev/Next at bottom of step)
         document.getElementById("step-signoff-toggle-3-prev")?.addEventListener("click", () => {
