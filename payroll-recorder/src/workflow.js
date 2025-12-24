@@ -14562,16 +14562,25 @@ async function createArchiveWorkbook() {
             }
             
             // Generate Excel file and download
-            const excelBuffer = XLSX.write(newWorkbook, { bookType: "xlsx", type: "array" });
-            const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            
-            downloadFile(blob, filename);
-            
-            console.log(`[Archive] Downloaded: ${filename} with ${sheetsAdded} sheets`);
-            
-            showToast(`📥 Archive downloaded: ${filename} (${sheetsAdded} sheets)`, "success", 5000);
-            
-            return true;
+            try {
+                console.log(`[Archive] Writing ${sheetsAdded} sheets to Excel...`);
+                const excelBuffer = XLSX.write(newWorkbook, { bookType: "xlsx", type: "array" });
+                console.log(`[Archive] Excel buffer created: ${excelBuffer.byteLength} bytes`);
+                
+                const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                console.log(`[Archive] Blob created: ${blob.size} bytes`);
+                
+                downloadFile(blob, filename);
+                
+                console.log(`[Archive] Downloaded: ${filename} with ${sheetsAdded} sheets`);
+                
+                showToast(`📥 Archive downloaded: ${filename} (${sheetsAdded} sheets)`, "success", 5000);
+                
+                return true;
+            } catch (downloadError) {
+                console.error("[Archive] Download error:", downloadError);
+                throw new Error(`Failed to write Excel file: ${downloadError.message}`);
+            }
         });
         
     } catch (error) {
@@ -14591,19 +14600,38 @@ async function createArchiveWorkbook() {
  * Trigger browser download of a file
  */
 function downloadFile(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", filename);
-    link.style.visibility = "hidden";
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up the URL object
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    try {
+        if (!blob || blob.size === 0) {
+            throw new Error("Blob is empty");
+        }
+        
+        const url = URL.createObjectURL(blob);
+        console.log(`[Download] URL created: ${url}`);
+        
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = "hidden";
+        
+        document.body.appendChild(link);
+        console.log("[Download] Link appended to DOM");
+        
+        link.click();
+        console.log("[Download] Click triggered");
+        
+        document.body.removeChild(link);
+        console.log("[Download] Link removed from DOM");
+        
+        // Clean up the URL object
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+            console.log("[Download] URL revoked");
+        }, 100);
+        
+    } catch (error) {
+        console.error("[Download] Error:", error);
+        throw error;
+    }
 }
 
 /**
