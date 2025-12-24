@@ -2368,6 +2368,8 @@ function renderApp() {
     if (isConfigView) {
         bindConfigInteractions();
     } else if (isStepView) {
+        // Bind step cards in sidebar (for navigating between steps)
+        bindHomeInteractions();
         try {
             bindStepInteractions(appState.activeStepId);
         } catch (error) {
