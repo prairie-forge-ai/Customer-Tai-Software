@@ -2,10 +2,10 @@
 
 :root {
     --pf-bg-start: #000000;
-    --pf-bg-end: #3533CD;
+    --pf-bg-end: #2E30C9;
     --pf-text-primary: #F5F5F7;
     --pf-text-secondary: #C9C9D6;
-    --pf-accent: #3533CD;
+    --pf-accent: #2E30C9;
     --pf-surface: rgba(5, 7, 24, 0.82);
     --pf-surface-strong: rgba(9, 12, 38, 0.88);
     --pf-border: rgba(245, 245, 247, 0.12);
@@ -2545,9 +2545,9 @@ body {
 }
 
 .ref-data-btn--primary {
-    background: linear-gradient(135deg, #3533cd 0%, #5553e8 100%);
+    background: linear-gradient(135deg, #2E30C9 0%, #5553e8 100%);
     color: #ffffff;
-    box-shadow: 0 4px 20px rgba(53, 51, 205, 0.3);
+    box-shadow: 0 4px 20px rgba(46, 48, 201, 0.3);
 }
 
 .ref-data-btn--primary:hover {
@@ -3363,7 +3363,7 @@ body {
 
 .workbook-setup-progress .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #3533CD, #6366f1);
+    background: linear-gradient(90deg, #2E30C9, #6366f1);
     border-radius: 4px;
     transition: width 0.3s ease;
     width: 0%;

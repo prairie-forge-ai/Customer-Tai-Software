@@ -15,9 +15,9 @@
   --primary-color: #4C2FFF;
   --primary-hover: #3D25CC;
   --primary-active: #2E1C99;
-  --pf-accent: #3533CD;
+  --pf-accent: #2E30C9;
   --pf-accent-dark: #2725A5;
-  --pf-hover-shadow: 0 20px 35px rgba(53, 51, 205, 0.25);
+  --pf-hover-shadow: 0 20px 35px rgba(46, 48, 201, 0.25);
 
   --success-color: #10B981;
   --success-bg: #D1FAE5;
@@ -670,7 +670,7 @@ body {
 }
 
 .pf-skip-btn.is-active {
-  background: linear-gradient(120deg, #3533cd, #2725a5);
+  background: linear-gradient(120deg, #2E30C9, #2725a5);
   border-color: rgba(245, 245, 247, 0.48);
   box-shadow: 0 0 14px rgba(80, 86, 255, 0.45);
 }
@@ -725,7 +725,7 @@ body {
 .pf-action-toggle.is-active,
 .pf-action-toggle.is-saved,
 .pf-notes-lock.is-locked {
-  background: linear-gradient(120deg, #3533cd, #2725a5);
+  background: linear-gradient(120deg, #2E30C9, #2725a5);
   border-color: rgba(245, 245, 247, 0.48);
   box-shadow: 0 0 14px rgba(80, 86, 255, 0.45);
 }
@@ -810,7 +810,7 @@ body {
 .pf-pill-btn {
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 247, 0.25);
-  background: linear-gradient(120deg, #3533cd, #2725a5);
+  background: linear-gradient(120deg, #2E30C9, #2725a5);
   color: var(--text-primary);
   padding: 12px 18px;
   font-weight: 600;
@@ -3205,7 +3205,7 @@ button:disabled,
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #fff;
-  background: linear-gradient(135deg, var(--primary-color, #4c2fff) 0%, var(--pf-accent, #3533cd) 100%);
+  background: linear-gradient(135deg, var(--primary-color, #4c2fff) 0%, var(--pf-accent, #2E30C9) 100%);
   border-radius: 4px;
   text-transform: uppercase;
   box-shadow: 
@@ -3713,7 +3713,7 @@ button:disabled,
 }
 
 .pf-datepicker-day.selected {
-  background: linear-gradient(145deg, #4C2FFF, #3533CD);
+  background: linear-gradient(145deg, #4C2FFF, #2E30C9);
   color: #fff;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(76, 47, 255, 0.4);
