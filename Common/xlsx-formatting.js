@@ -31,36 +31,17 @@ export const XLSX_COLUMN_WIDTHS = {
 
 /**
  * Apply header formatting to first row of a SheetJS worksheet
- * Sets bold font and fills for header row
+ * Note: SheetJS free version has limited styling support
+ * This is a placeholder for future enhancement with SheetJS Pro
  * 
  * @param {Object} worksheet - SheetJS worksheet object
  * @param {number} columnCount - Number of columns in the header
  */
 export function applyXlsxHeaderStyle(worksheet, columnCount) {
-    if (!worksheet || columnCount <= 0) return;
-    
-    // Apply bold and fill to header row (row 0, A1:Z1, etc.)
-    for (let col = 0; col < columnCount; col++) {
-        const cellRef = XLSX.utils.encode_cell({ r: 0, c: col });
-        if (!worksheet[cellRef]) continue;
-        
-        // Initialize cell style if not present
-        if (!worksheet[cellRef].s) {
-            worksheet[cellRef].s = {};
-        }
-        
-        // Set font bold
-        worksheet[cellRef].s.font = { bold: true, color: { rgb: "FFFFFF" } };
-        
-        // Set fill (black background)
-        worksheet[cellRef].s.fill = {
-            patternType: "solid",
-            fgColor: { rgb: "000000" }
-        };
-        
-        // Set alignment
-        worksheet[cellRef].s.alignment = { vertical: "center", horizontal: "left" };
-    }
+    // SheetJS free version doesn't support cell styling (fonts, fills, etc.)
+    // Column widths and number formats are supported and applied separately
+    // For full styling support, SheetJS Pro would be required
+    return;
 }
 
 /**
@@ -94,12 +75,8 @@ export function applyXlsxColumnFormats(worksheet, rowCount, columnFormats) {
             
             if (!worksheet[cellRef]) continue;
             
-            // Initialize cell style if not present
-            if (!worksheet[cellRef].s) {
-                worksheet[cellRef].s = {};
-            }
-            
-            // Set number format
+            // Set number format directly on the cell
+            // Note: This sets the format code but SheetJS free version has limited support
             worksheet[cellRef].z = format;
         }
     }
