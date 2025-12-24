@@ -229,3 +229,134 @@ export function formatXlsxWorksheet(worksheet, headers, rowCount, options = {}) 
         setXlsxColumnWidths(worksheet, widths);
     }
 }
+
+/**
+ * Format PR_Expense_Review sheet which has a complex multi-section layout
+ * Scans entire sheet and applies formatting based on cell content/position
+ * 
+ * @param {Object} worksheet - SheetJS worksheet object
+ * @param {Array<Array>} data - 2D array of cell values
+ */
+export function formatExpenseReviewSheet(worksheet, data) {
+    if (!worksheet || !data || data.length === 0) return;
+    
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    const rowCount = range.e.r + 1;
+    const colCount = range.e.c + 1;
+    
+    // Set reasonable column widths for Expense Review layout
+    const widths = [];
+    for (let c = 0; c <= range.e.c; c++) {
+        // First column (labels) should be wider
+        if (c === 0) {
+            widths.push(28);
+        } else {
+            widths.push(16);
+        }
+    }
+    setXlsxColumnWidths(worksheet, widths);
+    
+    // Scan all cells and apply formatting based on content
+    for (let r = 0; r <= range.e.r; r++) {
+        for (let c = 0; c <= range.e.c; c++) {
+            const cellRef = XLSX.utils.encode_cell({ r, c });
+            const cell = worksheet[cellRef];
+            if (!cell) continue;
+            
+            const value = cell.v;
+            const rowData = data[r] || [];
+            const cellLabel = String(rowData[0] || "").toLowerCase();
+            const colHeader = findColumnHeader(data, r, c);
+            
+            // Skip if not a number
+            if (typeof value !== 'number') continue;
+            
+            // Detect Excel serial dates (numbers between 40000-50000 typically represent dates 2009-2036)
+            // Pay Period dates are usually in this range
+            if (value > 40000 && value < 60000) {
+                // Check if this looks like a date context
+                const isDateContext = 
+                    cellLabel.includes("date") ||
+                    cellLabel.includes("period") ||
+                    colHeader.includes("date") ||
+                    colHeader.includes("period") ||
+                    colHeader.includes("pay period");
+                
+                if (isDateContext) {
+                    cell.z = XLSX_FORMATS.dateShort;
+                    cell.t = 'n'; // Ensure it's treated as a number (Excel date)
+                    continue;
+                }
+            }
+            
+            // Detect percentages (values between 0 and 1 that look like percentages)
+            // Or values in "% of Total" column, or "Burden Rate" rows
+            const isPercentContext = 
+                colHeader.includes("%") ||
+                colHeader.includes("percent") ||
+                cellLabel.includes("burden rate") ||
+                cellLabel.includes("% of total");
+            
+            if (isPercentContext && value >= 0 && value <= 2) {
+                cell.z = XLSX_FORMATS.percent;
+                continue;
+            }
+            
+            // Detect currency (larger numbers, or in currency-related columns)
+            const isCurrencyContext = 
+                colHeader.includes("salary") ||
+                colHeader.includes("pay") ||
+                colHeader.includes("total") ||
+                colHeader.includes("burden") ||
+                colHeader.includes("gross") ||
+                colHeader.includes("fixed") ||
+                colHeader.includes("variable") ||
+                cellLabel.includes("total") ||
+                cellLabel.includes("salary") ||
+                cellLabel.includes("pay") ||
+                cellLabel.includes("burden") && !cellLabel.includes("rate");
+            
+            if (isCurrencyContext && Math.abs(value) >= 100) {
+                cell.z = XLSX_FORMATS.currency;
+                continue;
+            }
+            
+            // Headcount - integers
+            const isHeadcountContext = 
+                colHeader.includes("headcount") ||
+                colHeader.includes("count") ||
+                cellLabel.includes("headcount");
+            
+            if (isHeadcountContext && Number.isInteger(value)) {
+                cell.z = XLSX_FORMATS.integer;
+                continue;
+            }
+            
+            // Default: if it's a large number, format as currency
+            if (Math.abs(value) >= 1000) {
+                cell.z = XLSX_FORMATS.currency;
+            }
+        }
+    }
+}
+
+/**
+ * Find the column header for a given cell by looking up in the data
+ * Handles multi-section layouts where headers may be in different rows
+ * 
+ * @param {Array<Array>} data - 2D array of cell values
+ * @param {number} row - Current row index
+ * @param {number} col - Current column index
+ * @returns {string} - Lowercase header text or empty string
+ */
+function findColumnHeader(data, row, col) {
+    // Look backwards from current row to find a header row
+    // Headers are typically text in the same column, within 5 rows above
+    for (let r = row - 1; r >= Math.max(0, row - 5); r--) {
+        const cellValue = data[r]?.[col];
+        if (typeof cellValue === 'string' && cellValue.trim()) {
+            return cellValue.toLowerCase();
+        }
+    }
+    return "";
+}

@@ -47,7 +47,7 @@ import {
 import { canCompleteStep, showBlockedToast } from "../../Common/workflow-validation.js";
 import { initializeOffice } from "../../Common/gateway.js";
 import { formatSheetHeaders, formatCurrencyColumn, formatDateColumn, NUMBER_FORMATS } from "../../Common/sheet-formatting.js";
-import { formatXlsxWorksheet, setXlsxColumnWidths, XLSX_COLUMN_WIDTHS } from "../../Common/xlsx-formatting.js";
+import { formatXlsxWorksheet, formatExpenseReviewSheet, setXlsxColumnWidths, XLSX_COLUMN_WIDTHS } from "../../Common/xlsx-formatting.js";
 
 const MODULE_KEY = "payroll-recorder";
 const MODULE_ALIAS_TOKENS = ["payroll", "payroll recorder", "payroll review", "pr"];
@@ -14499,7 +14499,9 @@ async function createArchiveWorkbook() {
             const importFields = STEP_NOTES_FIELDS[1];
             const reviewFields = STEP_NOTES_FIELDS[2];
             const jeFields = STEP_NOTES_FIELDS[3];
-            summaryRows.push(["Config Reviewer", cfgFields ? getConfigValue(cfgFields.reviewer) || "" : ""]);
+            // Use main PR_Reviewer field (set in Config step) as the primary reviewer
+            const mainReviewer = getConfigValue(CONFIG_REVIEWER_FIELD) || "";
+            summaryRows.push(["Reviewer", mainReviewer]);
             summaryRows.push(["Config Sign-off", cfgFields ? getConfigValue(cfgFields.signOff) || "" : ""]);
             summaryRows.push(["Config Notes", cfgFields ? getConfigValue(cfgFields.note) || "" : ""]);
             summaryRows.push([]);
@@ -14541,14 +14543,22 @@ async function createArchiveWorkbook() {
                     // Convert to SheetJS worksheet
                     const worksheet = XLSX.utils.aoa_to_sheet(usedRange.values);
                     
-                    // Apply formatting: headers, column widths, number formats
+                    // Apply formatting based on sheet type
                     if (usedRange.values.length > 0) {
-                        const headers = usedRange.values[0];
-                        const rowCount = usedRange.values.length;
-                        formatXlsxWorksheet(worksheet, headers, rowCount, {
-                            autoFormat: true,
-                            autoSize: true
-                        });
+                        if (sheetName === SHEET_NAMES.EXPENSE_REVIEW) {
+                            // PR_Expense_Review has a complex multi-section layout
+                            // Use special formatter that scans cell content
+                            formatExpenseReviewSheet(worksheet, usedRange.values);
+                            console.log(`[Archive] Applied Expense Review formatting to ${sheetName}`);
+                        } else {
+                            // Standard sheets with headers in row 1
+                            const headers = usedRange.values[0];
+                            const rowCount = usedRange.values.length;
+                            formatXlsxWorksheet(worksheet, headers, rowCount, {
+                                autoFormat: true,
+                                autoSize: true
+                            });
+                        }
                     }
                     
                     // Add to workbook
