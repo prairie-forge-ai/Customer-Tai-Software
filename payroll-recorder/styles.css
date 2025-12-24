@@ -3550,6 +3550,7 @@ body {
 .pf-info-tooltip-container {
     position: relative;
     display: inline-block;
+    z-index: 100;
 }
 
 .pf-info-icon-btn {
