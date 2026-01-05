@@ -6459,7 +6459,7 @@ function showConfirmDialog(message, options = {}) {
  * 5. Reset config
  */
 async function archiveAndReset() {
-    if (!appState.workbookReady || !hasExcel()) {
+    if (!hasExcel()) {
         showToast("Excel not available", "error");
         return;
     }
