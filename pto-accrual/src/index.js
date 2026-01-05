@@ -6459,8 +6459,10 @@ function showConfirmDialog(message, options = {}) {
  * 5. Reset config
  */
 async function archiveAndReset() {
-    if (!hasExcel()) {
-        showToast("Excel not available", "error");
+    console.log("[Archive] archiveAndReset called");
+    
+    if (!hasExcelRuntime()) {
+        showToast("Excel runtime is unavailable.", "error");
         return;
     }
     
