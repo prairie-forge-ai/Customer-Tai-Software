@@ -6468,7 +6468,7 @@ async function archiveAndReset() {
     console.log("[Archive] archiveAndReset called");
     
     if (!hasExcelRuntime()) {
-        showToast("Excel runtime is unavailable.", "error");
+        showToast("Excel not available currently", "error");
         return;
     }
     
