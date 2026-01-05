@@ -325,17 +325,8 @@ const PTO_ACTIVITY_COLUMNS = [
     { key: "source", header: "Source" }
 ];
 
-// PTO_Analysis columns - combines enriched data + analysis view
-const PTO_ANALYSIS_COLUMNS = [
-    { key: "analysisDate", header: "Analysis Date" },
-    { key: "employeeName", header: "Employee Name" },
-    { key: "department", header: "Department" },
-    { key: "payRate", header: "Pay Rate" },
-    { key: "accrualRate", header: "Accrual Rate" },
-    { key: "carryOver", header: "Carry Over" },
-    { key: "balance", header: "Balance" },
-    { key: "liabilityAmount", header: "Liability Amount" }
-];
+// REMOVED: PTO_ANALYSIS_COLUMNS - legacy sheet no longer used
+// All analysis is now done in PTO_Review sheet
 
 const PTO_EXPENSE_COLUMNS = [
     { key: "department", header: "Department" },
@@ -457,10 +448,9 @@ const WORKBOOK_SHEETS = [
     { name: "SS_PF_Config", description: "Prairie Forge shared configuration (all modules)" },
     { name: "PTO_Rates", description: "Accrual rate definitions" },
     { name: "PTO_Data_Clean", description: "Normalized PTO data (from upload)" },
-    { name: "PTO_Analysis", description: "Calculated balances" },
-    { name: "PTO_ExpenseReview", description: "Expense review workspace" },
+    { name: "PTO_Review", description: "PTO review with liability calculations" },
     { name: "PTO_JE_Draft", description: "Journal entry prep" },
-    { name: "PTO_Archive", description: "Archive register" },
+    { name: "PTO_Archive_Summary", description: "Archive register" },
     { name: "SS_Employee_Roster", description: "Centralized employee roster" }
 ];
 
@@ -2390,7 +2380,6 @@ function bindStepView(stepId) {
                 id: "pto-copilot",
                 contextProvider: createExcelContextProvider({
                     dataClean: 'PTO_Data_Clean',
-                    analysis: 'PTO_Analysis',
                     review: 'PTO_Review',
                     config: 'SS_PF_Config'
                 }),
@@ -2729,7 +2718,6 @@ function focusStep(index, stepId = null) {
     
     // Step-specific initialization
     if (resolvedStepId === 2 && !headcountState.hasAnalyzed) {
-        void syncPtoAnalysis();
         refreshHeadcountAnalysis();
     }
 }
@@ -2853,10 +2841,7 @@ async function importSampleData() {
     try {
         await Excel.run(async (context) => {
             await writeDatasetToSheet(context, "PTO_Data_Clean", PTO_ACTIVITY_COLUMNS, SAMPLE_PTO_ACTIVITY);
-            await writeDatasetToSheet(context, "PTO_ExpenseReview", PTO_EXPENSE_COLUMNS, SAMPLE_EXPENSE_REVIEW);
             await writeDatasetToSheet(context, "PTO_JE_Draft", PTO_JOURNAL_COLUMNS, SAMPLE_JOURNAL_LINES);
-            // Sync PTO_Analysis from PTO_Data_Clean (enriches with department, pay rate, calculates liability)
-            await syncPtoAnalysis(context);
             const dataSheet = context.workbook.worksheets.getItem("PTO_Data_Clean");
             dataSheet.activate();
             dataSheet.getRange("A1").select();
@@ -2876,13 +2861,12 @@ async function refreshValidationData() {
         showToast("Excel is not available. Open this module inside Excel to refresh data.", "info");
         return;
     }
-    toggleLoader(true, "Refreshing PTO_Analysis...");
+    toggleLoader(true, "Refreshing validation data...");
     try {
-        await syncPtoAnalysis();
-        // After refresh, automatically run validation and completeness check
-        toggleLoader(false);
+        // Validation now uses PTO_Review sheet generated in Step 2
         await runBalanceValidation();
         await runCompletenessCheck();
+        toggleLoader(false);
         // Re-render step 4 if we're on it to update the completeness pills
         if (appState.activeStepId === 4) {
             renderApp();
@@ -2896,73 +2880,11 @@ async function refreshValidationData() {
 
 /**
  * Handle save button click for missing pay rate card
- * Updates PTO_Analysis directly with the entered pay rate
+ * Updates SS_Employee_Roster with the entered pay rate
  */
 async function handlePayRateSave() {
-    const input = document.getElementById("payrate-input");
-    if (!input) return;
-    
-    const payRate = parseFloat(input.value);
-    const employeeName = input.dataset.employee;
-    const rowIndex = parseInt(input.dataset.row, 10);
-    
-    if (isNaN(payRate) || payRate <= 0) {
-        showToast("Please enter a valid pay rate greater than 0.", "info");
-        return;
-    }
-    
-    if (!employeeName || isNaN(rowIndex)) {
-        console.error("Missing employee data on input");
-        return;
-    }
-    
-    toggleLoader(true, "Updating pay rate...");
-    
-    try {
-        await Excel.run(async (context) => {
-            const sheet = context.workbook.worksheets.getItem("PTO_Analysis");
-            
-            // Pay Rate is column D (index 3)
-            const payRateCell = sheet.getCell(rowIndex - 1, 3); // -1 because Excel rows are 1-based but getCell is 0-based
-            payRateCell.values = [[payRate]];
-            
-            // Recalculate Liability Amount (column J, index 9) = Balance × Pay Rate
-            const balanceCell = sheet.getCell(rowIndex - 1, 8); // Balance is column I (index 8)
-            balanceCell.load("values");
-            await context.sync();
-            
-            const balance = Number(balanceCell.values[0][0]) || 0;
-            const liabilityAmount = balance * payRate;
-            
-            const liabilityCell = sheet.getCell(rowIndex - 1, 9);
-            liabilityCell.values = [[liabilityAmount]];
-            
-            // Also recalculate Change column (column L, index 11) = Liability - Prior
-            const priorCell = sheet.getCell(rowIndex - 1, 10); // Prior is column K (index 10)
-            priorCell.load("values");
-            await context.sync();
-            
-            const priorLiability = Number(priorCell.values[0][0]) || 0;
-            const change = liabilityAmount - priorLiability;
-            
-            const changeCell = sheet.getCell(rowIndex - 1, 11);
-            changeCell.values = [[change]];
-            
-            await context.sync();
-        });
-        
-        // Remove this employee from missing list and re-render
-        analysisState.missingPayRates = analysisState.missingPayRates.filter(e => e.name !== employeeName);
-        toggleLoader(false);
-        
-        // Re-render to show next missing employee or remove card
-        focusStep(3, 3);
-        
-    } catch (error) {
-        console.error("Failed to save pay rate:", error);
-        showToast(`Failed to save pay rate: ${error.message}`, "error");
-        toggleLoader(false);
-    }
+    showToast("Please update pay rates in SS_Employee_Roster, then regenerate PTO_Review", "info");
+    return;
 }
 
 /**
@@ -5416,8 +5338,7 @@ async function runFullAnalysis() {
     toggleLoader(true, "Running analysis...");
     
     try {
-        // 1. Sync PTO_Analysis from PTO_Data_Clean with enrichment
-        await syncPtoAnalysis();
+        // Analysis now uses PTO_Review sheet - ensure it's generated first
         
         // 2. Run completeness check (compare column sums)
         await runCompletenessCheck();
@@ -5448,9 +5369,6 @@ async function populatePtoAnalysis() {
     renderApp();
     
     try {
-        // Sync PTO_Analysis directly from PTO_Data_Clean (with enrichment from roster/archive)
-        await syncPtoAnalysis();
-        
         // Get the row count from PTO_Analysis
         const result = await Excel.run(async (context) => {
             const analysisSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Analysis");
@@ -9058,294 +8976,11 @@ function normalizeString(value) {
  * - Accrued PTO $ [Prior Period] (from PTO_Archive_Summary, 0 if not found)
  * - Change (current - prior)
  */
-async function syncPtoAnalysis(contextArg = null) {
-    const runner = async (context) => {
-        const dataSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Data_Clean");
-        dataSheet.load("isNullObject");
-        await context.sync();
-        
-        if (dataSheet.isNullObject) {
-            console.warn("[SyncAnalysis] PTO_Data_Clean not found");
-            return;
-        }
-        
-        const analysisSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Analysis");
-        const rosterSheet = context.workbook.worksheets.getItemOrNullObject("SS_Employee_Roster");
-        const prArchiveSheet = context.workbook.worksheets.getItemOrNullObject("PR_Archive_Summary");
-        const ptoArchiveSheet = context.workbook.worksheets.getItemOrNullObject("PTO_Archive_Summary");
-        const dataRange = dataSheet.getUsedRangeOrNullObject();
-        dataRange.load("values");
-        analysisSheet.load("isNullObject");
-        rosterSheet.load("isNullObject");
-        prArchiveSheet.load("isNullObject");
-        ptoArchiveSheet.load("isNullObject");
-        await context.sync();
-
-        const dataValues = dataRange.isNullObject ? [] : dataRange.values || [];
-        if (!dataValues.length) return;
-        const dataHeaders = (dataValues[0] || []).map((h) => normalizeName(h));
-        const empIdx = dataHeaders.findIndex((h) => h.includes("employee") && h.includes("name"));
-        const targetEmpIdx = empIdx >= 0 ? empIdx : 0;
-        const accrualRateIdx = findColumnIndex(dataHeaders, ["accrual rate"]);
-        const carryOverIdx = findColumnIndex(dataHeaders, ["carry over", "carryover"]);
-        // Be specific - "ytd" must be in the column name to avoid matching "Pay Period Accrued"
-        const ytdAccruedIdx = dataHeaders.findIndex((h) => h.includes("ytd") && (h.includes("accrued") || h.includes("accrual")));
-        // Be specific - "ytd" must be in the column name to avoid matching "Pay Period Used"
-        const ytdUsedIdx = dataHeaders.findIndex((h) => h.includes("ytd") && h.includes("used"));
-        const balanceIdx = findColumnIndex(dataHeaders, ["balance", "current balance", "pto balance"]);
-        
-        // Debug logging for column detection
-        console.log("[PTO Analysis] PTO_Data_Clean headers:", dataHeaders);
-        console.log("[PTO Analysis] Column indices found:", {
-            employee: targetEmpIdx,
-            accrualRate: accrualRateIdx,
-            carryOver: carryOverIdx,
-            ytdAccrued: ytdAccruedIdx,
-            ytdUsed: ytdUsedIdx,
-            balance: balanceIdx
-        });
-        
-        // Log the actual header names at each index
-        if (ytdUsedIdx >= 0) {
-            console.log(`[PTO Analysis] YTD Used column: "${dataHeaders[ytdUsedIdx]}" at index ${ytdUsedIdx}`);
-        } else {
-            console.warn("[PTO Analysis] YTD Used column NOT FOUND. Headers:", dataHeaders);
-        }
-        const names = dataValues
-            .slice(1)
-            .map((row) => normalizeString(row[targetEmpIdx]))
-            .filter((name) => name && !name.toLowerCase().includes("total"));
-        const dataMap = new Map();
-        dataValues.slice(1).forEach((row) => {
-            const name = normalizeName(row[targetEmpIdx]);
-            if (!name || name.includes("total")) return;
-            dataMap.set(name, row);
-        });
-
-        // Build roster map for department lookup from SS_Employee_Roster
-        let rosterMap = new Map();
-        if (!rosterSheet.isNullObject) {
-            const rosterRange = rosterSheet.getUsedRangeOrNullObject();
-            rosterRange.load("values");
-            await context.sync();
-            const rosterValues = rosterRange.isNullObject ? [] : rosterRange.values || [];
-            if (rosterValues.length) {
-                const rosterHeaders = (rosterValues[0] || []).map((h) => normalizeName(h));
-                console.log("[PTO Analysis] SS_Employee_Roster headers:", rosterHeaders);
-                
-                // More flexible column matching - try multiple patterns
-                let rosterNameIdx = rosterHeaders.findIndex((h) => h.includes("employee") && h.includes("name"));
-                if (rosterNameIdx < 0) {
-                    rosterNameIdx = rosterHeaders.findIndex((h) => h === "employee" || h === "name" || h === "full name");
-                }
-                
-                // Prefer Department_Name over generic Department to get name not code
-                let rosterDeptIdx = rosterHeaders.findIndex((h) => h === "department_name" || h === "departmentname");
-                if (rosterDeptIdx < 0) {
-                    rosterDeptIdx = rosterHeaders.findIndex((h) => h.includes("department") && h.includes("name"));
-                }
-                if (rosterDeptIdx < 0) {
-                    rosterDeptIdx = rosterHeaders.findIndex((h) => h.includes("department") && !h.includes("id") && !h.includes("code"));
-                }
-                if (rosterDeptIdx < 0) {
-                    rosterDeptIdx = rosterHeaders.findIndex((h) => h.includes("department"));
-                }
-                
-                console.log(`[PTO Analysis] Roster column indices - Name: ${rosterNameIdx}, Dept: ${rosterDeptIdx}`);
-                console.log(`[PTO Analysis] Department column header: "${rosterDeptIdx >= 0 ? rosterHeaders[rosterDeptIdx] : 'NOT FOUND'}"`);
-                
-                if (rosterNameIdx >= 0 && rosterDeptIdx >= 0) {
-                    rosterValues.slice(1).forEach((row) => {
-                        const empName = normalizeName(row[rosterNameIdx]);
-                        const dept = normalizeString(row[rosterDeptIdx]);
-                        if (empName) {
-                            rosterMap.set(empName, dept);
-                        }
-                    });
-                    console.log(`[PTO Analysis] Built roster map with ${rosterMap.size} employees`);
-                    // Debug: show first few entries to verify data
-                    const sampleEntries = Array.from(rosterMap.entries()).slice(0, 3);
-                    console.log("[PTO Analysis] Sample roster entries:", sampleEntries);
-                } else {
-                    console.warn("[PTO Analysis] Could not find Name or Department columns in SS_Employee_Roster");
-                }
-            }
-        } else {
-            console.warn("[PTO Analysis] SS_Employee_Roster sheet not found");
-        }
-
-        // Build archive map for pay rate lookup (from PR_Archive_Summary)
-        let payRateMap = new Map();
-        if (!prArchiveSheet.isNullObject) {
-            const archiveRange = prArchiveSheet.getUsedRangeOrNullObject();
-            archiveRange.load("values");
-            await context.sync();
-            const archiveValues = archiveRange.isNullObject ? [] : archiveRange.values || [];
-            if (archiveValues.length) {
-                const archiveHeaders = (archiveValues[0] || []).map((h) => normalizeName(h));
-                const idx = {
-                    payrollDate: findColumnIndex(archiveHeaders, ["payroll date"]),
-                    employee: findColumnIndex(archiveHeaders, ["employee"]),
-                    category: findColumnIndex(archiveHeaders, ["payroll category", "category"]),
-                    amount: findColumnIndex(archiveHeaders, ["amount", "gross salary", "gross_salary", "earnings"])
-                };
-                if (idx.employee >= 0 && idx.category >= 0 && idx.amount >= 0) {
-                    archiveValues.slice(1).forEach((row) => {
-                        const name = normalizeName(row[idx.employee]);
-                        if (!name) return;
-                        const category = normalizeName(row[idx.category]);
-                        if (!category.includes("regular") || !category.includes("earn")) return;
-                        const amount = Number(row[idx.amount]) || 0;
-                        if (!amount) return;
-                        const timestamp = coerceTimestamp(row[idx.payrollDate]);
-                        const existing = payRateMap.get(name);
-                        if (!existing || (timestamp != null && timestamp > existing.timestamp)) {
-                            payRateMap.set(name, { payRate: amount / 80, timestamp });
-                        }
-                    });
-                }
-            }
-        }
-
-        // Build prior period liability map (from PTO_Archive_Summary)
-        let priorLiabilityMap = new Map();
-        if (!ptoArchiveSheet.isNullObject) {
-            const ptoArchiveRange = ptoArchiveSheet.getUsedRangeOrNullObject();
-            ptoArchiveRange.load("values");
-            await context.sync();
-            const ptoArchiveValues = ptoArchiveRange.isNullObject ? [] : ptoArchiveRange.values || [];
-            if (ptoArchiveValues.length > 1) {
-                const ptoArchiveHeaders = (ptoArchiveValues[0] || []).map((h) => normalizeName(h));
-                const priorNameIdx = ptoArchiveHeaders.findIndex((h) => h.includes("employee") && h.includes("name"));
-                const priorLiabilityIdx = findColumnIndex(ptoArchiveHeaders, ["liability amount", "liability", "accrued pto"]);
-                if (priorNameIdx >= 0 && priorLiabilityIdx >= 0) {
-                    ptoArchiveValues.slice(1).forEach((row) => {
-                        const name = normalizeName(row[priorNameIdx]);
-                        if (!name) return;
-                        const liability = Number(row[priorLiabilityIdx]) || 0;
-                        priorLiabilityMap.set(name, liability);
-                    });
-                }
-            }
-        }
-
-        const analysisDate = getConfigValue(PTO_CONFIG_FIELDS.payrollDate) || "";
-        
-        // Track data quality issues
-        const missingPayRates = [];
-        const missingDepartments = [];
-        
-        // Debug: log first few name lookups
-        const debugNames = names.slice(0, 3);
-        debugNames.forEach(n => {
-            const norm = normalizeName(n);
-            const dept = rosterMap.get(norm);
-            console.log(`[PTO Analysis] Lookup: "${n}" → normalized: "${norm}" → dept: "${dept || 'NOT FOUND'}"`);
-        });
-        
-        const rows = names.map((name, idx) => {
-            const normalized = normalizeName(name);
-            const department = rosterMap.get(normalized) || "";
-            const payRate = payRateMap.get(normalized)?.payRate ?? "";
-            const dataRow = dataMap.get(normalized);
-            const accrualRate = dataRow && accrualRateIdx >= 0 ? dataRow[accrualRateIdx] ?? "" : "";
-            const carryOver = dataRow && carryOverIdx >= 0 ? dataRow[carryOverIdx] ?? "" : "";
-            const ytdAccrued = dataRow && ytdAccruedIdx >= 0 ? dataRow[ytdAccruedIdx] ?? "" : "";
-            const ytdUsed = dataRow && ytdUsedIdx >= 0 ? dataRow[ytdUsedIdx] ?? "" : "";
-            
-            // Debug logging for specific employees with issues
-            if (normalized.includes("avalos") || normalized.includes("sarah")) {
-                console.log(`[PTO Debug] ${name}:`, {
-                    ytdUsedIdx,
-                    rawValue: dataRow ? dataRow[ytdUsedIdx] : "no dataRow",
-                    ytdUsed,
-                    fullRow: dataRow
-                });
-            }
-            const balance = dataRow && balanceIdx >= 0 ? Number(dataRow[balanceIdx]) || 0 : 0;
-            
-            // Track missing data (row index is +2 because of header and 0-based)
-            const rowIndex = idx + 2;
-            if (!payRate && typeof payRate !== "number") {
-                missingPayRates.push({ name, rowIndex });
-            }
-            if (!department) {
-                missingDepartments.push({ name, rowIndex });
-            }
-            
-            // Calculate current liability amount: Balance (hours) × Pay Rate ($/hr)
-            const liabilityAmount = (typeof payRate === "number" && balance) ? balance * payRate : 0;
-            
-            // Get prior period liability (0 if employee not found in archive)
-            const priorLiability = priorLiabilityMap.get(normalized) ?? 0;
-            
-            // Calculate change (current - prior)
-            const change = (typeof liabilityAmount === "number" ? liabilityAmount : 0) - priorLiability;
-            
-            return [analysisDate, name, department, payRate, accrualRate, carryOver, ytdAccrued, ytdUsed, balance, liabilityAmount, priorLiability, change];
-        });
-        
-        // Update state with data quality info
-        analysisState.missingPayRates = missingPayRates.filter(e => !analysisState.ignoredMissingPayRates.has(e.name));
-        analysisState.missingDepartments = missingDepartments;
-        
-        console.log(`[PTO Analysis] Data quality: ${missingPayRates.length} missing pay rates, ${missingDepartments.length} missing departments`);
-        const output = [
-            ["Analysis Date", "Employee Name", "Department", "Pay Rate", "Accrual Rate", "Carry Over", "YTD Accrued", "YTD Used", "Balance", "Liability Amount", "Accrued PTO $ [Prior Period]", "Change"],
-            ...rows
-        ];
-
-        // Write to PTO_Analysis (create if doesn't exist)
-        const targetSheet = analysisSheet.isNullObject ? context.workbook.worksheets.add("PTO_Analysis") : analysisSheet;
-        const used = targetSheet.getUsedRangeOrNullObject();
-        used.load("address");
-        await context.sync();
-        if (!used.isNullObject) {
-            used.clear();
-        }
-        
-        const columnCount = output[0].length;
-        const rowCount = output.length;
-        const dataRowCount = rows.length;
-        const range = targetSheet.getRangeByIndexes(0, 0, rowCount, columnCount);
-        range.values = output;
-        
-        // Format header row using shared utility (black bg, white bold text)
-        const headerRange = targetSheet.getRangeByIndexes(0, 0, 1, columnCount);
-        formatSheetHeaders(headerRange);
-        
-        // Apply column formatting using shared utilities
-        // Column indices (0-based):
-        // A=0: Analysis Date, B=1: Employee Name, C=2: Department
-        // D=3: Pay Rate, E=4: Accrual Rate, F=5: Carry Over, G=6: YTD Accrued, H=7: YTD Used
-        // I=8: Balance, J=9: Liability Amount, K=10: Accrued PTO $ [Prior Period], L=11: Change
-        
-        if (dataRowCount > 0) {
-            formatDateColumn(targetSheet, 0, dataRowCount);           // A: Analysis Date
-            formatCurrencyColumn(targetSheet, 3, dataRowCount);       // D: Pay Rate
-            formatNumberColumn(targetSheet, 4, dataRowCount);         // E: Accrual Rate
-            formatNumberColumn(targetSheet, 5, dataRowCount);         // F: Carry Over
-            formatNumberColumn(targetSheet, 6, dataRowCount);         // G: YTD Accrued
-            formatNumberColumn(targetSheet, 7, dataRowCount);         // H: YTD Used
-            formatNumberColumn(targetSheet, 8, dataRowCount);         // I: Balance
-            formatCurrencyColumn(targetSheet, 9, dataRowCount);       // J: Liability Amount
-            formatCurrencyColumn(targetSheet, 10, dataRowCount);      // K: Accrued PTO $ [Prior Period]
-            formatCurrencyColumn(targetSheet, 11, dataRowCount, true); // L: Change (with negative parens)
-        }
-        
-        range.format.autofitColumns();
-        
-        // Reset selection to A1 so tab switching doesn't land on a random cell
-        targetSheet.getRange("A1").select();
-        await context.sync();
-    };
-
-    if (!hasExcelRuntime()) return;
-    if (contextArg) {
-        await runner(contextArg);
-    } else {
-        await Excel.run(runner);
-    }
+// REMOVED: syncPtoAnalysis() function - legacy code replaced by PTO_Review workflow
+// PTO_Analysis sheet is no longer used. All review functionality is in PTO_Review (Step 2).
+async function syncPtoAnalysis() {
+    console.warn("[DEPRECATED] syncPtoAnalysis() has been removed. Use generatePtoReview() instead.");
+    return;
 }
 
 function buildCsv(rows = []) {
