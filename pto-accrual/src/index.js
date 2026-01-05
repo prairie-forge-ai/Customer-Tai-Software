@@ -3225,6 +3225,7 @@ async function loadRosterRates(context) {
     
     const headers = rosterRange.values[0].map(h => String(h || "").toLowerCase().trim());
     const nameIdx = headers.findIndex(h => h === "employee_name" || h === "employee name" || h === "name");
+    const hourlyPrismhrIdx = headers.findIndex(h => h === "hourly_rate_prismhr" || h === "hourly rate prismhr");
     const hourlyIdx = headers.findIndex(h => h === "hourly_rate" || h === "hourly rate" || h === "pay_rate" || h === "pay rate");
     const salaryIdx = headers.findIndex(h => h === "salary_annual" || h === "annual salary" || h === "salary");
     const stdHoursIdx = headers.findIndex(h => h === "std_hours_per_year" || h === "standard hours");
@@ -3232,7 +3233,7 @@ async function loadRosterRates(context) {
     const rateSourceIdx = headers.findIndex(h => h === "rate_source" || h === "rate source");
     const deptIdx = headers.findIndex(h => h === "department" || h === "department_name" || h === "dept" || h.includes("department"));
     
-    console.log("[RateEngine] Roster columns found:", { nameIdx, hourlyIdx, salaryIdx, stdHoursIdx, manualIdx, rateSourceIdx, deptIdx });
+    console.log("[RateEngine] Roster columns found:", { nameIdx, hourlyPrismhrIdx, hourlyIdx, salaryIdx, stdHoursIdx, manualIdx, rateSourceIdx, deptIdx });
     
     if (nameIdx < 0) {
         console.warn("[RateEngine] No employee name column in roster");
@@ -3245,7 +3246,12 @@ async function loadRosterRates(context) {
         if (!name) continue;
         
         const key = normalizeEmployeeKey(name);
-        const hourlyRate = hourlyIdx >= 0 ? parseFloat(row[hourlyIdx]) || 0 : 0;
+        
+        // Priority: Hourly_Rate_Prismhr first, then fall back to Hourly_Rate
+        const hourlyRatePrismhr = hourlyPrismhrIdx >= 0 ? parseFloat(row[hourlyPrismhrIdx]) || 0 : 0;
+        const hourlyRateStandard = hourlyIdx >= 0 ? parseFloat(row[hourlyIdx]) || 0 : 0;
+        const hourlyRate = hourlyRatePrismhr > 0 ? hourlyRatePrismhr : hourlyRateStandard;
+        
         const salaryAnnual = salaryIdx >= 0 ? parseFloat(row[salaryIdx]) || 0 : 0;
         const stdHoursPerYear = stdHoursIdx >= 0 ? parseFloat(row[stdHoursIdx]) || DEFAULT_STD_HOURS_PER_YEAR : DEFAULT_STD_HOURS_PER_YEAR;
         const isManuallyManaged = manualIdx >= 0 ? String(row[manualIdx] || "").toUpperCase() === "TRUE" : false;
