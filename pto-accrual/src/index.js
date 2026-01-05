@@ -3303,15 +3303,17 @@ function applyDefaultRateToMissing(defaultRate = DEFAULT_HOURLY_RATE) {
 // PTO ARCHIVE SUMMARY - Prior Period Storage (mirrors PR_Archive_Summary)
 // =============================================================================
 
-// PTO Archive only needs essential columns for journal entry calculation:
+// PTO Archive stores essential columns for journal entry change calculation:
 // - Employee identification (ID + Name)
-// - Balance as of that period (for prior period comparison)
+// - Vested_Balance (hours) - for reference
+// - Calc_Liability (dollars) - for period-over-period change calculation
 // Note: loadPriorPeriodData() still supports reading legacy columns for backward compatibility
 const PTO_ARCHIVE_COLUMNS = [
     "Analysis_Date",
     "Employee_ID",          // Employee identifier (for matching)
     "Employee_Name",        // Human-readable name
-    "Vested_Balance"        // Balance as of this period - drives liability calculation
+    "Vested_Balance",       // Balance in hours (for reference)
+    "Calc_Liability"        // Calculated liability in dollars (for change calculation)
 ];
 
 const PTO_ARCHIVE_MAX_PERIODS = 5;
@@ -3412,9 +3414,9 @@ async function loadPriorPeriodData() {
             // Support both new (employee_id) and legacy (employee_key) column names
             const idIdx = headers.findIndex(h => h === "employee_id" || h === "employee_key");
             const nameIdx = headers.findIndex(h => h === "employee_name" || h.includes("employee"));
-            // Primary: use Vested_Balance for liability calculation
-            // Fallback: Calc_Liability or Liability_Amount for backwards compatibility
             const balanceIdx = headers.findIndex(h => h === "vested_balance" || h === "balance");
+            // Primary: use Calc_Liability (dollars) for change calculation
+            // Fallback: Liability_Amount for backwards compatibility
             const liabilityIdx = headers.findIndex(h => h === "calc_liability" || h === "liability_amount" || h.includes("liability"));
             const rateIdx = headers.findIndex(h => h === "pay_rate" || h.includes("rate"));
             
@@ -3435,9 +3437,9 @@ async function loadPriorPeriodData() {
                 if (!key) continue;
                 
                 const analysisDate = dateIdx >= 0 ? String(row[dateIdx] || "") : "";
-                // Use balance for liability calculation, fallback to legacy liability column
                 const balance = balanceIdx >= 0 ? parseFloat(row[balanceIdx]) || 0 : 0;
-                const liability = liabilityIdx >= 0 ? parseFloat(row[liabilityIdx]) || 0 : balance;
+                // Use Calc_Liability (dollars) for prior period comparison
+                const liability = liabilityIdx >= 0 ? parseFloat(row[liabilityIdx]) || 0 : 0;
                 const rate = rateIdx >= 0 ? parseFloat(row[rateIdx]) || 0 : 0;
                 
                 if (!employeePeriods.has(key)) {
