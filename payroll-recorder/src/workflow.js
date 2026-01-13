@@ -3404,7 +3404,7 @@ async function triggerAdaColumnAnalysis() {
         // Do not call fetch() directly for warehouse. Use columnMapperRequest().
         const result = await columnMapperRequest("analyze", {
             headers: uploadState.headers,
-            company_id: companyId || null,
+            crm_company_id: companyId || null,
             module: MODULE_KEY
         }, "analyzeColumns");
         
@@ -3688,7 +3688,7 @@ async function saveColumnMappings(companyId, mappings) {
         
         // Do not call fetch() directly for warehouse. Use columnMapperRequest().
         const result = await columnMapperRequest("save", {
-            company_id: payload.company_id,
+            crm_company_id: payload.company_id,
             module: payload.module,
             mappings: payload.mappings
         }, "saveMappings");
