@@ -5972,7 +5972,16 @@ function bindStepInteractions(stepId) {
     if (stepId === 3) {
         document.getElementById("je-run-btn")?.addEventListener("click", () => runJournalSummary());
         document.getElementById("je-save-btn")?.addEventListener("click", () => saveJournalSummary());
-        document.getElementById("je-create-btn")?.addEventListener("click", () => createJournalEntryDraftV2());
+        document.getElementById("je-create-btn")?.addEventListener("click", async () => {
+            console.log("[JE] Generate button clicked");
+            showToast("Starting journal entry generation...", "info", 2000);
+            try {
+                await createJournalEntryDraftV2();
+            } catch (error) {
+                console.error("[JE] Button click error:", error);
+                showToast(`Error: ${error.message || "Journal entry generation failed"}`, "error", 8000);
+            }
+        });
         document.getElementById("je-export-btn")?.addEventListener("click", () => exportJournalDraft());
         
         // Info modal toggle
