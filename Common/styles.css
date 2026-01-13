@@ -120,6 +120,8 @@ body {
   font-size: var(--font-size-base);
   color: var(--text-primary);
   background: linear-gradient(135deg, var(--pf-bg-gradient-start) 0%, var(--pf-bg-gradient-end) 100%);
+  background-attachment: fixed;
+  background-size: 100% 100%;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
