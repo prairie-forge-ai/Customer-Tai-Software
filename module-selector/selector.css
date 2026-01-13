@@ -3,7 +3,7 @@
 :root {
     --pf-text-secondary: #ff0000;
     --pf-accent: #ff0000;
-    --pf-surface: #ff0000;
+    --pf-surface: var(--glass-bg);
     --pf-surface-strong: #ff0000;
     --pf-border: rgba(245, 245, 247, 0.12);
 }
@@ -37,7 +37,8 @@ body {
     background: var(--pf-surface);
     border: 1px solid var(--pf-border);
     box-shadow: 0 20px 45px rgba(2, 6, 23, 0.45);
-    backdrop-filter: blur(18px);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .hero-card {

@@ -41,7 +41,7 @@
   --text-secondary: #ff0000;
   --text-tertiary: rgba(255, 255, 255, 0.65);
 
-  --surface-primary: #ff0000;
+  --surface-primary: var(--glass-bg);
   --surface-secondary: #ff0000;
   --surface-hover: #ff0000;
   --surface-subtle: rgba(255, 255, 255, 0.03);
@@ -74,6 +74,10 @@
   
   --pf-bg-gradient-start: #000000;
   --pf-bg-gradient-end: #2E30C9;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(5, 7, 24, 0.45);
+  --glass-blur: blur(20px);
 
   /* Spacing */
   --spacing-xs: 0.25rem;
