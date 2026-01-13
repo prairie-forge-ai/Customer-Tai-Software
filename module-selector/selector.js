@@ -666,76 +666,92 @@ async function init() {
         }
         
         // =====================================================================
-        // EMAIL AUTHORIZATION - PROMPT FOR EMAIL EVERY SESSION
+        // EMAIL AUTHORIZATION - SESSION-BASED (PERSISTS ACROSS MODULE SWITCHES)
         // =====================================================================
         console.log("[Init] Starting email authorization...");
         
-        let attempts = 0;
-        const maxAttempts = 3;
-        
-        while (attempts < maxAttempts) {
-            attempts++;
-            console.log(`[Init] Email authorization attempt ${attempts}/${maxAttempts}`);
+        // First, try bootstrap without email (will use session storage if available)
+        try {
+            const bootstrapResult = await bootstrapConfigSync({ force: true });
             
-            // Show email prompt dialog
-            const emailResult = await showEmailPrompt();
-            
-            if (!emailResult.success) {
-                console.log("[Init] User cancelled email authorization");
-                showAuthorizationError(
-                    "Access Denied",
-                    "This add-in requires email verification to function. Your access has been denied."
-                );
-                return; // Stop initialization - keep overlay visible
-            }
-            
-            console.log("[Init] Email entered, validating with bootstrap...");
-            
-            // Try bootstrap with the email
-            try {
-                const bootstrapResult = await bootstrapConfigSync({ 
-                    force: true,
-                    email: emailResult.email
-                });
+            if (bootstrapResult.success) {
+                console.log("[Init] ✓ Authorized via session storage!");
+                hideAuthLoadingOverlay(); // Show UI
+            } else if (bootstrapResult.needsEmailPrompt) {
+                // No session email - need to prompt
+                console.log("[Init] No session email found, prompting user...");
                 
-                console.log("[Init] Bootstrap result:", bootstrapResult);
+                let attempts = 0;
+                const maxAttempts = 3;
                 
-                if (bootstrapResult.success) {
-                    console.log("[Init] ✓ Email authorized and bootstrap successful!");
-                    hideAuthLoadingOverlay(); // Show UI
-                    break; // Exit loop, continue with init
-                } else if (bootstrapResult.unauthorized) {
-                    console.warn("[Init] ✗ Email not authorized:", bootstrapResult.reason);
+                while (attempts < maxAttempts) {
+                    attempts++;
+                    console.log(`[Init] Email authorization attempt ${attempts}/${maxAttempts}`);
                     
-                    if (attempts >= maxAttempts) {
+                    // Show email prompt dialog
+                    const emailResult = await showEmailPrompt();
+                    
+                    if (!emailResult.success) {
+                        console.log("[Init] User cancelled email authorization");
                         showAuthorizationError(
                             "Access Denied",
-                            "Your email address is not authorized to access this add-in. Please contact support if you believe this is an error."
+                            "This add-in requires email verification to function. Your access has been denied."
                         );
                         return; // Stop initialization - keep overlay visible
                     }
                     
-                    // Loop continues to show prompt again
-                    console.log("[Init] Will retry email authorization...");
+                    console.log("[Init] Email entered, validating with bootstrap...");
                     
-                } else {
-                    // Other bootstrap error (not authorization-related)
-                    console.error("[Init] Bootstrap failed:", bootstrapResult.error);
-                    showAuthorizationError(
-                        "Configuration Error",
-                        "Failed to load configuration from server. Please try reloading the add-in or contact support."
-                    );
-                    return; // Stop initialization - keep overlay visible
+                    // Try bootstrap with the email
+                    const retryResult = await bootstrapConfigSync({ 
+                        force: true,
+                        email: emailResult.email
+                    });
+                    
+                    if (retryResult.success) {
+                        console.log("[Init] ✓ Email authorized and bootstrap successful!");
+                        hideAuthLoadingOverlay(); // Show UI
+                        break; // Exit loop, continue with init
+                    } else if (retryResult.unauthorized) {
+                        console.warn("[Init] ✗ Email not authorized:", retryResult.reason);
+                        
+                        if (attempts >= maxAttempts) {
+                            showAuthorizationError(
+                                "Access Denied",
+                                "Your email address is not authorized to access this add-in. Please contact support if you believe this is an error."
+                            );
+                            return; // Stop initialization - keep overlay visible
+                        }
+                        
+                        // Loop continues to show prompt again
+                        console.log("[Init] Will retry email authorization...");
+                        
+                    } else {
+                        // Other bootstrap error (not authorization-related)
+                        console.error("[Init] Bootstrap failed:", retryResult.error);
+                        showAuthorizationError(
+                            "Configuration Error",
+                            "Failed to load configuration from server. Please try reloading the add-in or contact support."
+                        );
+                        return; // Stop initialization - keep overlay visible
+                    }
                 }
-                
-            } catch (bootstrapError) {
-                console.error("[Init] Bootstrap error:", bootstrapError);
+            } else {
+                // Other bootstrap error
+                console.error("[Init] Bootstrap failed:", bootstrapResult.error);
                 showAuthorizationError(
-                    "Initialization Error",
-                    "An unexpected error occurred during startup. Please try reloading the add-in."
+                    "Configuration Error",
+                    "Failed to load configuration from server. Please try reloading the add-in or contact support."
                 );
-                return; // Stop initialization - keep overlay visible
+                return;
             }
+        } catch (bootstrapError) {
+            console.error("[Init] Bootstrap error:", bootstrapError);
+            showAuthorizationError(
+                "Initialization Error",
+                "An unexpected error occurred during startup. Please try reloading the add-in."
+            );
+            return; // Stop initialization - keep overlay visible
         }
         
         console.log("[Init] ✓ Authorization complete, rendering UI...");

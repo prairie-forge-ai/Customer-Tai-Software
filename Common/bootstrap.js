@@ -18,12 +18,56 @@ import {
     getWarehouseAuthContext 
 } from "./warehouse.js";
 
+// ============================================================================
+// EMAIL VALIDATION
+// ============================================================================
+
+const SESSION_EMAIL_KEY = "pf_authorized_email";
+
+/**
+ * Get authorized email from session storage
+ * @returns {string|null}
+ */
+function getSessionEmail() {
+    try {
+        return sessionStorage.getItem(SESSION_EMAIL_KEY);
+    } catch (e) {
+        console.warn("[Session] Could not read sessionStorage:", e);
+        return null;
+    }
+}
+
+/**
+ * Store authorized email in session storage
+ * @param {string} email
+ */
+function setSessionEmail(email) {
+    try {
+        sessionStorage.setItem(SESSION_EMAIL_KEY, email);
+        console.log("[Session] Email stored for session");
+    } catch (e) {
+        console.warn("[Session] Could not write to sessionStorage:", e);
+    }
+}
+
+/**
+ * Clear authorized email from session storage
+ */
+function clearSessionEmail() {
+    try {
+        sessionStorage.removeItem(SESSION_EMAIL_KEY);
+        console.log("[Session] Email cleared from session");
+    } catch (e) {
+        console.warn("[Session] Could not clear sessionStorage:", e);
+    }
+}
+
 // =============================================================================
 // EMAIL AUTHORIZATION SYSTEM
 // =============================================================================
 
 /**
- * Validate email with Edge Function
+ * Validate email with server
  * @param {string} email - Email address to validate
  * @returns {Promise<{authorized: boolean, reason: string, error: string|null}>}
  */
@@ -126,31 +170,44 @@ export async function bootstrapConfigSync(options = {}) {
     // ========================================================================
     console.log("\n[Bootstrap] ▶ STAGE 0: EMAIL AUTHORIZATION");
     
-    if (!email) {
-        console.log("[Bootstrap] ❌ No email provided");
+    // Check session storage first
+    const sessionEmail = getSessionEmail();
+    let authorizedEmail = email;
+    
+    if (sessionEmail) {
+        console.log("[Bootstrap] ✓ Using email from session storage");
+        authorizedEmail = sessionEmail;
+    } else if (!email) {
+        console.log("[Bootstrap] ❌ No email provided and no session email");
         return {
             success: false,
             error: "Email authorization required",
             stage: "authorization",
             needsEmailPrompt: true
         };
+    } else {
+        // New email provided - validate it
+        console.log("[Bootstrap] Validating new email...");
+        const emailValidation = await validateEmailWithServer(email);
+        
+        if (!emailValidation.authorized) {
+            console.log("[Bootstrap] ❌ Email not authorized:", emailValidation.reason);
+            return {
+                success: false,
+                error: emailValidation.error || "Email not authorized",
+                stage: "authorization",
+                unauthorized: true,
+                reason: emailValidation.reason
+            };
+        }
+        
+        console.log("[Bootstrap] ✓ Email authorized:", email, "| Reason:", emailValidation.reason);
+        
+        // Store in session for future use
+        setSessionEmail(email);
     }
     
-    // Validate email with server
-    const emailValidation = await validateEmailWithServer(email);
-    
-    if (!emailValidation.authorized) {
-        console.log("[Bootstrap] ❌ Email not authorized:", emailValidation.reason);
-        return {
-            success: false,
-            error: emailValidation.error || "Email not authorized",
-            stage: "authorization",
-            unauthorized: true,
-            reason: emailValidation.reason
-        };
-    }
-    
-    console.log("[Bootstrap] ✓ Email authorized:", email, "| Reason:", emailValidation.reason);
+    console.log("[Bootstrap] ✓ Using authorized email:", authorizedEmail);
     // ========================================================================
     
     // ALWAYS refresh auth before bootstrap
