@@ -38,110 +38,131 @@ function hideAuthLoadingOverlay() {
  * @param {string} message
  */
 function showAuthorizationError(title, message) {
-    const overlay = document.getElementById('authLoadingOverlay');
-    if (!overlay) return;
+    const loadingState = document.getElementById('authLoadingState');
+    const emailState = document.getElementById('authEmailState');
+    const errorState = document.getElementById('authErrorState');
+    const errorTitle = document.getElementById('authErrorTitle');
+    const errorMessage = document.getElementById('authErrorMessage');
     
-    // Replace loading spinner with error message
-    overlay.innerHTML = `
-        <div style="
-            max-width: 400px;
-            padding: 32px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            text-align: center;
-        ">
-            <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
-            <h2 style="
-                margin: 0 0 16px 0;
-                color: #323130;
-                font-size: 20px;
-                font-weight: 600;
-            ">${title}</h2>
-            <p style="
-                margin: 0 0 24px 0;
-                color: #605e5c;
-                font-size: 14px;
-                line-height: 1.6;
-            ">${message}</p>
-            <p style="
-                margin: 0;
-                padding-top: 20px;
-                border-top: 1px solid #edebe9;
-                color: #8a8886;
-                font-size: 13px;
-            ">
-                Need assistance? Contact <a href="mailto:connect@prairieforge.ai" style="color: #0078d4;">connect@prairieforge.ai</a>
-            </p>
-        </div>
-    `;
+    if (!errorState || !errorTitle || !errorMessage) return;
+    
+    // Hide other states
+    if (loadingState) loadingState.style.display = 'none';
+    if (emailState) emailState.style.display = 'none';
+    
+    // Update error content
+    errorTitle.textContent = title;
+    errorMessage.textContent = message;
+    
+    // Show error state
+    errorState.style.display = 'block';
     
     console.log("[UI] Authorization error displayed");
 }
 
 /**
- * Show email prompt dialog
+ * Show email prompt inline (no popup)
  * @returns {Promise<{success: boolean, email: string|null}>}
  */
 async function showEmailPrompt() {
     return new Promise((resolve) => {
-        // Build dialog URL
-        const baseUrl = window.location.origin + window.location.pathname.replace('/index.html', '');
-        const dialogUrl = `${baseUrl}/email-prompt.html`;
+        console.log("[EmailPrompt] Showing inline email prompt");
         
-        console.log("[EmailPrompt] Opening:", dialogUrl);
+        const loadingState = document.getElementById('authLoadingState');
+        const emailState = document.getElementById('authEmailState');
+        const emailInput = document.getElementById('authEmailInput');
+        const errorMessage = document.getElementById('authErrorMessage');
+        const verifyButton = document.getElementById('authVerifyButton');
+        const cancelButton = document.getElementById('authCancelButton');
         
-        // Show dialog
-        Office.context.ui.displayDialogAsync(
-            dialogUrl,
-            { 
-                height: 60, 
-                width: 35, 
-                displayInIframe: false 
-            },
-            (result) => {
-                if (result.status === Office.AsyncResultStatus.Failed) {
-                    console.error("[EmailPrompt] Failed to open:", result.error);
-                    resolve({ success: false, email: null });
-                    return;
-                }
-                
-                const dialog = result.value;
-                
-                // Handle messages from dialog
-                dialog.addEventHandler(
-                    Office.EventType.DialogMessageReceived, 
-                    async (arg) => {
-                        dialog.close();
-                        
-                        try {
-                            const response = JSON.parse(arg.message);
-                            console.log("[EmailPrompt] Response:", response.success ? "✓" : "✗");
-                            
-                            if (response.success && response.email) {
-                                resolve({ success: true, email: response.email });
-                            } else {
-                                resolve({ success: false, email: null });
-                            }
-                        } catch (error) {
-                            console.error("[EmailPrompt] Parse error:", error);
-                            resolve({ success: false, email: null });
-                        }
-                    }
-                );
-                
-                // Handle dialog closed by user
-                dialog.addEventHandler(
-                    Office.EventType.DialogEventReceived,
-                    (arg) => {
-                        console.log("[EmailPrompt] Event:", arg.error);
-                        if (arg.error === 12006) { // User closed dialog
-                            resolve({ success: false, email: null });
-                        }
-                    }
-                );
+        // Hide loading, show email prompt
+        if (loadingState) loadingState.style.display = 'none';
+        if (emailState) emailState.style.display = 'block';
+        
+        // Focus input
+        setTimeout(() => {
+            if (emailInput) emailInput.focus();
+        }, 100);
+        
+        // Handle Enter key
+        const handleKeyPress = (e) => {
+            if (e.key === 'Enter') {
+                handleVerify();
             }
-        );
+        };
+        
+        // Handle input to hide error
+        const handleInput = () => {
+            if (errorMessage) errorMessage.classList.remove('show');
+        };
+        
+        // Handle verify
+        const handleVerify = () => {
+            const email = emailInput.value.trim().toLowerCase();
+            
+            // Basic validation
+            if (!email) {
+                showError('Please enter an email address.');
+                return;
+            }
+            
+            // Email format validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showError('Please enter a valid email address.');
+                return;
+            }
+            
+            // Hide error
+            if (errorMessage) errorMessage.classList.remove('show');
+            
+            // Disable button and show loading
+            if (verifyButton) {
+                verifyButton.disabled = true;
+                verifyButton.innerHTML = '<span class="auth-button-loading"></span>Verifying...';
+            }
+            
+            // Clean up event listeners
+            cleanup();
+            
+            // Resolve with email
+            setTimeout(() => {
+                resolve({ success: true, email: email });
+            }, 300);
+        };
+        
+        // Handle cancel
+        const handleCancel = () => {
+            cleanup();
+            resolve({ success: false, email: null });
+        };
+        
+        // Show error message
+        const showError = (message) => {
+            if (errorMessage) {
+                errorMessage.textContent = message;
+                errorMessage.classList.add('show');
+            }
+            if (emailInput) emailInput.focus();
+        };
+        
+        // Cleanup function
+        const cleanup = () => {
+            if (emailInput) {
+                emailInput.removeEventListener('keypress', handleKeyPress);
+                emailInput.removeEventListener('input', handleInput);
+            }
+            if (verifyButton) verifyButton.removeEventListener('click', handleVerify);
+            if (cancelButton) cancelButton.removeEventListener('click', handleCancel);
+        };
+        
+        // Attach event listeners
+        if (emailInput) {
+            emailInput.addEventListener('keypress', handleKeyPress);
+            emailInput.addEventListener('input', handleInput);
+        }
+        if (verifyButton) verifyButton.addEventListener('click', handleVerify);
+        if (cancelButton) cancelButton.addEventListener('click', handleCancel);
     });
 }
 

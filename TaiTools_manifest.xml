@@ -79,7 +79,6 @@
       </bt:Images>
       <bt:Urls>
         <bt:Url id="Taskpane.Url" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
-        <bt:Url id="EmailPrompt.Url" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/email-prompt.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="Group.Label" DefaultValue="ForgeSuite"/>
