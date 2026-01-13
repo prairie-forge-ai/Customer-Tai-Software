@@ -170,7 +170,9 @@ function showConfirm(message, options = {}) {
                     to { opacity: 1; transform: scale(1) translateY(0); }
                 }
                 .pf-confirm-dialog {
-                    background: linear-gradient(145deg, rgba(30, 30, 50, 0.95), rgba(20, 20, 35, 0.98));
+                    background: var(--glass-bg);
+                    backdrop-filter: var(--glass-blur);
+                    -webkit-backdrop-filter: var(--glass-blur);
                     border: 1px solid rgba(255, 255, 255, 0.08);
                     color: white;
                     padding: 28px 32px;
