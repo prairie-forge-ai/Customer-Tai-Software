@@ -27,7 +27,7 @@ const INSTALLATION_KEY = "pf_install_9f3c2b1a_20251212";
 // Field mapping: API response key -> SS_PF_Config field name
 const FIELD_MAP = {
     "installation_key": "SS_Installation_Key",
-    "company_id": "SS_Company_ID",
+    "crm_company_id": "SS_Company_ID",
     "ss_company_name": "SS_Company_Name",
     "ss_accounting_software": "SS_Accounting_Software",
     "pto_payroll_provider": "PTO_Payroll_Provider",
@@ -35,7 +35,7 @@ const FIELD_MAP = {
 };
 
 // Required fields that MUST exist in response
-const REQUIRED_FIELDS = ["company_id", "ss_company_name"];
+const REQUIRED_FIELDS = ["crm_company_id", "ss_company_name"];
 
 // Cache
 let bootstrapCache = null;

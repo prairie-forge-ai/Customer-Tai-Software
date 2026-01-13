@@ -52,7 +52,7 @@ const corsHeaders = {
 
 interface ColumnMapperRequest {
   headers?: string[];
-  company_id?: string | null;
+  crm_company_id?: string | null;
   module?: string;
   mappings?: Array<{ raw_header: string; target: string; kind?: MappingKind }>;
   action: "analyze" | "save" | "get_options" | "get_expense_taxonomy" | "bootstrap" | "debug" | "get_dimensions";
@@ -201,7 +201,7 @@ async function getSavedMappings(
   const results = new Map<string, MappingResult>();
   
   if (!companyId) {
-    console.log("[Saved] No company_id provided, skipping saved mappings lookup");
+    console.log("[Saved] No crm_company_id provided, skipping saved mappings lookup");
     return results;
   }
   
@@ -230,7 +230,7 @@ async function getSavedMappings(
     let { data, error } = await supabase
       .from("ada_customer_column_mappings")
       .select("raw_header, pf_column_name, mapping_type, confidence, include_in_matrix, expense_bucket")
-      .eq("company_id", companyId)
+      .eq("crm_company_id", companyId)
       .eq("module", module);
     
     if (error) {
@@ -242,7 +242,7 @@ async function getSavedMappings(
         const fallbackResult = await supabase
           .from("ada_customer_column_mappings")
           .select("raw_header, pf_column_name, mapping_type, confidence")
-          .eq("company_id", companyId)
+          .eq("crm_company_id", companyId)
           .eq("module", module);
         
         if (fallbackResult.error) {
@@ -491,7 +491,7 @@ async function getGLMappings(
     const { data, error } = await supabase
       .from("ada_customer_gl_mappings")
       .select("pf_column_name, gl_account, gl_account_name, priority")
-      .eq("company_id", companyId)
+      .eq("crm_company_id", companyId)
       .eq("module", module)
       .in("pf_column_name", targets)
       .order("priority", { ascending: false });
@@ -576,7 +576,7 @@ async function saveMappings(
       const { error } = await supabase
         .from("ada_customer_column_mappings")
         .upsert({
-          company_id: companyId,
+          crm_company_id: companyId,
           module: module,
           raw_header: mapping.raw_header,
           pf_column_name: mapping.target,  // CANONICAL: only semantic key
@@ -585,7 +585,7 @@ async function saveMappings(
           source: "ada_confirmed",
           updated_at: new Date().toISOString()
         }, {
-          onConflict: "company_id,module,raw_header"
+          onConflict: "crm_company_id,module,raw_header"
         });
       
       if (error) {
@@ -620,7 +620,7 @@ serve(async (req) => {
   
   try {
     const body: ColumnMapperRequest = await req.json();
-    const { headers, company_id, module = "payroll-recorder", mappings, action } = body;
+    const { headers, crm_company_id, module = "payroll-recorder", mappings, action } = body;
     
     const supabase = getSupabaseClient();
     
@@ -630,7 +630,7 @@ serve(async (req) => {
     if (action === "debug") {
       const debugInfo: Record<string, unknown> = {
         version: VERSION,
-        company_id,
+        crm_company_id,
         module,
         headers_count: headers?.length || 0,
         supabase_url: SUPABASE_URL,
@@ -642,7 +642,7 @@ serve(async (req) => {
         const { data, error, count } = await supabase
           .from("ada_customer_column_mappings")
           .select("*", { count: "exact" })
-          .eq("company_id", company_id || "")
+          .eq("crm_company_id", crm_company_id || "")
           .eq("module", module);
         
         debugInfo.saved_mappings_error = error?.message || null;
@@ -684,7 +684,7 @@ serve(async (req) => {
         );
       }
       
-      console.log(`[Analyze] ${headers.length} headers, company: ${company_id || "none"}, module: ${module}`);
+      console.log(`[Analyze] ${headers.length} headers, company: ${crm_company_id || "none"}, module: ${module}`);
       
       // Filter out blocked headers entirely - they won't appear in results
       // NOTE: Header filtering is now database-driven via include_in_matrix
@@ -698,8 +698,8 @@ serve(async (req) => {
       // Priority 1: Saved company mappings (these always win)
       // =====================================================================
       let savedMappings = new Map<string, MappingResult>();
-      if (company_id) {
-        savedMappings = await getSavedMappings(supabase, company_id, module, filteredHeaders);
+      if (crm_company_id) {
+        savedMappings = await getSavedMappings(supabase, crm_company_id, module, filteredHeaders);
         for (const [header, mapping] of savedMappings) {
           // NOTE: BLOCKED_TARGETS check removed - include_in_matrix field handles this
           resultMappings.push(mapping);
@@ -793,13 +793,13 @@ serve(async (req) => {
       // =====================================================================
       // Enrich amount mappings with GL account data
       // =====================================================================
-      if (company_id) {
+      if (crm_company_id) {
         const targets = resultMappings
           .filter(m => m.target && m.kind === "amount")
           .map(m => m.target as string);
         
         if (targets.length > 0) {
-          const glMappings = await getGLMappings(supabase, company_id, module, targets);
+          const glMappings = await getGLMappings(supabase, crm_company_id, module, targets);
           
           for (const mapping of resultMappings) {
             if (mapping.target && mapping.kind === "amount" && glMappings.has(mapping.target)) {
@@ -850,9 +850,9 @@ serve(async (req) => {
     // Action: SAVE
     // ========================================================================
     if (action === "save") {
-      if (!company_id) {
+      if (!crm_company_id) {
         return new Response(
-          JSON.stringify({ error: "company_id is required for saving mappings" }),
+          JSON.stringify({ error: "crm_company_id is required for saving mappings" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -864,9 +864,9 @@ serve(async (req) => {
         );
       }
       
-      console.log(`[Save] Saving ${mappings.length} mappings for company: ${company_id}, module: ${module}`);
+      console.log(`[Save] Saving ${mappings.length} mappings for company: ${crm_company_id}, module: ${module}`);
       
-      const result = await saveMappings(supabase, company_id, module, mappings);
+      const result = await saveMappings(supabase, crm_company_id, module, mappings);
       
       return new Response(
         JSON.stringify(result),
@@ -1117,7 +1117,7 @@ serve(async (req) => {
       try {
         const { data, error } = await supabase
           .from("ada_addin_installations")
-          .select("company_id, ss_company_name, ss_accounting_software, pto_payroll_provider, pr_payroll_provider")
+          .select("crm_company_id, ss_company_name, ss_accounting_software, pto_payroll_provider, pr_payroll_provider")
           .eq("installation_key", installation_key)
           .single();
         
@@ -1129,12 +1129,12 @@ serve(async (req) => {
           );
         }
         
-        console.log(`[Bootstrap] Found company: ${data.ss_company_name} (${data.company_id})`);
+        console.log(`[Bootstrap] Found company: ${data.ss_company_name} (${data.crm_company_id})`);
         
         return new Response(
           JSON.stringify({
             success: true,
-            company_id: data.company_id,
+            crm_company_id: data.crm_company_id,
             ss_company_name: data.ss_company_name,
             ss_accounting_software: data.ss_accounting_software,
             pto_payroll_provider: data.pto_payroll_provider,

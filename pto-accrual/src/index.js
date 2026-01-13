@@ -654,7 +654,7 @@ const installationState = {
     loading: false,
     error: null,
     // From SS_PF_Config (originally from ada_addin_installations via bootstrap)
-    company_id: null,
+    crm_company_id: null,
     ss_company_name: null,
     pto_payroll_provider: null,
     ss_accounting_software: null,
@@ -687,7 +687,7 @@ async function loadInstallationConfig() {
         console.log("[PTO] Config values loaded:", configValues);
         
         // Store values in state
-        installationState.company_id = configValues?.SS_Company_ID || null;
+        installationState.crm_company_id = configValues?.SS_Company_ID || null;
         installationState.ss_company_name = configValues?.SS_Company_Name || null;
         installationState.pto_payroll_provider = configValues?.PTO_Payroll_Provider || null;
         installationState.ss_accounting_software = configValues?.SS_Accounting_Software || null;
@@ -699,7 +699,7 @@ async function loadInstallationConfig() {
         installationState.loading = false;
         
         console.log("[PTO] Installation config loaded successfully:", {
-            company_id: installationState.company_id,
+            crm_company_id: installationState.crm_company_id,
             company_name: installationState.ss_company_name,
             provider: installationState.pto_payroll_provider,
             isValid: installationState.isValid
@@ -717,13 +717,13 @@ async function loadInstallationConfig() {
 
 /**
  * Validate installation configuration
- * Fail fast if company_id is missing
+ * Fail fast if crm_company_id is missing
  */
 function validateInstallation() {
     installationState.validationErrors = [];
     
-    // Check company_id
-    if (!installationState.company_id) {
+    // Check crm_company_id
+    if (!installationState.crm_company_id) {
         installationState.validationErrors.push(
             "Company ID is not configured. Please open Module Selector to sync your configuration."
         );
@@ -1539,7 +1539,7 @@ function renderConfigView() {
     
     // Auto-loaded from installation (read-only)
     const companyName = installationState.ss_company_name || getConfigValue(PTO_CONFIG_FIELDS.companyName) || "";
-    const companyId = installationState.company_id || "";
+    const companyId = installationState.crm_company_id || "";
     const ptoProvider = installationState.pto_payroll_provider || "";
     const accountingSoftware = installationState.ss_accounting_software || getConfigValue(PTO_CONFIG_FIELDS.accountingSoftware) || "";
     
@@ -4603,7 +4603,7 @@ async function loadCustomerColumnMappings(companyId, module) {
     console.log(`[PTOUpload] Loading customer column mappings for company=${companyId}, module=${module}`);
     
     try {
-        const apiUrl = `${SUPABASE_URL}/rest/v1/ada_customer_column_mappings?company_id=eq.${encodeURIComponent(companyId)}&module=eq.${encodeURIComponent(module)}&select=raw_header,pf_column_name,include_in_matrix`;
+        const apiUrl = `${SUPABASE_URL}/rest/v1/ada_customer_column_mappings?crm_company_id=eq.${encodeURIComponent(companyId)}&module=eq.${encodeURIComponent(module)}&select=raw_header,pf_column_name,include_in_matrix`;
         
         const response = await fetch(apiUrl, {
             headers: {
@@ -5638,7 +5638,7 @@ async function loadPtoGLMappings(companyId) {
     console.log("[PTO-JE] Loading GL mappings for company:", companyId);
     
     try {
-        const apiUrl = `${SUPABASE_URL}/rest/v1/ada_customer_gl_mappings?company_id=eq.${companyId}&module=eq.${PTO_MODULE_KEY}&pf_column_name=eq.${PTO_GL_COLUMN_NAME}&select=department,gl_account,gl_account_name`;
+        const apiUrl = `${SUPABASE_URL}/rest/v1/ada_customer_gl_mappings?crm_company_id=eq.${companyId}&module=eq.${PTO_MODULE_KEY}&pf_column_name=eq.${PTO_GL_COLUMN_NAME}&select=department,gl_account,gl_account_name`;
         
         const response = await fetch(apiUrl, {
             headers: {
@@ -5757,7 +5757,7 @@ async function callAdaApi(promptOrParams, context, messageHistory) {
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnY2lxd3p3YWNhZXNxamFvYWRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzODgzMTIsImV4cCI6MjA3NTk2NDMxMn0.DsoUTHcm1Uv65t4icaoD0Tzf3ULIU54bFnoYw8hHScE";
 
     // Get customer ID from installation state
-    const customerId = installationState.company_id;
+    const customerId = installationState.crm_company_id;
 
     try {
         console.log("[Ada] Calling copilot API...", { module: PTO_MODULE_KEY, function: functionContext || "analysis", customerId: customerId ? "set" : "not set" });
@@ -5883,7 +5883,7 @@ async function createJournalDraft() {
     
     try {
         // Get company_id from installation state
-        const companyId = installationState.company_id;
+        let companyId = installationState.crm_company_id;
         if (!companyId) {
             throw new Error("Company ID not found. Please check your installation configuration.");
         }
