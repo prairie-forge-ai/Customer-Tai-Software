@@ -72,7 +72,6 @@
   --white-85: rgba(255, 255, 255, 0.85);
   --white-90: rgba(255, 255, 255, 0.9);
   
-  --pf-bg: linear-gradient(135deg, #000000 0%, #2E30C9 100%);
   --pf-bg-gradient-start: #000000;
   --pf-bg-gradient-end: #2E30C9;
 
