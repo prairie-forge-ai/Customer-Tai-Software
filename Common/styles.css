@@ -76,7 +76,7 @@
   --pf-bg-gradient-end: #2E30C9;
 
   /* Glassmorphism */
-  --glass-bg: rgba(5, 7, 24, 0.45);
+  --glass-bg: rgba(5, 7, 24, 0.25);
   --glass-blur: blur(20px);
 
   /* Spacing */
