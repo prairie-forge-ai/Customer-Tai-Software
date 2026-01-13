@@ -30,7 +30,7 @@ body {
     padding: 24px;
     text-align: center;
     border-radius: 24px;
-    background: rgba(5, 7, 24, 0.75);
+    background: var(--surface-primary);
     border: 1px solid var(--pf-border);
     color: var(--pf-muted);
     box-shadow: 0 25px 45px rgba(0, 0, 0, 0.45);
@@ -40,7 +40,7 @@ body {
     border-radius: 24px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 12px 14px 10px;
-    background: rgba(5, 7, 24, 0.45);
+    background: var(--surface-primary);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     display: flex;
@@ -1792,7 +1792,7 @@ body {
 /* Column Mapping Card */
 .pf-mapping-card {
     border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(5, 7, 24, 0.45);
+    background: var(--surface-primary);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -2475,7 +2475,7 @@ body {
    -------------------------------------------------------------------------- */
 
 .pf-ada-insights-panel {
-    background: rgba(5, 7, 24, 0.45);
+    background: var(--surface-primary);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
