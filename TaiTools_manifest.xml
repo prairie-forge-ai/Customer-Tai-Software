@@ -6,13 +6,13 @@
            xsi:type="TaskPaneApp">
 
   <Id>16b2f680-b42c-4f45-ab67-af2d2c3c9d15</Id>
-  <Version>2.3.1.0</Version>
+  <Version>2.3.2.0</Version>
   <ProviderName>Prairie Forge LLC</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="TaiTools"/>
   <Description DefaultValue="TaiTools Excel add-in"/>
-  <IconUrl DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-80.png"/>
-  <HighResolutionIconUrl DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/assets/icon-80.png"/>
+  <IconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Tai%20Software/TaiTools%20Manifest/App%20Store/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://assets.prairieforge.ai/storage/v1/object/public/Other%20Public%20Material/Tai%20Software/TaiTools%20Manifest/App%20Store/icon-64.png"/>
   <SupportUrl DefaultValue="https://prairieforge.ai/support/forgesuite-addins"/>
 
   <AppDomains>
