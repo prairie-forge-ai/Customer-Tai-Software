@@ -53,8 +53,8 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 20% -10%, rgba(53, 51, 205, 0.55), transparent 45%),
-                radial-gradient(circle at 80% -20%, rgba(53, 51, 205, 0.35), transparent 40%);
+    background: radial-gradient(circle at 20% -10%, var(--primary-color), transparent 45%),
+                radial-gradient(circle at 80% -20%, var(--primary-color), transparent 40%);
     opacity: 0.7;
     pointer-events: none;
     border-radius: inherit;
@@ -416,7 +416,7 @@ body {
     padding: 12px 24px;
     border-radius: 12px;
     border: none;
-    background: linear-gradient(135deg, var(--pf-accent), #2725A5);
+    background: linear-gradient(135deg, var(--pf-accent), var(--primary-hover));
     color: var(--pf-text-primary);
     font-size: 14px;
     font-weight: 600;
@@ -445,7 +445,7 @@ body {
 }
 
 .admin-btn--primary {
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: linear-gradient(135deg, var(--success-color), var(--success-color));
 }
 
 .admin-btn--primary:hover {
@@ -488,7 +488,7 @@ body {
 }
 
 .admin-mode-btn.active {
-    background: rgba(53, 51, 205, 0.15);
+    background: var(--primary-color);
     border-color: var(--pf-accent);
     color: var(--pf-text-primary);
 }
@@ -565,9 +565,9 @@ body {
 }
 
 .builder-progress-step.completed .progress-num {
-    background: #10b981;
+    background: var(--success-color);
     color: white;
-    border-color: #10b981;
+    border-color: var(--success-color);
 }
 
 .builder-progress-step.completed .progress-label {
@@ -642,12 +642,12 @@ body {
 
 .builder-choice-btn:hover {
     border-color: var(--pf-accent);
-    background: rgba(53, 51, 205, 0.08);
+    background: var(--primary-color);
 }
 
 .builder-choice-btn.selected {
     border-color: var(--pf-accent);
-    background: rgba(53, 51, 205, 0.15);
+    background: var(--primary-color);
 }
 
 .builder-choice-btn svg {
@@ -768,7 +768,7 @@ body {
 
 .builder-step-item.selected {
     border-color: var(--pf-accent);
-    background: rgba(53, 51, 205, 0.1);
+    background: var(--primary-color);
 }
 
 .builder-step-item input[type="checkbox"] {
@@ -884,15 +884,15 @@ body {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #10b981;
+    background: var(--success-color);
 }
 
 .tab-pill .tab-status.pending {
-    background: #f59e0b;
+    background: var(--warning-color);
 }
 
 .tab-pill .tab-status.missing {
-    background: #ef4444;
+    background: var(--error-color);
 }
 
 .tab-add-btn {
@@ -1092,7 +1092,7 @@ body {
     display: flex;
     gap: 24px;
     padding: 20px;
-    background: linear-gradient(135deg, rgba(53, 51, 205, 0.1), rgba(53, 51, 205, 0.05));
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-color));
     border-radius: 12px;
     margin-bottom: 16px;
 }
@@ -1132,7 +1132,7 @@ body {
 .builder-create-progress .progress-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, var(--pf-accent), #10b981);
+    background: linear-gradient(90deg, var(--pf-accent), var(--success-color));
     border-radius: 4px;
     transition: width 0.3s ease;
 }
@@ -1239,8 +1239,8 @@ body {
 }
 
 .admin-tab.active {
-    background: rgba(53, 51, 205, 0.2);
-    border-color: rgba(53, 51, 205, 0.4);
+    background: var(--primary-color);
+    border-color: var(--primary-color);
     color: var(--pf-text-primary);
 }
 
