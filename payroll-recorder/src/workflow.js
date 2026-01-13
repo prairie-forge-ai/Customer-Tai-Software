@@ -98,7 +98,9 @@ function showToast(message, type = "info", duration = 4000) {
                 top: 20px;
                 left: 50%;
                 transform: translateX(-50%);
-                background: #1a1a2e;
+                background: var(--glass-bg);
+                backdrop-filter: var(--glass-blur);
+                -webkit-backdrop-filter: var(--glass-blur);
                 color: white;
                 padding: 16px 20px;
                 border-radius: 8px;
@@ -165,7 +167,9 @@ function showSaveCompletePrompt() {
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                background: linear-gradient(145deg, rgba(30, 30, 50, 0.98), rgba(20, 20, 35, 0.99));
+                background: var(--glass-bg);
+                backdrop-filter: var(--glass-blur);
+                -webkit-backdrop-filter: var(--glass-blur);
                 border: 1px solid rgba(99, 102, 241, 0.3);
                 color: white;
                 padding: 32px 40px;
