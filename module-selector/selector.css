@@ -1,8 +1,6 @@
 /* Font imports are handled in Common/styles.css */
 
 :root {
-    --pf-bg-start: #ff0000;
-    --pf-bg-end: #ff0000;
     --pf-text-primary: #ff0000;
     --pf-text-secondary: #ff0000;
     --pf-accent: #ff0000;
@@ -19,7 +17,7 @@
 
 body {
     font-family: var(--font-family);
-    background: linear-gradient(145deg, var(--pf-bg-start), var(--pf-bg-end));
+    background: linear-gradient(135deg, var(--pf-bg-gradient-start) 0%, var(--pf-bg-gradient-end) 100%);
     color: var(--pf-text-primary);
     min-height: 100vh;
     padding: 12px 24px 24px;
