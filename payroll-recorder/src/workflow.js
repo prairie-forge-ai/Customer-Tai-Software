@@ -3666,7 +3666,7 @@ async function applyMappingsAndImport() {
  * Payload format:
  * {
  *   action: "save",
- *   company_id: "<SS_Company_ID>",
+ *   crm_company_id: "<SS_Company_ID>",
  *   module: "payroll-recorder",
  *   mappings: [{ raw_header, target, kind }, ...]
  * }
