@@ -16,14 +16,7 @@
 }
 
 body {
-    margin: 0;
     padding: 24px;
-    min-height: 100vh;
-    font-family: var(--font-family);
-    background: linear-gradient(135deg, var(--pf-bg-gradient-start) 0%, var(--pf-bg-gradient-end) 100%);
-    background-attachment: fixed;
-    background-size: 100% 100%;
-    color: var(--pf-text);
 }
 
 #loading {
