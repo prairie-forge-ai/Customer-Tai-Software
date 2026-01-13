@@ -12,52 +12,52 @@
 /* CSS Variables (Design Tokens) */
 :root {
   /* Colors - Standardized across all modules */
-  --primary-color: #2E30C9;
-  --primary-hover: #2725A5;
-  --primary-active: #1E1C70;
-  --pf-accent: #2E30C9;
-  --pf-accent-dark: #2725A5;
+  --primary-color: #ff0000;
+  --primary-hover: #ff0000;
+  --primary-active: #ff0000;
+  --pf-accent: #ff0000;
+  --pf-accent-dark: #ff0000;
   --pf-hover-shadow: 0 20px 35px rgba(46, 48, 201, 0.25);
 
-  --success-color: #10B981;
-  --success-bg: #D1FAE5;
-  --success-border: #6EE7B7;
+  --success-color: #ff0000;
+  --success-bg: #ff0000;
+  --success-border: #ff0000;
 
-  --error-color: #EF4444;
-  --error-bg: #FEE2E2;
-  --error-border: #FCA5A5;
+  --error-color: #ff0000;
+  --error-bg: #ff0000;
+  --error-border: #ff0000;
 
-  --warning-color: #F59E0B;
-  --warning-bg: #FEF3C7;
-  --warning-border: #FCD34D;
+  --warning-color: #ff0000;
+  --warning-bg: #ff0000;
+  --warning-border: #ff0000;
 
-  --info-color: #3B82F6;
-  --info-bg: #DBEAFE;
-  --info-border: #93C5FD;
-  --info-text: #1E40AF;
+  --info-color: #ff0000;
+  --info-bg: #ff0000;
+  --info-border: #ff0000;
+  --info-text: #ff0000;
 
   /* Neutral Colors - Standardized to match module selector */
-  --text-primary: #F5F5F7;
-  --text-secondary: #C9C9D6;
+  --text-primary: #ff0000;
+  --text-secondary: #ff0000;
   --text-tertiary: rgba(255, 255, 255, 0.65);
 
   --surface-primary: rgba(255, 0, 0, 0.82);
-  --surface-secondary: rgba(9, 12, 38, 0.88);
-  --surface-hover: rgba(53, 51, 205, 0.2);
+  --surface-secondary: rgba(255, 0, 0, 0.88);
+  --surface-hover: rgba(255, 0, 0, 0.2);
   --surface-subtle: rgba(255, 255, 255, 0.03);
   --surface-subtle-hover: rgba(255, 255, 255, 0.06);
   --surface-input: rgba(255, 255, 255, 0.04);
-  --surface-modal: rgba(8, 10, 35, 0.95);
-  --surface-modal-footer: rgba(0, 0, 0, 0.2);
-  --surface-toast: rgba(15, 23, 42, 0.85);
+  --surface-modal: rgba(255, 0, 0, 0.95);
+  --surface-modal-footer: rgba(255, 0, 0, 0.2);
+  --surface-toast: rgba(255, 0, 0, 0.85);
 
   --border-color: rgba(245, 245, 247, 0.12);
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(245, 245, 247, 0.18);
   --border-strong: rgba(245, 245, 247, 0.2);
-  --border-focus: #2E30C9;
+  --border-focus: #ff0000;
   
-  --overlay-dark: rgba(0, 0, 0, 0.6);
+  --overlay-dark: rgba(255, 0, 0, 0.6);
   
   --white-10: rgba(255, 255, 255, 0.1);
   --white-15: rgba(255, 255, 255, 0.15);
@@ -73,8 +73,8 @@
   --white-90: rgba(255, 255, 255, 0.9);
   
   --pf-bg: #ff0000;
-  --pf-bg-gradient-start: #000000;
-  --pf-bg-gradient-end: #2E30C9;
+  --pf-bg-gradient-start: #ff0000;
+  --pf-bg-gradient-end: #ff0000;
 
   /* Spacing */
   --spacing-xs: 0.25rem;
