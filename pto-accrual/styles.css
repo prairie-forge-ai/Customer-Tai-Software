@@ -20,7 +20,7 @@ body {
     padding: 24px;
     min-height: 100vh;
     font-family: var(--font-family);
-    background: var(--pf-bg);
+    background: linear-gradient(145deg, #000000, #2E30C9);
     color: var(--pf-text);
 }
 
