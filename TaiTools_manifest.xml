@@ -34,7 +34,6 @@
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
-  <PrivacyUrl DefaultValue="https://prairieforge.ai/privacy-policy"/>
 
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
     <Hosts>
@@ -80,6 +79,7 @@
       </bt:Images>
       <bt:Urls>
         <bt:Url id="Taskpane.Url" DefaultValue="https://prairie-forge-ai.github.io/Customer-Tai-Software/module-selector/index.html"/>
+        <bt:Url id="Privacy.Url" DefaultValue="https://prairieforge.ai/privacy-policy"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="Group.Label" DefaultValue="ForgeSuite"/>
