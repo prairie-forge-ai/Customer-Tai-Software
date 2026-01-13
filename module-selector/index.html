@@ -103,7 +103,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: #000000;
+            background: linear-gradient(145deg, #000000, #2E30C9);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -113,14 +113,28 @@
         }
         
         .auth-container {
-            background: rgba(15, 23, 42, 0.95);
-            border: 1px solid rgba(46, 48, 205, 0.3);
-            border-radius: 16px;
+            background: rgba(5, 7, 24, 0.82);
+            border: 1px solid rgba(245, 245, 247, 0.12);
+            border-radius: 28px;
             padding: 40px 32px;
             max-width: 440px;
             width: 100%;
             margin: auto;
-            box-shadow: 0 20px 60px rgba(46, 48, 205, 0.2);
+            box-shadow: 0 20px 45px rgba(2, 6, 23, 0.45);
+            backdrop-filter: blur(18px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .auth-container::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 20% -10%, rgba(53, 51, 205, 0.55), transparent 45%),
+                        radial-gradient(circle at 80% -20%, rgba(53, 51, 205, 0.35), transparent 40%);
+            opacity: 0.7;
+            pointer-events: none;
+            border-radius: inherit;
         }
         
         @media (max-width: 480px) {
@@ -142,6 +156,8 @@
         
         .auth-state {
             text-align: center;
+            position: relative;
+            z-index: 1;
         }
         
         .auth-spinner {
