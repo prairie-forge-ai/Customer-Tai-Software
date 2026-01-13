@@ -34,11 +34,11 @@
   --info-color: #ff0000;
   --info-bg: #ff0000;
   --info-border: #ff0000;
-  --info-text: #ff0000;
+  --info-text: #F5F5F7;
 
   /* Neutral Colors - Standardized to match module selector */
   --text-primary: #F5F5F7;
-  --text-secondary: #ff0000;
+  --text-secondary: #F5F5F7;
   --text-tertiary: rgba(255, 255, 255, 0.65);
 
   --surface-primary: var(--glass-bg);

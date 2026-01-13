@@ -1,7 +1,7 @@
 /* Font imports are handled in Common/styles.css */
 
 :root {
-    --pf-text-secondary: #ff0000;
+    --pf-text-secondary: var(--text-primary);
     --pf-accent: #ff0000;
     --pf-surface: var(--glass-bg);
     --pf-surface-strong: var(--glass-bg);
