@@ -1758,7 +1758,9 @@ body {
   height: 44px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1783,7 +1785,9 @@ body {
   height: 48px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   color: #fff;
   display: inline-flex;
   align-items: center;
