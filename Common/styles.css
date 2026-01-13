@@ -2970,7 +2970,7 @@ button:disabled,
   position: relative;
   padding: 32px 24px 20px;
   text-align: center;
-  background: linear-gradient(180deg, rgba(76, 47, 255, 0.1) 0%, transparent 100%);
+  background: linear-gradient(180deg, var(--primary-color), transparent 100%);
 }
 
 .pf-ada-modal__avatar {
@@ -3790,42 +3790,5 @@ button:disabled,
   color: #fca5a5;
 }
 
-/* ============================================
-   ADA "IN THE FORGE" OVERLAY - TEMPORARY
-   Disables Ada interactions, preserves header visibility
-   ============================================ */
-
-[data-copilot],
-.pf-ada-modal,
-.pf-copilot-card {
-  position: relative;
-  pointer-events: none;
-}
-
-[data-copilot]::after,
-.pf-ada-modal::after,
-.pf-copilot-card::after {
-  content: 'Ada\'s in the Forge\A Sharpening her skills. Back soon.';
-  white-space: pre-wrap;
-  position: absolute;
-  top: 80px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 15, 25, 0.5);
-  backdrop-filter: blur(2px);
-  border-radius: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  color: #a5b4fc;
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-align: center;
-  line-height: 1.6;
-  padding: 24px;
-}
+/* Ada overlay removed - Ada is now active */
 
