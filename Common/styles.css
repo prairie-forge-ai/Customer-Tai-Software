@@ -2291,7 +2291,7 @@ body {
 .pf-quick-modal-card {
   position: relative;
   z-index: 2147483647; /* Maximum z-index value */
-  background: linear-gradient(145deg, rgb(30, 30, 50), rgb(20, 20, 35));
+  background: linear-gradient(145deg, var(--primary-color), var(--primary-hover));
   border: 1px solid rgba(99, 102, 241, 0.35);
   border-radius: 16px;
   padding: 0;
@@ -2384,7 +2384,7 @@ body {
 }
 
 .pf-quick-modal-item:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: var(--primary-color);
   color: #fff;
 }
 
@@ -2400,7 +2400,7 @@ body {
 .pf-quick-modal-item:hover .pf-nav-icon,
 .pf-quick-modal-item:hover .pf-icon {
   opacity: 1;
-  color: #818cf8;
+  color: var(--primary-color);
 }
 
 /* Legacy quick-bar classes (kept for backwards compatibility) */
