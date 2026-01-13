@@ -307,7 +307,9 @@ function showArchiveSuccessToast() {
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                background: linear-gradient(145deg, rgba(30, 30, 50, 0.98), rgba(20, 20, 35, 0.99));
+                background: var(--glass-bg);
+                backdrop-filter: var(--glass-blur);
+                -webkit-backdrop-filter: var(--glass-blur);
                 border: 1px solid rgba(99, 102, 241, 0.3);
                 color: white;
                 padding: 36px 48px 24px;
@@ -492,7 +494,9 @@ function showConfirm(message, options = {}) {
                     to { opacity: 1; transform: scale(1) translateY(0); }
                 }
                 .pf-confirm-dialog {
-                    background: linear-gradient(145deg, rgba(30, 30, 50, 0.95), rgba(20, 20, 35, 0.98));
+                    background: var(--glass-bg);
+                    backdrop-filter: var(--glass-blur);
+                    -webkit-backdrop-filter: var(--glass-blur);
                     border: 1px solid rgba(255, 255, 255, 0.08);
                     color: white;
                     padding: 28px 32px;
@@ -5524,7 +5528,7 @@ function ensureConfigModal() {
             .pf-config-modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10000; }
             .pf-config-modal.hidden { display: none; }
             .pf-config-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
-            .pf-config-modal-card { position: relative; background: #0f172a; color: #f8fafc; border-radius: 12px; padding: 22px; width: min(440px, 90%); box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+            .pf-config-modal-card { position: relative; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); color: #f8fafc; border-radius: 12px; padding: 22px; width: min(440px, 90%); box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
             .pf-config-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
             .pf-config-close { background: transparent; border: none; color: #f8fafc; font-size: 20px; cursor: pointer; }
             .pf-config-hint { margin: 0 0 12px 0; color: #cbd5e1; font-size: 14px; }
