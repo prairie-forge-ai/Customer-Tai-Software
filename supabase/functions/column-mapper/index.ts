@@ -55,9 +55,10 @@ interface ColumnMapperRequest {
   crm_company_id?: string | null;
   module?: string;
   mappings?: Array<{ raw_header: string; target: string; kind?: MappingKind }>;
-  action: "analyze" | "save" | "get_options" | "get_expense_taxonomy" | "bootstrap" | "debug" | "get_dimensions";
+  action: "analyze" | "save" | "get_options" | "get_expense_taxonomy" | "bootstrap" | "debug" | "get_dimensions" | "validate_email";
   installation_key?: string;
   provider?: string;
+  email?: string;
 }
 
 type MappingKind = "amount" | "dimension" | "ambiguous";
@@ -1097,6 +1098,109 @@ serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+    }
+    
+    // ========================================================================
+    // Action: VALIDATE_EMAIL - Check email authorization for installation
+    // ========================================================================
+    if (action === "validate_email") {
+      const { email, installation_key } = body;
+      
+      if (!email || !installation_key) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            authorized: false,
+            error: "Email and installation key required" 
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      console.log(`[ValidateEmail] Checking authorization for: ${email}`);
+      
+      // Step 1: Get crm_company_id from installation
+      const { data: installation, error: installError } = await supabase
+        .from("ada_addin_installations")
+        .select("crm_company_id")
+        .eq("installation_key", installation_key)
+        .single();
+      
+      if (installError || !installation) {
+        console.log("[ValidateEmail] Invalid installation key");
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            authorized: false,
+            error: "Invalid installation" 
+          }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      const { crm_company_id } = installation;
+      console.log(`[ValidateEmail] Installation company: ${crm_company_id}`);
+      
+      // Step 2: Check if email exists in contacts for this company
+      const { data: contact, error: contactError } = await supabase
+        .from("admin_crm_contacts")
+        .select("id, related_user_id")
+        .eq("email", email.toLowerCase())
+        .eq("crm_company_id", crm_company_id)
+        .maybeSingle();
+      
+      // If found in contacts for this company, authorized!
+      if (contact) {
+        console.log("[ValidateEmail] ✓ Authorized as company contact");
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            authorized: true,
+            reason: "company_contact"
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Step 3: Check if user is an admin (bypass company check)
+      const { data: contactAnyCompany, error: anyContactError } = await supabase
+        .from("admin_crm_contacts")
+        .select("related_user_id")
+        .eq("email", email.toLowerCase())
+        .maybeSingle();
+      
+      if (contactAnyCompany && contactAnyCompany.related_user_id) {
+        // Check if this user has admin role
+        const { data: userRole, error: roleError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", contactAnyCompany.related_user_id)
+          .eq("role", "admin")
+          .maybeSingle();
+        
+        if (userRole) {
+          console.log("[ValidateEmail] ✓ Authorized as admin user");
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              authorized: true,
+              reason: "admin_user"
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+      
+      // Step 4: Not authorized
+      console.log("[ValidateEmail] ✗ Not authorized");
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          authorized: false,
+          reason: "unauthorized"
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     // ========================================================================

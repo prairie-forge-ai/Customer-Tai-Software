@@ -16,6 +16,135 @@ import { formatSheetHeaders } from "../Common/sheet-formatting.js";
  * 2025 Prairie Forge LLC
  */
 
+// =============================================================================
+// AUTHORIZATION OVERLAY CONTROL
+// =============================================================================
+
+/**
+ * Hide the authorization loading overlay and show UI
+ */
+function hideAuthLoadingOverlay() {
+    const overlay = document.getElementById('authLoadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    document.body.classList.remove('not-authorized');
+    console.log("[UI] Authorization overlay hidden, UI visible");
+}
+
+/**
+ * Show authorization error and keep overlay visible
+ * @param {string} title
+ * @param {string} message
+ */
+function showAuthorizationError(title, message) {
+    const overlay = document.getElementById('authLoadingOverlay');
+    if (!overlay) return;
+    
+    // Replace loading spinner with error message
+    overlay.innerHTML = `
+        <div style="
+            max-width: 400px;
+            padding: 32px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            text-align: center;
+        ">
+            <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
+            <h2 style="
+                margin: 0 0 16px 0;
+                color: #323130;
+                font-size: 20px;
+                font-weight: 600;
+            ">${title}</h2>
+            <p style="
+                margin: 0 0 24px 0;
+                color: #605e5c;
+                font-size: 14px;
+                line-height: 1.6;
+            ">${message}</p>
+            <p style="
+                margin: 0;
+                padding-top: 20px;
+                border-top: 1px solid #edebe9;
+                color: #8a8886;
+                font-size: 13px;
+            ">
+                Need assistance? Contact <a href="mailto:connect@prairieforge.ai" style="color: #0078d4;">connect@prairieforge.ai</a>
+            </p>
+        </div>
+    `;
+    
+    console.log("[UI] Authorization error displayed");
+}
+
+/**
+ * Show email prompt dialog
+ * @returns {Promise<{success: boolean, email: string|null}>}
+ */
+async function showEmailPrompt() {
+    return new Promise((resolve) => {
+        // Build dialog URL
+        const baseUrl = window.location.origin + window.location.pathname.replace('/index.html', '');
+        const dialogUrl = `${baseUrl}/email-prompt.html`;
+        
+        console.log("[EmailPrompt] Opening:", dialogUrl);
+        
+        // Show dialog
+        Office.context.ui.displayDialogAsync(
+            dialogUrl,
+            { 
+                height: 60, 
+                width: 35, 
+                displayInIframe: false 
+            },
+            (result) => {
+                if (result.status === Office.AsyncResultStatus.Failed) {
+                    console.error("[EmailPrompt] Failed to open:", result.error);
+                    resolve({ success: false, email: null });
+                    return;
+                }
+                
+                const dialog = result.value;
+                
+                // Handle messages from dialog
+                dialog.addEventHandler(
+                    Office.EventType.DialogMessageReceived, 
+                    async (arg) => {
+                        dialog.close();
+                        
+                        try {
+                            const response = JSON.parse(arg.message);
+                            console.log("[EmailPrompt] Response:", response.success ? "✓" : "✗");
+                            
+                            if (response.success && response.email) {
+                                resolve({ success: true, email: response.email });
+                            } else {
+                                resolve({ success: false, email: null });
+                            }
+                        } catch (error) {
+                            console.error("[EmailPrompt] Parse error:", error);
+                            resolve({ success: false, email: null });
+                        }
+                    }
+                );
+                
+                // Handle dialog closed by user
+                dialog.addEventHandler(
+                    Office.EventType.DialogEventReceived,
+                    (arg) => {
+                        console.log("[EmailPrompt] Event:", arg.error);
+                        if (arg.error === 12006) { // User closed dialog
+                            resolve({ success: false, email: null });
+                        }
+                    }
+                );
+            }
+        );
+    });
+}
+
 // Admin password (simple protection against accidental changes)
 const ADMIN_PASSWORD = "Boise123";
 
@@ -516,21 +645,79 @@ async function init() {
         }
         
         // =====================================================================
-        // BOOTSTRAP CONFIG SYNC - MUST RUN FIRST
-        // Syncs SS_PF_Config from Supabase warehouse BEFORE any UI loads
+        // EMAIL AUTHORIZATION - PROMPT FOR EMAIL EVERY SESSION
         // =====================================================================
-        console.log("[Init] Running bootstrap config sync...");
-        try {
-            const bootstrapResult = await bootstrapConfigSync();
-            console.log("[Init] Bootstrap result:", bootstrapResult);
-            if (!bootstrapResult.success) {
-                console.warn("[Init] Bootstrap failed but continuing:", bootstrapResult.error);
+        console.log("[Init] Starting email authorization...");
+        
+        let attempts = 0;
+        const maxAttempts = 3;
+        
+        while (attempts < maxAttempts) {
+            attempts++;
+            console.log(`[Init] Email authorization attempt ${attempts}/${maxAttempts}`);
+            
+            // Show email prompt dialog
+            const emailResult = await showEmailPrompt();
+            
+            if (!emailResult.success) {
+                console.log("[Init] User cancelled email authorization");
+                showAuthorizationError(
+                    "Access Denied",
+                    "This add-in requires email verification to function. Your access has been denied."
+                );
+                return; // Stop initialization - keep overlay visible
             }
-        } catch (bootstrapError) {
-            console.error("[Init] Bootstrap error (non-fatal):", bootstrapError);
-            // Continue anyway - manual config still works
+            
+            console.log("[Init] Email entered, validating with bootstrap...");
+            
+            // Try bootstrap with the email
+            try {
+                const bootstrapResult = await bootstrapConfigSync({ 
+                    force: true,
+                    email: emailResult.email
+                });
+                
+                console.log("[Init] Bootstrap result:", bootstrapResult);
+                
+                if (bootstrapResult.success) {
+                    console.log("[Init] ✓ Email authorized and bootstrap successful!");
+                    hideAuthLoadingOverlay(); // Show UI
+                    break; // Exit loop, continue with init
+                } else if (bootstrapResult.unauthorized) {
+                    console.warn("[Init] ✗ Email not authorized:", bootstrapResult.reason);
+                    
+                    if (attempts >= maxAttempts) {
+                        showAuthorizationError(
+                            "Access Denied",
+                            "Your email address is not authorized to access this add-in. Please contact support if you believe this is an error."
+                        );
+                        return; // Stop initialization - keep overlay visible
+                    }
+                    
+                    // Loop continues to show prompt again
+                    console.log("[Init] Will retry email authorization...");
+                    
+                } else {
+                    // Other bootstrap error (not authorization-related)
+                    console.error("[Init] Bootstrap failed:", bootstrapResult.error);
+                    showAuthorizationError(
+                        "Configuration Error",
+                        "Failed to load configuration from server. Please try reloading the add-in or contact support."
+                    );
+                    return; // Stop initialization - keep overlay visible
+                }
+                
+            } catch (bootstrapError) {
+                console.error("[Init] Bootstrap error:", bootstrapError);
+                showAuthorizationError(
+                    "Initialization Error",
+                    "An unexpected error occurred during startup. Please try reloading the add-in."
+                );
+                return; // Stop initialization - keep overlay visible
+            }
         }
-        console.log("[Init] Bootstrap complete");
+        
+        console.log("[Init] ✓ Authorization complete, rendering UI...");
         // =====================================================================
         
         renderHero();

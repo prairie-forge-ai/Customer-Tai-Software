@@ -15,6 +15,56 @@
 </head>
 
 <body>
+    <!-- EMAIL AUTHORIZATION LOADING OVERLAY -->
+    <div id="authLoadingOverlay" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        flex-direction: column;
+        gap: 20px;
+    ">
+        <div style="
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f3f2f1;
+            border-top: 4px solid #0078d4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        "></div>
+        <div style="
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 16px;
+            color: #605e5c;
+            text-align: center;
+        ">
+            Initializing add-in...
+        </div>
+    </div>
+    
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Hide all content until authorized */
+        body.not-authorized > *:not(#authLoadingOverlay) {
+            display: none !important;
+        }
+    </style>
+    
+    <!-- Set body class to hide content initially -->
+    <script>
+        document.body.classList.add('not-authorized');
+    </script>
+    
     <div class="pf-brand-float" aria-hidden="true">
         <span class="pf-brand-wave"></span>
     </div>

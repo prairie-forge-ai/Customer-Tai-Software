@@ -19,6 +19,61 @@ import {
 } from "./warehouse.js";
 
 // =============================================================================
+// EMAIL AUTHORIZATION SYSTEM
+// =============================================================================
+
+/**
+ * Validate email with Edge Function
+ * @param {string} email - Email address to validate
+ * @returns {Promise<{authorized: boolean, reason: string, error: string|null}>}
+ */
+async function validateEmailWithServer(email) {
+    console.log("[EmailAuth] Validating email with server...");
+    
+    try {
+        const result = await columnMapperRequest("validate_email", {
+            email: email.toLowerCase(),
+            installation_key: INSTALLATION_KEY
+        }, "email_validation");
+        
+        if (!result.ok) {
+            console.error("[EmailAuth] Server validation failed:", result.error);
+            return {
+                authorized: false,
+                reason: "server_error",
+                error: result.error || "Server validation failed"
+            };
+        }
+        
+        if (!result.data || !result.data.success) {
+            console.error("[EmailAuth] Validation unsuccessful");
+            return {
+                authorized: false,
+                reason: "validation_failed",
+                error: "Email validation failed"
+            };
+        }
+        
+        console.log("[EmailAuth] Server validation result:", result.data.authorized ? "✓" : "✗");
+        console.log("[EmailAuth] Authorization reason:", result.data.reason);
+        
+        return {
+            authorized: result.data.authorized,
+            reason: result.data.reason || "unknown",
+            error: result.data.authorized ? null : "Email not authorized"
+        };
+        
+    } catch (error) {
+        console.error("[EmailAuth] Error validating email:", error);
+        return {
+            authorized: false,
+            reason: "error",
+            error: error.message
+        };
+    }
+}
+
+// =============================================================================
 // CONFIGURATION
 // =============================================================================
 
@@ -53,7 +108,7 @@ let bootstrapRanAt = null;
  * @returns {Promise<{success: boolean, data?: object, error?: string}>}
  */
 export async function bootstrapConfigSync(options = {}) {
-    const { force = false } = options;
+    const { force = false, email = null } = options;
     
     console.log("╔═══════════════════════════════════════════════════════════╗");
     console.log("║  BOOTSTRAP CONFIG SYNC - GLOBAL ENTRYPOINT                ║");
@@ -66,8 +121,40 @@ export async function bootstrapConfigSync(options = {}) {
         return { success: true, data: bootstrapCache, cached: true };
     }
     
+    // ========================================================================
+    // STAGE 0: EMAIL AUTHORIZATION (CRITICAL SECURITY GATE)
+    // ========================================================================
+    console.log("\n[Bootstrap] ▶ STAGE 0: EMAIL AUTHORIZATION");
+    
+    if (!email) {
+        console.log("[Bootstrap] ❌ No email provided");
+        return {
+            success: false,
+            error: "Email authorization required",
+            stage: "authorization",
+            needsEmailPrompt: true
+        };
+    }
+    
+    // Validate email with server
+    const emailValidation = await validateEmailWithServer(email);
+    
+    if (!emailValidation.authorized) {
+        console.log("[Bootstrap] ❌ Email not authorized:", emailValidation.reason);
+        return {
+            success: false,
+            error: emailValidation.error || "Email not authorized",
+            stage: "authorization",
+            unauthorized: true,
+            reason: emailValidation.reason
+        };
+    }
+    
+    console.log("[Bootstrap] ✓ Email authorized:", email, "| Reason:", emailValidation.reason);
+    // ========================================================================
+    
     // ALWAYS refresh auth before bootstrap
-    console.log("[Bootstrap] Refreshing auth context...");
+    console.log("\n[Bootstrap] Refreshing auth context...");
     await forceRefreshAuth();
     debugAuthDump();
     
