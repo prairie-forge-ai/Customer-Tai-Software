@@ -1408,43 +1408,6 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   ADA COMING SOON OVERLAY
-   ══════════════════════════════════════════════════════════════════════════ */
-
-.pf-ada-coming-soon-wrapper {
-    position: relative;
-}
-
-/* Body wrapper for overlay positioning */
-.pf-ada-body {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Overlay on body only - header stays visible */
-.pf-ada-coming-soon-wrapper .pf-ada-body::after {
-    content: "Coming Soon";
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 15, 25, 0.8);
-    backdrop-filter: blur(3px);
-    border-radius: 0 0 20px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    cursor: not-allowed;
-    
-    /* Text styling */
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--white-90);
-    text-transform: uppercase;
-    letter-spacing: 3px;
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
    DATA COMPLETENESS CHECK CARD
    ══════════════════════════════════════════════════════════════════════════ */
 
