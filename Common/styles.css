@@ -45,9 +45,11 @@
   --surface-secondary: rgba(9, 12, 38, 0.88);
   --surface-hover: rgba(53, 51, 205, 0.2);
   --surface-subtle: rgba(255, 255, 255, 0.03);
+  --surface-subtle-hover: rgba(255, 255, 255, 0.06);
   --surface-input: rgba(255, 255, 255, 0.04);
   --surface-modal: rgba(8, 10, 35, 0.95);
   --surface-modal-footer: rgba(0, 0, 0, 0.2);
+  --surface-toast: rgba(15, 23, 42, 0.85);
 
   --border-color: rgba(245, 245, 247, 0.12);
   --border-subtle: rgba(255, 255, 255, 0.08);
@@ -56,6 +58,20 @@
   --border-focus: #2E30C9;
   
   --overlay-dark: rgba(0, 0, 0, 0.6);
+  
+  --white-10: rgba(255, 255, 255, 0.1);
+  --white-15: rgba(255, 255, 255, 0.15);
+  --white-20: rgba(255, 255, 255, 0.2);
+  --white-35: rgba(255, 255, 255, 0.35);
+  --white-40: rgba(255, 255, 255, 0.4);
+  --white-50: rgba(255, 255, 255, 0.5);
+  --white-60: rgba(255, 255, 255, 0.6);
+  --white-65: rgba(255, 255, 255, 0.65);
+  --white-70: rgba(255, 255, 255, 0.7);
+  --white-80: rgba(255, 255, 255, 0.8);
+  --white-85: rgba(255, 255, 255, 0.85);
+  --white-90: rgba(255, 255, 255, 0.9);
+  
   --pf-bg: #000;
   --pf-bg-gradient-start: #000000;
   --pf-bg-gradient-end: #2E30C9;

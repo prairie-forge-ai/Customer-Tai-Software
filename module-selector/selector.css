@@ -430,13 +430,13 @@ body {
 }
 
 .admin-btn--secondary {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--border-subtle);
     border: 1px solid var(--pf-border);
 }
 
 .admin-btn--secondary:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--border-color);
+    border-color: var(--white-20);
 }
 
 .admin-btn--small {
@@ -483,7 +483,7 @@ body {
 }
 
 .admin-mode-btn:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     color: var(--pf-text-primary);
 }
 
@@ -538,7 +538,7 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--border-subtle);
     color: var(--pf-text-secondary);
     font-size: 13px;
     font-weight: 600;
@@ -577,7 +577,7 @@ body {
 .builder-progress-line {
     width: 24px;
     height: 2px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     margin: 0 8px;
     margin-bottom: 22px;
 }
@@ -783,7 +783,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
@@ -873,7 +873,7 @@ body {
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     border: 1px solid var(--pf-border);
     border-radius: 20px;
     font-size: 12px;
@@ -1023,7 +1023,7 @@ body {
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     border: 1px solid var(--pf-border);
     border-radius: 6px;
     font-size: 12px;
@@ -1124,7 +1124,7 @@ body {
 
 .builder-create-progress .progress-bar {
     height: 8px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -1186,7 +1186,7 @@ body {
 }
 
 .settings-tab.active {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--border-subtle);
     color: var(--pf-text-primary);
 }
 
@@ -1390,7 +1390,7 @@ body {
     padding: 12px 16px;
     border-radius: 12px;
     border: 1px solid var(--pf-border);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     color: var(--pf-text-primary);
     font-size: 14px;
     font-family: inherit;
@@ -1447,7 +1447,7 @@ body {
 }
 
 .tab-mgmt-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
 }
 
 .tab-mgmt-module {
@@ -1581,7 +1581,7 @@ body {
 }
 
 .admin-section-toggle:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
 }
 
 .admin-section-toggle h3 {
@@ -1641,8 +1641,8 @@ body {
 }
 
 .step-template-card:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--surface-subtle-hover);
+    border-color: var(--white-15);
 }
 
 .step-template-icon {
@@ -1683,7 +1683,7 @@ body {
 .step-template-tab {
     padding: 4px 10px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     border: 1px solid var(--pf-border);
     font-size: 11px;
     font-family: var(--font-family-mono);
@@ -1707,7 +1707,7 @@ body {
 }
 
 .step-template-edit:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--border-subtle);
     color: var(--pf-text-primary);
 }
 
@@ -1762,7 +1762,7 @@ body {
 .tab-template-header-tag {
     padding: 3px 8px;
     border-radius: 4px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     font-size: 10px;
     font-family: var(--font-family-mono);
     color: var(--pf-text-secondary);
@@ -1869,7 +1869,7 @@ body {
 }
 
 .wizard-tab-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
 }
 
 .wizard-tab-item.selected {
@@ -1928,7 +1928,7 @@ body {
 .wizard-tab-template {
     padding: 4px 10px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     font-size: 11px;
     color: var(--pf-text-secondary);
 }
@@ -1984,7 +1984,7 @@ body {
 
 .wizard-progress-bar {
     height: 8px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -2256,7 +2256,7 @@ body {
     padding: 10px 14px;
     border-radius: 8px;
     border: 1px solid var(--pf-border);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     color: var(--pf-text-primary);
     font-size: 13px;
     cursor: pointer;
@@ -2322,7 +2322,7 @@ body {
 .quick-access {
     margin-top: 20px;
     padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--white-10);
 }
 
 .quick-access-label {
@@ -2396,7 +2396,7 @@ body {
     max-width: 420px;
     max-height: 90vh;
     background: #12121f;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--white-10);
     border-radius: 20px;
     overflow: hidden;
     display: flex;
@@ -2414,7 +2414,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 20px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--border-subtle);
     flex-shrink: 0;
 }
 
@@ -2430,8 +2430,8 @@ body {
     height: 36px;
     border-radius: 10px;
     border: none;
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.5);
+    background: var(--surface-subtle-hover);
+    color: var(--white-50);
     font-size: 22px;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -2441,7 +2441,7 @@ body {
 }
 
 .ref-data-close:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     color: #ffffff;
 }
 
@@ -2492,7 +2492,7 @@ body {
     justify-content: space-between;
     padding: 14px 18px;
     background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--surface-subtle-hover);
     border-radius: 12px;
     margin-bottom: 24px;
 }
@@ -2500,7 +2500,7 @@ body {
 .ref-data-sheet-name {
     font-family: var(--font-family-mono);
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--white-60);
 }
 
 .ref-data-sheet-badge {
@@ -2556,13 +2556,13 @@ body {
 }
 
 .ref-data-btn--secondary {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--surface-subtle-hover);
+    color: var(--white-80);
+    border: 1px solid var(--white-10);
 }
 
 .ref-data-btn--secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     color: #ffffff;
 }
 
@@ -2570,7 +2570,7 @@ body {
 .ref-data-loading {
     padding: 32px;
     text-align: center;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
 }
 
 .ref-data-empty p,
@@ -2760,7 +2760,7 @@ body {
     padding: 10px 14px;
     border-radius: 8px;
     border: 1px solid var(--pf-border);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     color: var(--pf-text-primary);
     font-size: 14px;
 }
@@ -2834,7 +2834,7 @@ body {
     align-items: flex-start;
     gap: 10px;
     padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--white-10);
 }
 
 .preview-change:last-child {
@@ -3307,7 +3307,7 @@ body {
 
 .setup-option {
     background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
     padding: 20px;
 }
@@ -3355,7 +3355,7 @@ body {
 
 .workbook-setup-progress .progress-bar {
     height: 8px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     border-radius: 4px;
     overflow: hidden;
     margin-bottom: 12px;
@@ -3379,7 +3379,7 @@ body {
     margin-top: 20px;
     padding: 16px;
     background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
 }
 
@@ -3428,7 +3428,7 @@ body {
 
 .admin-divider {
     border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--border-subtle);
     margin: 24px 0;
 }
 
@@ -3477,7 +3477,7 @@ body {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--white-60);
 }
 
 .column-mapping-row {
@@ -3527,11 +3527,11 @@ body {
 .alias-chip {
     display: inline-block;
     padding: 4px 10px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--border-subtle);
     border-radius: 6px;
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--white-80);
+    border: 1px solid var(--white-10);
 }
 
 .col-actions {
@@ -3543,7 +3543,7 @@ body {
 .alias-edit-btn,
 .alias-reset-btn {
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--white-10);
     border-radius: 6px;
     padding: 6px 10px;
     cursor: pointer;
@@ -3566,7 +3566,7 @@ body {
     padding: 20px;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
-    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border: 1px dashed var(--white-10);
 }
 
 .column-mapping-add h4 {

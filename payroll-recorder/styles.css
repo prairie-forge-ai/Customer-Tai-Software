@@ -120,7 +120,7 @@ body {
 .pf-nav-divider {
     width: 1px;
     height: 28px;
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--white-20);
     margin: 0 2px;
     flex-shrink: 0;
 }
@@ -190,7 +190,7 @@ body {
 
 .pf-step-note--info {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--white-70);
     background: rgba(46, 48, 201, 0.1);
     border-left: 3px solid var(--pf-accent);
     padding: 8px 12px;
@@ -356,8 +356,8 @@ body {
 
 .pf-modal-close-btn {
     padding: 8px 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: var(--white-10);
+    border: 1px solid var(--white-20);
     border-radius: 8px;
     color: var(--pf-text);
     cursor: pointer;
@@ -366,7 +366,7 @@ body {
 }
 
 .pf-modal-close-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--white-15);
 }
 
 .pf-mismatch-section {
@@ -418,13 +418,13 @@ body {
     align-items: center;
     padding: 12px 16px;
     background: var(--surface-subtle);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
     border-radius: 10px;
     transition: all 0.15s ease;
 }
 
 .pf-mismatch-tile:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
 }
 
 .pf-mismatch-tile.pf-mismatch-missing-payroll {
@@ -591,7 +591,7 @@ body {
 }
 
 .pf-metric-hint--info {
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--white-70);
     font-style: italic;
 }
 
@@ -599,7 +599,7 @@ body {
 .pf-validation-section {
     margin-top: 24px;
     padding-top: 24px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--white-10);
 }
 
 /* Consistent spacing between validation cards */
@@ -616,7 +616,7 @@ body {
 
 .pf-validation-subtext {
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--white-60);
     margin: 0 0 16px 0;
 }
 
@@ -643,8 +643,8 @@ body {
 }
 
 .pf-status-badge--pending {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.5);
+    background: var(--white-10);
+    color: var(--white-50);
 }
 
 .pf-status-badge--unavailable {
@@ -672,7 +672,7 @@ body {
 .pf-coverage-join-key {
     display: inline-block;
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
     padding: 2px 6px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 3px;
@@ -689,7 +689,7 @@ body {
     gap: 16px;
     margin-bottom: 12px;
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--white-70);
 }
 
 .pf-coverage-stat {
@@ -730,7 +730,7 @@ body {
 
 .pf-coverage-check--pending {
     background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
 }
 
 .pf-coverage-icon {
@@ -741,13 +741,13 @@ body {
 
 .pf-coverage-hint {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
     margin-left: 4px;
 }
 
 .pf-coverage-names {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--white-70);
     margin-top: 6px;
     line-height: 1.5;
 }
@@ -766,7 +766,7 @@ body {
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--white-80);
 }
 
 .pf-coverage-dept-item {
@@ -774,11 +774,11 @@ body {
     gap: 8px;
     margin-bottom: 4px;
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--white-60);
 }
 
 .pf-coverage-dept-list {
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--white-80);
 }
 
 .pf-skip-option {
@@ -858,7 +858,7 @@ body {
     margin: 0.75rem auto 0;
     background: none;
     border: none;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--white-40);
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.15em;
@@ -872,7 +872,7 @@ body {
 }
 
 .pf-config-link:hover {
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--white-70);
     background: rgba(255, 255, 255, 0.05);
 }
 
@@ -883,7 +883,7 @@ body {
     padding: 12px 18px;
     border-radius: 999px;
     background: rgba(15, 23, 42, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--border-color);
     box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -1028,7 +1028,7 @@ body {
     font-size: 18px;
     box-shadow: 
         0 2px 8px rgba(76, 47, 255, 0.35),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        inset 0 1px 0 var(--white-20);
 }
 
 .pf-ada-avatar {
@@ -1060,7 +1060,7 @@ body {
 .pf-ada-title--ask {
     font-size: 16px;
     font-weight: 400;
-    color: rgba(255, 255, 255, 0.65);
+    color: var(--white-65);
     letter-spacing: 0;
 }
 
@@ -1073,7 +1073,7 @@ body {
 
 .pf-ada-role {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
     font-weight: 400;
     line-height: 1.3;
 }
@@ -1178,12 +1178,12 @@ body {
 }
 
 .pf-ada-conversation::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     border-radius: 3px;
 }
 
 .pf-ada-conversation::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--white-20);
 }
 
 /* Message Bubbles */
@@ -1217,7 +1217,7 @@ body {
 
 .pf-ada-bubble--ai p {
     background: rgba(76, 47, 255, 0.08);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
     border: 1px solid rgba(76, 47, 255, 0.15);
 }
 
@@ -1257,7 +1257,7 @@ body {
 .pf-ada-typing span {
     width: 8px;
     height: 8px;
-    background: rgba(255, 255, 255, 0.4);
+    background: var(--white-40);
     border-radius: 50%;
     animation: ada-typing 1.4s ease-in-out infinite;
 }
@@ -1272,7 +1272,7 @@ body {
     }
     30% { 
         transform: translateY(-6px);
-        background: rgba(255, 255, 255, 0.8);
+        background: var(--white-80);
     }
 }
 
@@ -1306,7 +1306,7 @@ body {
 }
 
 .pf-ada-input::placeholder {
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--white-35);
 }
 
 .pf-ada-send {
@@ -1433,7 +1433,7 @@ body {
     /* Text styling */
     font-size: 16px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--white-90);
     text-transform: uppercase;
     letter-spacing: 3px;
 }
@@ -1453,7 +1453,7 @@ body {
     background: var(--surface-subtle);
     border-radius: 12px;
     padding: 12px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
     transition: border-color 0.2s ease, background 0.2s ease;
 }
 
@@ -1468,7 +1468,7 @@ body {
 }
 
 .pf-complete-row.pending {
-    border-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--border-subtle);
     background: rgba(255, 255, 255, 0.02);
 }
 
@@ -1501,8 +1501,8 @@ body {
 }
 
 .pf-complete-status--pending {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.5);
+    background: var(--white-10);
+    color: var(--white-50);
 }
 
 .pf-complete-label {
@@ -1569,7 +1569,7 @@ body {
     padding: 12px;
     background: rgba(255, 255, 255, 0.02);
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--surface-subtle-hover);
 }
 
 .pf-complete-details-header {
@@ -1746,7 +1746,7 @@ body {
     height: 28px;
     border-radius: 50%;
     border: none;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--border-subtle);
     color: var(--pf-muted);
     font-size: 18px;
     cursor: pointer;
@@ -1840,7 +1840,7 @@ body {
 }
 
 .pf-mapping-grid::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--white-15);
     border-radius: 3px;
 }
 
@@ -1851,13 +1851,13 @@ body {
     gap: 12px;
     padding: 10px 14px;
     background: var(--surface-subtle);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
     border-radius: 10px;
     transition: all 0.15s ease;
 }
 
 .pf-mapping-row:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
 }
 
 .pf-mapping-row--low-conf {
@@ -1882,8 +1882,8 @@ body {
 .pf-mapping-select {
     height: 38px;
     padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--surface-subtle-hover);
+    border: 1px solid var(--white-15);
     border-radius: 8px;
     color: var(--pf-text);
     font-size: 13px;
@@ -1929,7 +1929,7 @@ body {
     gap: 12px;
     margin-top: 8px;
     padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--border-subtle);
 }
 
 /* Mapping Summary */
@@ -2038,7 +2038,7 @@ body {
     cursor: pointer;
     transition: all 0.15s ease;
     border: 1px solid transparent;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-subtle-hover);
     color: var(--pf-text);
 }
 
@@ -2091,13 +2091,13 @@ body {
 }
 
 .pf-btn--secondary {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--surface-subtle-hover);
+    border: 1px solid var(--white-15);
     color: var(--pf-text);
 }
 
 .pf-btn--secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     border-color: rgba(255, 255, 255, 0.25);
 }
 
@@ -2128,7 +2128,7 @@ body {
 /* Primary action toggle - gradient background for main CTAs */
 .pf-action-toggle--primary {
     background: linear-gradient(135deg, var(--primary-color), var(--pf-accent)) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
+    border-color: var(--white-20) !important;
     box-shadow: 0 2px 12px rgba(76, 47, 255, 0.25);
 }
 
@@ -2220,7 +2220,7 @@ body {
 
 .pf-employee-coverage-section {
     background: var(--surface-subtle);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
     border-radius: 10px;
     padding: 12px;
 }
@@ -2231,7 +2231,7 @@ body {
     gap: 8px;
     margin-bottom: 10px;
     padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--surface-subtle-hover);
 }
 
 .pf-employee-coverage-section-icon {
@@ -2249,7 +2249,7 @@ body {
 .pf-employee-coverage-section-title {
     font-size: 12px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--white-80);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -2263,16 +2263,16 @@ body {
 }
 
 .pf-coverage-stat {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--white-60);
 }
 
 .pf-coverage-stat strong {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--white-90);
 }
 
 .pf-subsection-hint {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
     margin: 0;
 }
 
@@ -2302,7 +2302,7 @@ body {
 
 .pf-coverage-item-names {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
     margin-top: 2px;
 }
 
@@ -2315,7 +2315,7 @@ body {
 .pf-coverage-item--warn {
     background: rgba(251, 191, 36, 0.1);
     border: 1px solid rgba(251, 191, 36, 0.2);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
 }
 
 .pf-coverage-item--warn .pf-coverage-item-icon {
@@ -2325,7 +2325,7 @@ body {
 .pf-coverage-item--info {
     background: rgba(96, 165, 250, 0.1);
     border: 1px solid rgba(96, 165, 250, 0.2);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
 }
 
 .pf-coverage-item--info .pf-coverage-item-icon {
@@ -2335,7 +2335,7 @@ body {
 .pf-coverage-item--new {
     background: rgba(74, 222, 128, 0.1);
     border: 1px solid rgba(74, 222, 128, 0.2);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
 }
 
 .pf-coverage-item--new .pf-coverage-item-icon {
@@ -2345,7 +2345,7 @@ body {
 .pf-coverage-item--reactivated {
     background: rgba(96, 165, 250, 0.1);
     border: 1px solid rgba(96, 165, 250, 0.2);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
 }
 
 .pf-coverage-item--reactivated .pf-coverage-item-icon {
@@ -2355,7 +2355,7 @@ body {
 .pf-coverage-item--missing {
     background: rgba(251, 191, 36, 0.1);
     border: 1px solid rgba(251, 191, 36, 0.2);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
 }
 
 .pf-coverage-item--missing .pf-coverage-item-icon {
@@ -2368,7 +2368,7 @@ body {
     gap: 8px;
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--surface-subtle-hover);
 }
 
 .pf-roster-actions .pf-action-toggle--subtle {
@@ -2389,11 +2389,11 @@ body {
 }
 
 .pf-cov-stat {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--white-60);
 }
 
 .pf-cov-stat strong {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--white-90);
 }
 
 .pf-cov-stat--new strong {
@@ -2441,13 +2441,13 @@ body {
 
 .pf-issue-names {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
 }
 
 .pf-coverage-issue--warn {
     background: rgba(251, 191, 36, 0.1);
     border: 1px solid rgba(251, 191, 36, 0.2);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
 }
 
 .pf-coverage-issue--warn .pf-issue-icon {
@@ -2457,7 +2457,7 @@ body {
 .pf-coverage-issue--new {
     background: rgba(74, 222, 128, 0.08);
     border: 1px solid rgba(74, 222, 128, 0.15);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
 }
 
 .pf-coverage-issue--new .pf-issue-icon {
@@ -2467,7 +2467,7 @@ body {
 .pf-coverage-issue--reactivated {
     background: rgba(96, 165, 250, 0.08);
     border: 1px solid rgba(96, 165, 250, 0.15);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
 }
 
 .pf-coverage-issue--reactivated .pf-issue-icon {
@@ -2477,7 +2477,7 @@ body {
 .pf-coverage-issue--missing {
     background: rgba(251, 191, 36, 0.08);
     border: 1px solid rgba(251, 191, 36, 0.15);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
 }
 
 .pf-coverage-issue--missing .pf-issue-icon {
@@ -2487,7 +2487,7 @@ body {
 .pf-coverage-issue--info {
     background: rgba(96, 165, 250, 0.06);
     border: 1px solid rgba(96, 165, 250, 0.12);
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--white-70);
 }
 
 .pf-coverage-issue--info .pf-issue-icon {
@@ -2559,7 +2559,7 @@ body {
 
 .pf-ada-insights-collapse {
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--white-10);
     border-radius: 8px;
     padding: 6px;
     cursor: pointer;
@@ -2568,7 +2568,7 @@ body {
 }
 
 .pf-ada-insights-collapse:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
     color: var(--text-primary);
 }
 
@@ -2624,7 +2624,7 @@ body {
     font-size: 12px;
     font-weight: 500;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--white-10);
     border-radius: 20px;
     color: var(--text-secondary);
     cursor: pointer;
@@ -2713,7 +2713,7 @@ body {
     color: var(--text-primary);
     margin: 20px 0 10px 0;
     padding-bottom: 6px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--white-10);
 }
 
 .pf-ada-insights-response h3.pf-ada-h3:first-child {
@@ -2723,7 +2723,7 @@ body {
 .pf-ada-insights-response h4.pf-ada-h4 {
     font-size: 13px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
     margin: 16px 0 8px 0;
 }
 
@@ -2805,13 +2805,13 @@ body {
     cursor: pointer;
     transition: all 0.15s ease;
     background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.85);
+    border-color: var(--white-10);
+    color: var(--white-85);
 }
 
 .pf-coverage-pill:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--white-10);
+    border-color: var(--white-20);
 }
 
 .pf-coverage-pill:active {
@@ -2824,7 +2824,7 @@ body {
 }
 
 .pf-pill-label {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--white-60);
 }
 
 /* Pill variants */
@@ -2885,7 +2885,7 @@ body {
 /* Hint text below pills */
 .pf-coverage-hint {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--white-40);
     margin: 4px 0 12px 0;
     font-style: italic;
 }
@@ -2897,7 +2897,7 @@ body {
     gap: 8px;
     margin-top: 12px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--surface-subtle-hover);
 }
 
 /* Coverage Detail Modal */
@@ -2932,7 +2932,7 @@ body {
     max-width: 480px;
     max-height: 80vh;
     background: linear-gradient(180deg, #1a1b26 0%, #16171f 100%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--white-10);
     border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     display: flex;
@@ -2950,7 +2950,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .pf-coverage-modal-title {
@@ -2969,14 +2969,14 @@ body {
     border: none;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 6px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--white-60);
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
 .pf-coverage-modal-close:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.9);
+    background: var(--white-10);
+    color: var(--white-90);
 }
 
 .pf-coverage-modal-close svg {
@@ -2987,7 +2987,7 @@ body {
 .pf-coverage-modal-body {
     padding: 20px;
     overflow-y: auto;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--white-85);
     font-size: 13px;
     line-height: 1.5;
 }
@@ -3037,7 +3037,7 @@ body {
 .pf-bridge-row--total {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--white-10);
     font-weight: 600;
 }
 
@@ -3058,7 +3058,7 @@ body {
 }
 
 .pf-bridge-label {
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--white-70);
     font-size: 12px;
 }
 
@@ -3098,20 +3098,20 @@ body {
 }
 
 .pf-employee-index {
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--white-40);
     font-size: 11px;
     min-width: 20px;
 }
 
 .pf-employee-name {
     flex: 1;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--white-90);
     font-size: 13px;
 }
 
 .pf-employee-dept {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
     background: rgba(255, 255, 255, 0.05);
     padding: 2px 8px;
     border-radius: 10px;
@@ -3161,7 +3161,7 @@ body {
     max-width: 600px;
     max-height: 85vh;
     background: linear-gradient(180deg, #1a1b26 0%, #16171f 100%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--white-10);
     border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     display: flex;
@@ -3174,7 +3174,7 @@ body {
     align-items: flex-start;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .pf-mapping-modal-title {
@@ -3186,7 +3186,7 @@ body {
 
 .pf-mapping-modal-subtext {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--white-50);
     margin: 0;
 }
 
@@ -3210,7 +3210,7 @@ body {
     justify-content: flex-end;
     gap: 12px;
     padding: 16px 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--border-subtle);
     background: rgba(0, 0, 0, 0.1);
 }
 
@@ -3234,7 +3234,7 @@ body {
 .pf-mapping-modal .pf-mapping-raw {
     flex: 0 0 140px;
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--white-70);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -3249,9 +3249,9 @@ body {
     flex: 1;
     padding: 6px 8px;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--white-10);
     border-radius: 4px;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--white-90);
     font-size: 12px;
 }
 
@@ -3284,7 +3284,7 @@ body {
     width: 100%;
     padding: 12px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--white-10);
     background: var(--surface-subtle);
     cursor: pointer;
     transition: all 0.15s ease;
@@ -3293,8 +3293,8 @@ body {
 }
 
 .pf-expand-bar:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--surface-subtle-hover);
+    border-color: var(--white-15);
 }
 
 .pf-expand-bar:active {
@@ -3321,7 +3321,7 @@ body {
 
 .pf-expand-bar-label {
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--white-60);
     font-weight: 500;
 }
 
@@ -3624,12 +3624,12 @@ body {
 
 .pf-modal-close:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--white-10);
 }
 
 .pf-modal-header {
     padding: 24px 24px 16px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--white-10);
 }
 
 .pf-modal-body {
