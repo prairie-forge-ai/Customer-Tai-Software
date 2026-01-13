@@ -2981,7 +2981,9 @@ button:disabled,
   position: relative;
   padding: 32px 24px 20px;
   text-align: center;
-  background: linear-gradient(180deg, var(--primary-color), transparent 100%);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .pf-ada-modal__avatar {
