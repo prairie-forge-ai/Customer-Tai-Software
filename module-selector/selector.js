@@ -62,9 +62,10 @@ function showAuthorizationError(title, message) {
 
 /**
  * Show email prompt inline (no popup)
+ * @param {string} initialError - Optional error message to display immediately
  * @returns {Promise<{success: boolean, email: string|null}>}
  */
-async function showEmailPrompt() {
+async function showEmailPrompt(initialError = null) {
     return new Promise((resolve) => {
         console.log("[EmailPrompt] Showing inline email prompt");
         
@@ -78,6 +79,12 @@ async function showEmailPrompt() {
         // Hide loading, show email prompt
         if (loadingState) loadingState.style.display = 'none';
         if (emailState) emailState.style.display = 'block';
+        
+        // Show initial error if provided
+        if (initialError && errorMessage) {
+            errorMessage.textContent = initialError;
+            errorMessage.classList.add('show');
+        }
         
         // Focus input
         setTimeout(() => {
@@ -688,8 +695,9 @@ async function init() {
                     attempts++;
                     console.log(`[Init] Email authorization attempt ${attempts}/${maxAttempts}`);
                     
-                    // Show email prompt dialog
-                    const emailResult = await showEmailPrompt();
+                    // Show email prompt dialog (with error message if retry)
+                    const errorMsg = attempts > 1 ? 'Email not authorized. Please try again or contact support.' : null;
+                    const emailResult = await showEmailPrompt(errorMsg);
                     
                     if (!emailResult.success) {
                         console.log("[Init] User cancelled email authorization");
