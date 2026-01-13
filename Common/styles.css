@@ -11,10 +11,10 @@
 
 /* CSS Variables (Design Tokens) */
 :root {
-  /* Colors */
-  --primary-color: #4C2FFF;
-  --primary-hover: #3D25CC;
-  --primary-active: #2E1C99;
+  /* Colors - Standardized across all modules */
+  --primary-color: #2E30C9;
+  --primary-hover: #2725A5;
+  --primary-active: #1E1C70;
   --pf-accent: #2E30C9;
   --pf-accent-dark: #2725A5;
   --pf-hover-shadow: 0 20px 35px rgba(46, 48, 201, 0.25);
@@ -36,17 +36,17 @@
   --info-border: #93C5FD;
   --info-text: #1E40AF;
 
-  /* Neutral Colors */
-  --text-primary: rgba(255, 255, 255, 0.92);
-  --text-secondary: rgba(255, 255, 255, 0.78);
+  /* Neutral Colors - Standardized to match module selector */
+  --text-primary: #F5F5F7;
+  --text-secondary: #C9C9D6;
   --text-tertiary: rgba(255, 255, 255, 0.65);
 
-  --surface-primary: rgba(15, 23, 42, 0.88);
-  --surface-secondary: rgba(15, 23, 42, 0.7);
-  --surface-hover: rgba(99, 102, 241, 0.08);
+  --surface-primary: rgba(5, 7, 24, 0.82);
+  --surface-secondary: rgba(9, 12, 38, 0.88);
+  --surface-hover: rgba(53, 51, 205, 0.2);
 
-  --border-color: rgba(148, 163, 184, 0.3);
-  --border-focus: #a855f7;
+  --border-color: rgba(245, 245, 247, 0.12);
+  --border-focus: #2E30C9;
   --pf-bg: #000;
 
   /* Spacing */
