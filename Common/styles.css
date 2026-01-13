@@ -72,9 +72,9 @@
   --white-85: rgba(255, 255, 255, 0.85);
   --white-90: rgba(255, 255, 255, 0.9);
   
-  --pf-bg: #ff0000;
-  --pf-bg-gradient-start: #ff0000;
-  --pf-bg-gradient-end: #ff0000;
+  --pf-bg: linear-gradient(135deg, #000000 0%, #2E30C9 100%);
+  --pf-bg-gradient-start: #000000;
+  --pf-bg-gradient-end: #2E30C9;
 
   /* Spacing */
   --spacing-xs: 0.25rem;
@@ -116,7 +116,7 @@ body {
   font-family: var(--font-family);
   font-size: var(--font-size-base);
   color: var(--text-primary);
-  background: var(--pf-bg);
+  background: linear-gradient(135deg, var(--pf-bg-gradient-start) 0%, var(--pf-bg-gradient-end) 100%);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
