@@ -6,7 +6,7 @@
            xsi:type="TaskPaneApp">
 
   <Id>16b2f680-b42c-4f45-ab67-af2d2c3c9d15</Id>
-  <Version>2.0.1.0</Version>
+  <Version>2.0.0.0</Version>
   <ProviderName>Prairie Forge</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="TaiTools"/>
@@ -17,8 +17,6 @@
 
   <AppDomains>
     <AppDomain>https://prairie-forge-ai.github.io</AppDomain>
-    <AppDomain>https://assets.prairieforge.ai</AppDomain>
-    <AppDomain>https://prairieforge.ai</AppDomain>
   </AppDomains>
 
   <Hosts>
