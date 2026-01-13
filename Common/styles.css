@@ -44,10 +44,21 @@
   --surface-primary: rgba(5, 7, 24, 0.82);
   --surface-secondary: rgba(9, 12, 38, 0.88);
   --surface-hover: rgba(53, 51, 205, 0.2);
+  --surface-subtle: rgba(255, 255, 255, 0.03);
+  --surface-input: rgba(255, 255, 255, 0.04);
+  --surface-modal: rgba(8, 10, 35, 0.95);
+  --surface-modal-footer: rgba(0, 0, 0, 0.2);
 
   --border-color: rgba(245, 245, 247, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(245, 245, 247, 0.18);
+  --border-strong: rgba(245, 245, 247, 0.2);
   --border-focus: #2E30C9;
+  
+  --overlay-dark: rgba(0, 0, 0, 0.6);
   --pf-bg: #000;
+  --pf-bg-gradient-start: #000000;
+  --pf-bg-gradient-end: #2E30C9;
 
   /* Spacing */
   --spacing-xs: 0.25rem;
