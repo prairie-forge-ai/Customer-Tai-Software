@@ -3230,3 +3230,34 @@ body {
     color: var(--text-primary);
     letter-spacing: 0.5px;
 }
+
+/* =============================================================================
+   ADA CARD - Full Size Card Content
+   ============================================================================= */
+
+.pf-ada-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    padding: 24px;
+}
+
+.pf-ada-card:hover {
+    transform: translateY(-2px);
+}
+
+.pf-ada-card .pf-ada-icon {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 12px;
+}
+
+.pf-ada-card .pf-button-label {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--pf-text);
+}

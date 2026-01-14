@@ -4912,14 +4912,6 @@ function renderExpenseReviewStep(detail) {
                     )}
                 </div>
             </article>
-            
-            <!-- Ada Assistant Card -->
-            <article class="pf-card pf-card--ada-full" id="expense-ada-card">
-                <button type="button" class="pf-ada-full-button" id="expense-ada-btn" title="Ask Ada about payroll data">
-                    <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" class="pf-ada-full-avatar" onerror="this.style.display='none'" />
-                    <span class="pf-ada-full-label">Ask Ada</span>
-                </button>
-            </article>
             ${/* HIDDEN: Column Classification - internal tool, not customer-facing
             ${renderTaxonomyAdvisoryCard()}
             */ ''}
@@ -4930,6 +4922,13 @@ function renderExpenseReviewStep(detail) {
             ${
                 stepFields
                     ? `
+            <!-- Ada Assistant Card -->
+            <article class="pf-step-card pf-step-detail pf-config-card">
+                <div class="pf-ada-card" id="expense-ada-btn" title="Ask Ada about payroll data">
+                    <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" class="pf-ada-icon" onerror="this.style.display='none'" />
+                    <div class="pf-button-label">Ask Ada</div>
+                </div>
+            </article>
             ${renderInlineNotes({
                 textareaId: "step-notes-input",
                 value: stepNotes,
