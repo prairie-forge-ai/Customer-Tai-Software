@@ -65,54 +65,62 @@ let messageHistory = [];
 export function renderCopilotCard(options = {}) {
     const merged = { ...DEFAULT_OPTIONS, ...options };
     
-    const quickActionsHtml = merged.quickActions?.map(action => 
-        `<button type="button" class="pf-ada-chip" data-action="${action.id}" data-prompt="${escapeAttr(action.prompt)}">${action.label}</button>`
+    const quickActionsOptions = merged.quickActions?.map(action => 
+        `<option value="${escapeAttr(action.prompt)}">${action.label}</option>`
     ).join('') || '';
     
     return `
         <article class="pf-ada" data-copilot="${merged.id}">
-            <header class="pf-ada-header">
-                <div class="pf-ada-identity">
-                    <img class="pf-ada-avatar" src="${ADA_IMAGE_URL}" alt="Ada" onerror="this.style.display='none'" />
-                    <div class="pf-ada-name">
-                        <span class="pf-ada-title"><span class="pf-ada-title--ask">ask</span><span class="pf-ada-title--ada">ADA</span></span>
-                        <span class="pf-ada-role">${merged.subtext}</span>
-                    </div>
-                </div>
-                <div class="pf-ada-header-right">
-                    <span class="pf-ada-beta-tag">BETA</span>
-                    <div class="pf-ada-status" id="${merged.id}-status-badge" title="Ready">
-                        <span class="pf-ada-status-dot" id="${merged.id}-status-dot"></span>
-                    </div>
-                </div>
-            </header>
+            <div class="pf-ada-search-bar">
+                <img class="pf-ada-avatar-inline" src="${ADA_IMAGE_URL}" alt="Ada" onerror="this.style.display='none'" />
+                <input 
+                    type="text" 
+                    class="pf-ada-input-inline" 
+                    id="${merged.id}-prompt" 
+                    placeholder="Ask Ada about ${merged.subtext}..." 
+                    autocomplete="off"
+                >
+                <button type="button" class="pf-ada-send-inline" id="${merged.id}-ask" title="Send">
+                    ${SEND_ARROW}
+                </button>
+            </div>
             
-            <div class="pf-ada-body">
-                <div class="pf-ada-conversation" id="${merged.id}-messages">
-                    <div class="pf-ada-bubble pf-ada-bubble--ai">
-                        <p>${merged.welcomeMessage}</p>
-                    </div>
+            ${quickActionsOptions ? `
+            <div class="pf-ada-suggestions">
+                <button type="button" class="pf-ada-suggestions-toggle" id="${merged.id}-suggestions-toggle">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span>Need Inspiration?</span>
+                    <svg class="pf-ada-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+                <div class="pf-ada-suggestions-dropdown" id="${merged.id}-suggestions-dropdown">
+                    <select class="pf-ada-suggestions-select" id="${merged.id}-suggestions-select" size="${Math.min(merged.quickActions?.length || 4, 6)}">
+                        ${quickActionsOptions}
+                    </select>
                 </div>
-                
-                <div class="pf-ada-composer">
-                    <input 
-                        type="text" 
-                        class="pf-ada-input" 
-                        id="${merged.id}-prompt" 
-                        placeholder="${merged.placeholder}" 
-                        autocomplete="off"
-                    >
-                    <button type="button" class="pf-ada-send" id="${merged.id}-ask" title="Send">
-                        ${SEND_ARROW}
-                    </button>
+            </div>
+            ` : ''}
+            
+            <div class="pf-ada-conversation" id="${merged.id}-messages" style="display: none;">
+                <div class="pf-ada-bubble pf-ada-bubble--ai">
+                    <p>${merged.welcomeMessage}</p>
                 </div>
-                
-                ${quickActionsHtml ? `<div class="pf-ada-chips">${quickActionsHtml}</div>` : ''}
-                
-                <footer class="pf-ada-footer">
+            </div>
+            
+            <div class="pf-ada-status-bar">
+                <div class="pf-ada-status-indicator">
+                    <span class="pf-ada-status-dot" id="${merged.id}-status-dot"></span>
+                    <span class="pf-ada-status-text" id="${merged.id}-status-text">Ready</span>
+                </div>
+                <div class="pf-ada-powered">
                     ${CHATGPT_ICON}
-                    <span>Powered by <span class="pf-ada-model">GPT-4 Turbo</span></span>
-                </footer>
+                    <span>GPT-4 Turbo</span>
+                </div>
             </div>
         </article>
     `;
@@ -142,7 +150,10 @@ export function bindCopilotCard(container, options = {}) {
     const promptInput = root.querySelector(`#${merged.id}-prompt`);
     const askButton = root.querySelector(`#${merged.id}-ask`);
     const statusDot = root.querySelector(`#${merged.id}-status-dot`);
-    const statusBadge = root.querySelector(`#${merged.id}-status-badge`);
+    const statusText = root.querySelector(`#${merged.id}-status-text`);
+    const suggestionsToggle = root.querySelector(`#${merged.id}-suggestions-toggle`);
+    const suggestionsDropdown = root.querySelector(`#${merged.id}-suggestions-dropdown`);
+    const suggestionsSelect = root.querySelector(`#${merged.id}-suggestions-select`);
     
     // State
     let isProcessing = false;
@@ -154,8 +165,8 @@ export function bindCopilotCard(container, options = {}) {
             if (state === 'busy') statusDot.classList.add('pf-ada-status-dot--busy');
             if (state === 'offline') statusDot.classList.add('pf-ada-status-dot--offline');
         }
-        if (statusBadge) {
-            statusBadge.title = text;
+        if (statusText) {
+            statusText.textContent = text;
         }
     };
     
@@ -213,6 +224,11 @@ export function bindCopilotCard(container, options = {}) {
         if (promptInput) promptInput.value = '';
         if (askButton) askButton.disabled = true;
         
+        // Show conversation area when first message is sent
+        if (messagesContainer && messagesContainer.style.display === 'none') {
+            messagesContainer.style.display = 'flex';
+        }
+        
         // Add user message
         addMessage(prompt, 'user');
         
@@ -268,13 +284,46 @@ export function bindCopilotCard(container, options = {}) {
         }
     });
     
-    // Quick action chips
-    root.querySelectorAll('.pf-ada-chip').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const prompt = btn.dataset.prompt;
-            if (prompt) handleSubmit(prompt);
+    // Suggestions dropdown toggle
+    if (suggestionsToggle && suggestionsDropdown) {
+        suggestionsToggle.addEventListener('click', () => {
+            const isOpen = suggestionsDropdown.classList.contains('is-open');
+            if (isOpen) {
+                suggestionsDropdown.classList.remove('is-open');
+                suggestionsToggle.classList.remove('is-active');
+            } else {
+                suggestionsDropdown.classList.add('is-open');
+                suggestionsToggle.classList.add('is-active');
+            }
         });
-    });
+    }
+    
+    // Handle suggestion selection
+    if (suggestionsSelect) {
+        suggestionsSelect.addEventListener('change', () => {
+            const selectedPrompt = suggestionsSelect.value;
+            if (selectedPrompt) {
+                if (promptInput) promptInput.value = selectedPrompt;
+                if (suggestionsDropdown) {
+                    suggestionsDropdown.classList.remove('is-open');
+                    suggestionsToggle?.classList.remove('is-active');
+                }
+                promptInput?.focus();
+            }
+        });
+        
+        // Double-click to submit directly
+        suggestionsSelect.addEventListener('dblclick', () => {
+            const selectedPrompt = suggestionsSelect.value;
+            if (selectedPrompt) {
+                if (suggestionsDropdown) {
+                    suggestionsDropdown.classList.remove('is-open');
+                    suggestionsToggle?.classList.remove('is-active');
+                }
+                handleSubmit(selectedPrompt);
+            }
+        });
+    }
 }
 
 /**

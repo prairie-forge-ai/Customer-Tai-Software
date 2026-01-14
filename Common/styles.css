@@ -3172,125 +3172,169 @@ button:disabled,
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid rgba(245, 245, 247, 0.18);
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  padding: 20px;
 }
 
-.pf-ada-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: rgba(46, 48, 201, 0.04);
-  border-bottom: 1px solid rgba(46, 48, 201, 0.12);
-}
-
-.pf-ada-identity {
+/* Search Bar - Simplified Design */
+.pf-ada-search-bar {
   display: flex;
   align-items: center;
   gap: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(245, 245, 247, 0.12);
+  border-radius: 50px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
 }
 
-.pf-ada-avatar {
-  width: 56px;
-  height: 56px;
+.pf-ada-search-bar:focus-within {
+  border-color: rgba(46, 48, 205, 0.4);
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 0 0 3px rgba(46, 48, 205, 0.1);
+}
+
+.pf-ada-avatar-inline {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid rgba(46, 48, 201, 0.6);
-  box-shadow: 
-    0 4px 16px rgba(46, 48, 201, 0.4),
-    0 0 0 4px rgba(46, 48, 201, 0.15);
+  flex-shrink: 0;
 }
 
-.pf-ada-name {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.pf-ada-title {
-  font-size: 22px;
-  font-weight: 400;
+.pf-ada-input-inline {
+  flex: 1;
+  background: transparent;
+  border: none;
   color: #fff;
-  letter-spacing: -0.01em;
-  display: flex;
-  align-items: baseline;
+  font-size: 15px;
+  outline: none;
+  padding: 0;
 }
 
-.pf-ada-title--ask {
-  font-size: 16px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.65);
-  letter-spacing: 0;
+.pf-ada-input-inline::placeholder {
+  color: rgba(255, 255, 255, 0.4);
 }
 
-.pf-ada-title--ada {
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.03em;
-}
-
-.pf-ada-role {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 400;
-  line-height: 1.3;
-}
-
-.pf-ada-header-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pf-ada-beta-tag {
-  padding: 3px 10px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #fff;
-  background: #2E30CD;
-  border-radius: 4px;
-  text-transform: uppercase;
-  box-shadow: 
-    0 0 12px rgba(46, 48, 201, 0.6),
-    0 0 24px rgba(46, 48, 201, 0.3),
-    0 2px 8px rgba(46, 48, 201, 0.4);
-  animation: beta-glow 2s ease-in-out infinite;
-}
-
-@keyframes beta-glow {
-  0%, 100% { 
-    box-shadow: 
-      0 0 12px rgba(46, 48, 201, 0.6),
-      0 0 24px rgba(46, 48, 201, 0.3),
-      0 2px 8px rgba(46, 48, 201, 0.4);
-  }
-  50% { 
-    box-shadow: 
-      0 0 16px rgba(46, 48, 201, 0.8),
-      0 0 32px rgba(46, 48, 201, 0.5),
-      0 2px 12px rgba(46, 48, 201, 0.6);
-  }
-}
-
-.pf-ada-status {
-  width: 32px;
-  height: 32px;
+.pf-ada-send-inline {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
+  border: none;
+  background: #2E30CD;
+  color: #fff;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: help;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.pf-ada-send-inline:hover {
+  background: #2520b0;
+  transform: scale(1.05);
+}
+
+.pf-ada-send-inline:active {
+  transform: scale(0.95);
+}
+
+/* Suggestions Dropdown */
+.pf-ada-suggestions {
+  position: relative;
+}
+
+.pf-ada-suggestions-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.pf-ada-suggestions-toggle:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pf-ada-suggestions-toggle.is-active {
+  color: #2E30CD;
+}
+
+.pf-ada-chevron {
+  transition: transform 0.2s ease;
+}
+
+.pf-ada-suggestions-toggle.is-active .pf-ada-chevron {
+  transform: rotate(180deg);
+}
+
+.pf-ada-suggestions-dropdown {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  margin-top: 8px;
+}
+
+.pf-ada-suggestions-dropdown.is-open {
+  max-height: 300px;
+}
+
+.pf-ada-suggestions-select {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(245, 245, 247, 0.12);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 14px;
+  padding: 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.pf-ada-suggestions-select option {
+  background: #0f172a;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.pf-ada-suggestions-select option:hover {
+  background: rgba(46, 48, 205, 0.2);
+}
+
+/* Status Bar */
+.pf-ada-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid rgba(245, 245, 247, 0.08);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.pf-ada-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pf-ada-status-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--success-color, #10b981);
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
@@ -3314,11 +3358,23 @@ button:disabled,
   50% { opacity: 0.4; }
 }
 
-.pf-ada-body {
-  padding: 20px;
+.pf-ada-status-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pf-ada-powered {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.pf-ada-powered svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.5;
 }
 
 .pf-ada-conversation {
