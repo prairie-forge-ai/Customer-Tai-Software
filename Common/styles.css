@@ -758,9 +758,9 @@ body {
 .pf-action-toggle.is-active,
 .pf-action-toggle.is-saved,
 .pf-notes-lock.is-locked {
-  background: linear-gradient(120deg, var(--primary-color), var(--primary-hover));
+  background: #2E30C9;
   border-color: rgba(245, 245, 247, 0.48);
-  box-shadow: 0 0 14px rgba(80, 86, 255, 0.45);
+  box-shadow: 0 0 14px rgba(46, 48, 201, 0.45);
 }
 
 /* Needs attention indicator - pulsing amber border */
