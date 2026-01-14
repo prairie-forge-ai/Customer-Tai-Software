@@ -6265,6 +6265,7 @@ function focusStep(index) {
     // Update global context for Ada
     window.PRAIRIE_FORGE_CONTEXT.step = step.id;
     window.PRAIRIE_FORGE_CONTEXT.stepName = step.title;
+    window.PRAIRIE_FORGE_CONTEXT.companyId = getConfigValue("SS_Company_ID") || null;
     
     // Activate the corresponding Excel sheet for this step
     const sheetName = STEP_SHEET_MAP[step.id];

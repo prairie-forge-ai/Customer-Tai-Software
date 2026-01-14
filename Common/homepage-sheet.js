@@ -25,11 +25,13 @@ async function callAdaApiStandalone(prompt, context, messageHistory) {
         const currentModule = prairieForgeContext.module || "general";
         const currentStep = prairieForgeContext.step !== null ? String(prairieForgeContext.step) : "analysis";
         const stepName = prairieForgeContext.stepName || null;
+        const companyId = prairieForgeContext.companyId || null;
         
         console.log("[Ada Popup] Calling copilot API with context:", {
             module: currentModule,
             step: currentStep,
-            stepName: stepName
+            stepName: stepName,
+            companyId: companyId
         });
         
         // Merge step name into context for logging
@@ -52,6 +54,7 @@ async function callAdaApiStandalone(prompt, context, messageHistory) {
                 context: enrichedContext,
                 module: currentModule,
                 function: currentStep,
+                customerId: companyId,
                 history: messageHistory?.slice(-10) || []
             })
         });
