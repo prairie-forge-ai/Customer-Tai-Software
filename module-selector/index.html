@@ -211,8 +211,8 @@
         }
         
         .auth-info-box {
-            background: rgba(46, 48, 201, 0.1);
-            border-left: 4px solid #2E30C9;
+            background: color-mix(in srgb, var(--pf-accent) 10%, transparent);
+            border-left: 4px solid var(--pf-accent);
             padding: 16px;
             margin: 24px 0;
             border-radius: 8px;
@@ -244,7 +244,7 @@
         .auth-form-group input[type="email"] {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid rgba(46, 48, 201, 0.3);
+            border: 2px solid color-mix(in srgb, var(--pf-accent) 30%, transparent);
             border-radius: 8px;
             font-family: 'Inter', sans-serif;
             font-size: 14px;
@@ -255,8 +255,8 @@
         
         .auth-form-group input[type="email"]:focus {
             outline: none;
-            border-color: #2E30C9;
-            box-shadow: 0 0 0 3px rgba(46, 48, 201, 0.2);
+            border-color: var(--pf-accent);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--pf-accent) 20%, transparent);
         }
         
         .auth-form-group input[type="email"]::placeholder {
@@ -299,23 +299,23 @@
         }
         
         .auth-button-primary {
-            background: #2E30C9;
+            background: var(--pf-accent);
             color: #F5F5F7;
         }
         
         .auth-button-primary:hover {
-            background: #2E30C9;
+            background: var(--pf-accent);
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(46, 48, 201, 0.5);
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--pf-accent) 50%, transparent);
         }
         
         .auth-button-primary:active {
             transform: translateY(0);
-            background: #2E30C9;
+            background: var(--pf-accent);
         }
         
         .auth-button-primary:disabled {
-            background: rgba(46, 48, 201, 0.4);
+            background: color-mix(in srgb, var(--pf-accent) 40%, transparent);
             cursor: not-allowed;
             transform: none;
         }
@@ -323,22 +323,22 @@
         .auth-button-secondary {
             background: transparent;
             color: #C8C8D4;
-            border: 2px solid rgba(46, 48, 201, 0.3);
+            border: 2px solid color-mix(in srgb, var(--pf-accent) 30%, transparent);
         }
         
         .auth-button-secondary:hover {
-            background: rgba(46, 48, 201, 0.1);
-            border-color: rgba(46, 48, 201, 0.5);
+            background: color-mix(in srgb, var(--pf-accent) 10%, transparent);
+            border-color: color-mix(in srgb, var(--pf-accent) 50%, transparent);
         }
         
         .auth-button-secondary:active {
-            background: rgba(46, 48, 201, 0.2);
+            background: color-mix(in srgb, var(--pf-accent) 20%, transparent);
         }
         
         .auth-contact-info {
             margin-top: 32px;
             padding-top: 24px;
-            border-top: 1px solid rgba(46, 48, 201, 0.2);
+            border-top: 1px solid color-mix(in srgb, var(--pf-accent) 20%, transparent);
             text-align: center;
         }
         
