@@ -3063,6 +3063,73 @@ button:disabled,
   color: #fff;
 }
 
+/* Compact header layout for chat mode */
+.pf-ada-modal__header-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pf-ada-modal__header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.pf-ada-modal__avatar-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(124, 58, 237, 0.4);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.pf-ada-modal__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pf-ada-modal__title-compact {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.pf-ada-modal__subtitle-compact {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.pf-ada-modal__header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pf-ada-modal__header-right .pf-ada-modal__beta-tag {
+  position: static;
+  padding: 3px 8px;
+  font-size: 9px;
+}
+
+.pf-ada-modal__header-right .pf-ada-modal__close {
+  position: static;
+  width: 28px;
+  height: 28px;
+}
+
 .pf-ada-modal__body {
   padding: 24px;
 }
@@ -3077,6 +3144,8 @@ button:disabled,
   padding: 0;
   flex: 1;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .pf-ada-modal--chat .pf-ada-copilot-container {
@@ -3267,16 +3336,17 @@ button:disabled,
   font-style: italic;
 }
 
-/* New Search Bar Design */
+/* New Search Bar Design - Compact */
 .pf-ada-search-bar-new {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(245, 245, 247, 0.12);
-  border-radius: 12px;
-  padding: 12px 16px;
+  border-radius: 10px;
+  padding: 8px 12px;
   transition: all 0.2s ease;
+  margin: 12px 16px;
 }
 
 .pf-ada-search-bar-new:focus-within {
@@ -3290,7 +3360,7 @@ button:disabled,
   background: transparent;
   border: none;
   color: #fff;
-  font-size: 15px;
+  font-size: 13px;
   outline: none;
   padding: 0;
 }
@@ -3300,9 +3370,9 @@ button:disabled,
 }
 
 .pf-ada-send-new {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   border: none;
   background: #2E30CD;
   color: #fff;
@@ -3321,6 +3391,11 @@ button:disabled,
 
 .pf-ada-send-new:active {
   transform: translateY(0);
+}
+
+.pf-ada-send-new svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Suggestions Dropdown */
@@ -3459,18 +3534,19 @@ button:disabled,
 .pf-ada-conversation {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-height: 300px;
+  gap: 10px;
+  max-height: 500px;
   overflow-y: auto;
-  padding-right: 8px;
+  padding: 16px;
+  flex: 1;
 }
 
 .pf-ada-bubble {
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1.5;
-  max-width: 90%;
+  padding: 10px 16px;
+  border-radius: 18px;
+  font-size: 13px;
+  line-height: 1.4;
+  max-width: 85%;
 }
 
 .pf-ada-bubble p {
@@ -3482,7 +3558,8 @@ button:disabled,
   border: 1px solid #2E30CD;
   color: #e5e5e5;
   align-self: flex-start;
-  padding: 14px 18px;
+  padding: 11px 16px;
+  border-radius: 18px 18px 18px 4px;
 }
 
 .pf-ada-bubble--ai p {
@@ -3491,10 +3568,11 @@ button:disabled,
 }
 
 .pf-ada-bubble--user {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   color: #fff;
   align-self: flex-end;
+  border-radius: 18px 18px 4px 18px;
 }
 
 .pf-ada-bubble--system {
@@ -3502,7 +3580,8 @@ button:disabled,
   border: 1px solid rgba(245, 158, 11, 0.3);
   color: #f59e0b;
   align-self: center;
-  font-size: 13px;
+  font-size: 12px;
+  border-radius: 18px;
 }
 
 .pf-ada-bubble--loading {
