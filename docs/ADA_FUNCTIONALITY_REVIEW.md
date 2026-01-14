@@ -425,24 +425,47 @@ Each module can have tailored quick actions and context:
 
 ### **Current Limitations:**
 
-1. **No Persistent Memory**
+### ❌ **CRITICAL GAPS IDENTIFIED:**
+
+1. **No Context Awareness**
+   - Ada doesn't know which page/step the user is on
+   - Cannot differentiate between homepage, expense review, PTO review, etc.
+   - All modal calls use generic `module: "general"` and `function: "analysis"`
+   - **Impact:** Ada cannot provide step-specific guidance or insights
+
+2. **Generic Context Provider**
+   - Modal uses `callAdaApiStandalone` which only reads `SS_PF_Config`
+   - Does NOT automatically access `PR_Expense_Review` or `PTO_Review` sheets
+   - Does NOT include current payroll data, variance analysis, or employee details
+   - **Impact:** Ada's responses are generic and not based on actual data in the workbook
+
+3. **Module Integration Incomplete**
+   - "Ask Ada" button on Expense Review opens same generic modal
+   - No specialized context passed for payroll vs PTO vs homepage
+   - Context provider is configured but not effectively used
+   - **Impact:** Ada cannot provide specific insights about current payroll period
+
+4. **Database Tables Missing**
+   - `ada_module_config` table not yet created (schema exists in docs)
+   - `ada_knowledge_sources` table not yet created (schema exists in docs)
+   - Hierarchical prompt resolution not active
+   - **Impact:** Cannot customize Ada per module or provide knowledge base references
+
+### **Other Limitations:**
+
+5. **No Persistent Memory**
    - Each session is independent
    - No cross-session learning or preferences
 
-2. **Limited Excel Data Access**
-   - Only reads from specified sheets
+6. **Limited Excel Data Access**
+   - Only reads from specified sheets (when configured)
    - Cannot write or modify Excel data
    - Cannot trigger workflow actions
 
-3. **No Multi-Turn Complex Tasks**
+7. **No Multi-Turn Complex Tasks**
    - Cannot execute multi-step workflows
    - Cannot perform calculations directly
    - Cannot generate Excel formulas
-
-4. **Module Config Not Fully Implemented**
-   - `ada_module_config` table not yet created
-   - `ada_knowledge_sources` table not yet created
-   - Hierarchical prompt resolution not active
 
 ### **Planned Enhancements:**
 
@@ -575,24 +598,274 @@ curl -X POST https://jgciqwzwacaesqjaoadc.supabase.co/functions/v1/copilot \
 
 ---
 
+## Detailed Analysis of Context Issues
+
+### **Problem 1: Generic Modal Context**
+
+**Current Implementation:**
+```javascript
+// In homepage-sheet.js - callAdaApiStandalone
+const response = await fetch(COPILOT_URL, {
+  body: JSON.stringify({
+    prompt: prompt,
+    context: context,
+    module: "general",        // ❌ Always "general"
+    function: "analysis",     // ❌ Always "analysis"
+    history: messageHistory?.slice(-10) || []
+  })
+});
+```
+
+**What's Wrong:**
+- `module: "general"` means Ada doesn't know if user is in payroll-recorder or pto-accrual
+- `function: "analysis"` doesn't differentiate between homepage, expense review, or JE prep
+- Context provider only reads `SS_PF_Config`, not actual data sheets
+
+**What Should Happen:**
+```javascript
+// Should detect current module and step
+const currentModule = detectCurrentModule(); // "payroll-recorder" or "pto-accrual"
+const currentStep = detectCurrentStep();     // "expense-review", "je-prep", etc.
+
+const response = await fetch(COPILOT_URL, {
+  body: JSON.stringify({
+    prompt: prompt,
+    context: await getStepSpecificContext(currentModule, currentStep),
+    module: currentModule,
+    function: currentStep,
+    history: messageHistory?.slice(-10) || []
+  })
+});
+```
+
+### **Problem 2: Context Provider Not Used Effectively**
+
+**Current Implementation:**
+```javascript
+// In getAdaModalContext() - homepage-sheet.js
+contextProvider: createExcelContextProvider ? createExcelContextProvider({
+  config: 'SS_PF_Config'  // ❌ Only reads config sheet
+}) : null,
+```
+
+**What's Wrong:**
+- Only reads `SS_PF_Config` (configuration data)
+- Does NOT read `PR_Expense_Review` (actual payroll analysis)
+- Does NOT read `PR_Data_Clean` (employee/payroll data)
+- Does NOT read `PTO_Review` (PTO analysis)
+
+**What Should Happen:**
+```javascript
+// Should read relevant data sheets based on current step
+contextProvider: createExcelContextProvider({
+  config: 'SS_PF_Config',
+  dataClean: 'PR_Data_Clean',           // Employee roster, payroll data
+  expenseReview: 'PR_Expense_Review',   // Variance analysis, department breakdown
+  jeDraft: 'PR_JE_Draft'                // Journal entry details
+})
+```
+
+### **Problem 3: "Ask Ada" Button Opens Generic Modal**
+
+**Current Implementation:**
+```javascript
+// In workflow.js - Expense Review step
+document.getElementById("expense-ada-btn")?.addEventListener("click", () => {
+  import("../../Common/homepage-sheet.js").then(module => {
+    module.showAdaModal();  // ❌ Opens same generic modal
+  });
+});
+```
+
+**What's Wrong:**
+- Opens same modal as homepage FAB button
+- No indication that user is on Expense Review step
+- No access to PR_Expense_Review data
+- Cannot provide step-specific guidance
+
+**What Should Happen:**
+```javascript
+// Should pass step context to modal
+document.getElementById("expense-ada-btn")?.addEventListener("click", () => {
+  import("../../Common/homepage-sheet.js").then(module => {
+    module.showAdaModal({
+      module: "payroll-recorder",
+      step: "expense-review",
+      contextProvider: createExpenseReviewContextProvider()
+    });
+  });
+});
+```
+
+### **Problem 4: No Step Detection Logic**
+
+**Missing Functionality:**
+There's no code to detect:
+- Which module is currently active (payroll-recorder vs pto-accrual)
+- Which step the user is on (config, import, expense-review, je-prep, archive)
+- Which Excel sheet is currently visible
+
+**Should Implement:**
+```javascript
+function detectCurrentModule() {
+  // Check URL, global state, or active sheet name
+  if (window.location.href.includes('payroll-recorder')) return 'payroll-recorder';
+  if (window.location.href.includes('pto-accrual')) return 'pto-accrual';
+  
+  // Or check appState
+  if (typeof appState !== 'undefined' && appState.module) {
+    return appState.module;
+  }
+  
+  return 'general';
+}
+
+function detectCurrentStep() {
+  if (typeof appState !== 'undefined' && appState.activeStepId) {
+    return appState.activeStepId; // "expense-review", "je-prep", etc.
+  }
+  return 'homepage';
+}
+```
+
+### **Impact Summary:**
+
+**User Experience:**
+- User on Expense Review step asks: "What's driving the variance in Sales?"
+- Ada responds generically: "I can help with variance analysis..."
+- Ada SHOULD respond: "Sales decreased $52K (-44.4%) due to 3 position eliminations..."
+
+**Why This Happens:**
+1. Ada doesn't know user is on Expense Review step
+2. Ada can't read PR_Expense_Review sheet with actual variance data
+3. Ada uses generic system prompt instead of expense-review-specific prompt
+4. No module config to provide step-specific instructions
+
+---
+
 ## Recommendations
 
-### **Immediate Actions:**
+### **CRITICAL - Immediate Actions Required:**
 
-1. **Create Missing Tables**
-   - Run migrations for `ada_module_config`
-   - Run migrations for `ada_knowledge_sources`
-   - Seed with initial data
+#### **1. Fix Context Awareness (Highest Priority)**
 
-2. **Test in Production**
+**Step A: Add Module/Step Detection**
+```javascript
+// Add to Common/homepage-sheet.js or workflow.js
+export function getCurrentWorkflowContext() {
+  // Detect which module and step user is on
+  const module = window.CURRENT_MODULE || 'general'; // Set by each module
+  const step = window.CURRENT_STEP || 'homepage';    // Set by each step
+  
+  return { module, step };
+}
+```
+
+**Step B: Update Modal to Accept Context**
+```javascript
+// Modify showAdaModal() to accept options
+export function showAdaModal(options = {}) {
+  const { module, step, contextProvider } = options;
+  
+  // Use provided context or detect current context
+  const context = options.module 
+    ? { module: options.module, step: options.step }
+    : getCurrentWorkflowContext();
+  
+  // Pass to API call
+  // ...
+}
+```
+
+**Step C: Update "Ask Ada" Buttons**
+```javascript
+// In workflow.js - Expense Review
+document.getElementById("expense-ada-btn")?.addEventListener("click", () => {
+  import("../../Common/homepage-sheet.js").then(module => {
+    module.showAdaModal({
+      module: "payroll-recorder",
+      step: "expense-review",
+      contextProvider: createExpenseReviewContextProvider()
+    });
+  });
+});
+```
+
+#### **2. Implement Step-Specific Context Providers**
+
+**Create Specialized Context Providers:**
+```javascript
+// For Expense Review step
+function createExpenseReviewContextProvider() {
+  return async () => {
+    return await Excel.run(async (context) => {
+      // Read PR_Expense_Review sheet
+      const reviewSheet = context.workbook.worksheets.getItem('PR_Expense_Review');
+      const range = reviewSheet.getUsedRange();
+      range.load('values');
+      await context.sync();
+      
+      // Parse and summarize data
+      return {
+        summary: parseExpenseReviewSummary(range.values),
+        variances: extractVariances(range.values),
+        departments: extractDepartmentBreakdown(range.values)
+      };
+    });
+  };
+}
+```
+
+#### **3. Create Database Tables**
+
+**Run These Migrations:**
+```bash
+# In prairie-forge-website or Customer-Tai-Software
+cd supabase/migrations
+
+# Create ada_module_config table
+# (Use schema from docs/ADA_INSTRUCTIONS_ARCHITECTURE.md)
+
+# Create ada_knowledge_sources table
+# (Use schema from docs/ADA_INSTRUCTIONS_ARCHITECTURE.md)
+```
+
+#### **4. Update API Calls to Pass Module/Step**
+
+**Modify callAdaApiStandalone:**
+```javascript
+async function callAdaApiStandalone(prompt, context, messageHistory, options = {}) {
+  const { module = "general", step = "analysis" } = options;
+  
+  const response = await fetch(COPILOT_URL, {
+    body: JSON.stringify({
+      prompt: prompt,
+      context: context,
+      module: module,        // ✅ Now dynamic
+      function: step,        // ✅ Now dynamic
+      history: messageHistory?.slice(-10) || []
+    })
+  });
+  // ...
+}
+```
+
+### **SHORT-TERM - Next 2 Weeks:**
+
+1. **Test in Production**
    - Verify API responses with real data
    - Monitor token usage and costs
    - Collect user feedback
 
-3. **Documentation**
-   - Add user guide for Ada features
-   - Document common prompts/questions
-   - Create troubleshooting guide
+2. **Add Knowledge Base Content**
+   - Seed `ada_knowledge_sources` with FAQs
+   - Add common troubleshooting guides
+   - Document best practices
+
+3. **Enhance Quick Actions**
+   - Make quick actions step-specific
+   - Add more relevant prompts per step
+   - Test with real user workflows
 
 ### **Short-Term Enhancements:**
 
@@ -632,24 +905,58 @@ curl -X POST https://jgciqwzwacaesqjaoadc.supabase.co/functions/v1/copilot \
 
 ## Conclusion
 
-Ada is **fully functional and ready for production use** in both the Payroll Recorder and PTO Accrual modules. The core infrastructure is solid, with a modern chat interface, robust API integration, and comprehensive conversation logging.
+Ada's **infrastructure is functional** (UI, API, database logging), but **context integration is incomplete**, limiting its practical value in production.
 
-**Key Strengths:**
-- Clean, intuitive UI
-- Fast response times
-- Context-aware analysis
-- Graceful fallback handling
-- Comprehensive logging
+### **Current Reality Check:**
 
-**Areas for Growth:**
-- Complete database schema (module config, knowledge sources)
-- Expand context and data access
-- Add proactive insights and automation
-- Enhance personalization and learning
+**What Works:**
+- ✅ Clean, intuitive chat UI
+- ✅ Fast API response times (2-4 seconds)
+- ✅ Graceful error handling and fallback
+- ✅ Comprehensive conversation logging
+- ✅ Database-driven system prompts
 
-**Overall Assessment:** ⭐⭐⭐⭐ (4/5 stars)
+**What's Missing:**
+- ❌ No awareness of current workflow step
+- ❌ Generic context (doesn't read actual payroll/PTO data)
+- ❌ Module-specific configuration not implemented
+- ❌ Knowledge base not created
+- ❌ Limited practical value without real data access
 
-Ada provides significant value to users and is well-positioned for future enhancements. The foundation is excellent, and with the planned improvements, Ada will become an indispensable part of the Prairie Forge workflow.
+### **Overall Assessment:** ⭐⭐ (2/5 stars)
+
+**Revised Rating Rationale:**
+While the technical foundation is solid, Ada currently provides **limited practical value** because:
+1. She doesn't know what page/step the user is on
+2. She can't access the actual payroll or PTO data being analyzed
+3. Her responses are generic rather than data-driven
+4. Module-specific customization isn't implemented
+
+### **Priority Fixes Required:**
+
+**HIGH PRIORITY:**
+1. **Fix Context Awareness**
+   - Pass current module and step to Ada
+   - Update modal to use module-specific context providers
+   - Enable Ada to read from PR_Expense_Review, PTO_Review sheets
+
+2. **Create Missing Database Tables**
+   - Run migration for `ada_module_config`
+   - Run migration for `ada_knowledge_sources`
+   - Seed with module-specific prompts and quick actions
+
+3. **Implement Step-Specific Context**
+   - Homepage: General guidance
+   - Expense Review: Access to PR_Expense_Review data
+   - PTO Review: Access to PTO_Review data
+   - JE Prep: Access to PR_JE_Draft data
+
+**MEDIUM PRIORITY:**
+4. Update quick actions to be context-aware
+5. Add knowledge base content (FAQs, policies)
+6. Enhance error messages and offline handling
+
+Once these fixes are implemented, Ada will provide **significant value** and earn a ⭐⭐⭐⭐⭐ rating. The foundation is excellent; it just needs proper data integration to fulfill its potential.
 
 ---
 
