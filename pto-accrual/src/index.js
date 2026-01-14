@@ -8534,12 +8534,12 @@ function renderAccrualReviewStep(detail) {
                         `<button type="button" class="pf-action-toggle pf-clickable" id="review-open-btn" title="Open PTO_Review sheet">${TABLE_ICON_SVG}</button>`,
                         "Open Sheet"
                     )}
-                    ${renderLabeledButton(
-                        `<button type="button" class="pf-action-toggle pf-action-toggle--ada pf-clickable" id="review-ada-btn" title="Ask Ada about PTO data">
-                            <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" class="pf-ada-icon" onerror="this.style.display='none'" />
-                        </button>`,
-                        "Ask Ada"
-                    )}
+                </div>
+            </article>
+            <article class="pf-step-card pf-step-detail pf-config-card">
+                <div class="pf-ada-card" id="review-ada-btn" title="Ask Ada about PTO data">
+                    <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" class="pf-ada-icon" onerror="this.style.display='none'" />
+                    <div class="pf-button-label">Ask Ada</div>
                 </div>
             </article>
             ${summaryCard}
