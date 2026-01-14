@@ -2401,7 +2401,7 @@ body {
 }
 
 .pf-quick-modal-item:hover {
-  background: var(--primary-color);
+  background: #2E30C9;
   color: #fff;
 }
 
@@ -2417,7 +2417,7 @@ body {
 .pf-quick-modal-item:hover .pf-nav-icon,
 .pf-quick-modal-item:hover .pf-icon {
   opacity: 1;
-  color: var(--primary-color);
+  color: #2E30C9;
 }
 
 /* Legacy quick-bar classes (kept for backwards compatibility) */
@@ -3168,8 +3168,8 @@ button:disabled,
    ══════════════════════════════════════════════════════════════════════════ */
 
 .pf-ada {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
-  border: 1px solid rgba(76, 47, 255, 0.2);
+  background: linear-gradient(135deg, #2E30C9 0%, #1e20a0 100%);
+  border: 1px solid rgba(46, 48, 201, 0.2);
   border-radius: 16px;
   overflow: hidden;
   display: flex;
@@ -3181,8 +3181,8 @@ button:disabled,
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: rgba(76, 47, 255, 0.04);
-  border-bottom: 1px solid rgba(76, 47, 255, 0.12);
+  background: rgba(46, 48, 201, 0.04);
+  border-bottom: 1px solid rgba(46, 48, 201, 0.12);
 }
 
 .pf-ada-identity {
@@ -3196,10 +3196,10 @@ button:disabled,
   height: 56px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid rgba(76, 47, 255, 0.6);
+  border: 3px solid rgba(46, 48, 201, 0.6);
   box-shadow: 
-    0 4px 16px rgba(76, 47, 255, 0.4),
-    0 0 0 4px rgba(76, 47, 255, 0.15);
+    0 4px 16px rgba(46, 48, 201, 0.4),
+    0 0 0 4px rgba(46, 48, 201, 0.15);
 }
 
 .pf-ada-name {
@@ -3250,28 +3250,28 @@ button:disabled,
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #fff;
-  background: linear-gradient(135deg, var(--primary-color, #4c2fff) 0%, var(--pf-accent, #2E30C9) 100%);
+  background: #2E30C9;
   border-radius: 4px;
   text-transform: uppercase;
   box-shadow: 
-    0 0 12px rgba(76, 47, 255, 0.6),
-    0 0 24px rgba(76, 47, 255, 0.3),
-    0 2px 8px rgba(76, 47, 255, 0.4);
+    0 0 12px rgba(46, 48, 201, 0.6),
+    0 0 24px rgba(46, 48, 201, 0.3),
+    0 2px 8px rgba(46, 48, 201, 0.4);
   animation: beta-glow 2s ease-in-out infinite;
 }
 
 @keyframes beta-glow {
   0%, 100% { 
     box-shadow: 
-      0 0 12px rgba(76, 47, 255, 0.6),
-      0 0 24px rgba(76, 47, 255, 0.3),
-      0 2px 8px rgba(76, 47, 255, 0.4);
+      0 0 12px rgba(46, 48, 201, 0.6),
+      0 0 24px rgba(46, 48, 201, 0.3),
+      0 2px 8px rgba(46, 48, 201, 0.4);
   }
   50% { 
     box-shadow: 
-      0 0 16px rgba(76, 47, 255, 0.8),
-      0 0 32px rgba(76, 47, 255, 0.5),
-      0 2px 12px rgba(76, 47, 255, 0.6);
+      0 0 16px rgba(46, 48, 201, 0.8),
+      0 0 32px rgba(46, 48, 201, 0.5),
+      0 2px 12px rgba(46, 48, 201, 0.6);
   }
 }
 
@@ -3381,7 +3381,7 @@ button:disabled,
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(76, 47, 255, 0.6);
+  background: rgba(46, 48, 201, 0.6);
   animation: ada-typing 1.4s ease-in-out infinite;
 }
 
@@ -3410,8 +3410,8 @@ button:disabled,
 }
 
 .pf-ada-composer:focus-within {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px var(--primary-color);
+  border-color: #2E30C9;
+  box-shadow: 0 0 0 3px rgba(46, 48, 201, 0.2);
 }
 
 .pf-ada-input {
