@@ -2525,6 +2525,12 @@ function bindStepView(stepId) {
     if (stepId === 2) {
         document.getElementById("review-generate-btn")?.addEventListener("click", () => generatePtoReview());
         document.getElementById("review-open-btn")?.addEventListener("click", () => openSheet("PTO_Review"));
+        document.getElementById("review-ada-btn")?.addEventListener("click", () => {
+            // Import and call showAdaModal from homepage-sheet.js
+            import("../../Common/homepage-sheet.js").then(module => {
+                module.showAdaModal();
+            });
+        });
     }
     // Step 2: Headcount Review
     if (stepId === 2) {
@@ -8505,6 +8511,12 @@ function renderAccrualReviewStep(detail) {
                     ${renderLabeledButton(
                         `<button type="button" class="pf-action-toggle pf-clickable" id="review-open-btn" title="Open PTO_Review sheet">${TABLE_ICON_SVG}</button>`,
                         "Open Sheet"
+                    )}
+                    ${renderLabeledButton(
+                        `<button type="button" class="pf-action-toggle pf-clickable" id="review-ada-btn" title="Ask Ada about PTO data">
+                            <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" style="width: 20px; height: 20px; border-radius: 50%;" onerror="this.style.display='none'" />
+                        </button>`,
+                        "Ask Ada"
                     )}
                 </div>
             </article>

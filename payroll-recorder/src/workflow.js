@@ -4896,6 +4896,12 @@ function renderExpenseReviewStep(detail) {
                         `<button type="button" class="pf-action-toggle" id="expense-refresh-btn" title="Refresh expense data">${REFRESH_ICON_SVG}</button>`,
                         "Refresh"
                     )}
+                    ${renderLabeledButton(
+                        `<button type="button" class="pf-action-toggle" id="expense-ada-btn" title="Ask Ada about payroll data">
+                            <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" style="width: 20px; height: 20px; border-radius: 50%;" onerror="this.style.display='none'" />
+                        </button>`,
+                        "Ask Ada"
+                    )}
                 </div>
             </article>
             ${/* HIDDEN: Column Classification - internal tool, not customer-facing
@@ -6046,6 +6052,12 @@ When asked about readiness, be specific about what passes and what needs attenti
         });
         document.getElementById("expense-refresh-btn")?.addEventListener("click", () => {
             prepareExpenseReviewData();
+        });
+        document.getElementById("expense-ada-btn")?.addEventListener("click", () => {
+            // Import and call showAdaModal from homepage-sheet.js
+            import("../../Common/homepage-sheet.js").then(module => {
+                module.showAdaModal();
+            });
         });
         
         // Debug trace button
