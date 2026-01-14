@@ -29,7 +29,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://jgciqwzwacaesqjaoa
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 // Default model configuration (can be overridden by database)
-const DEFAULT_MODEL = "claude-3-5-sonnet-20241022"; // Latest Claude 3.5 Sonnet
+// Using latest Claude Sonnet 4 as of Jan 2026
+const DEFAULT_MODEL = "claude-sonnet-4-20250514"; 
 const DEFAULT_MAX_TOKENS = 2048; // Claude supports up to 8192
 const DEFAULT_TEMPERATURE = 0.7;
 
@@ -390,7 +391,12 @@ serve(async (req) => {
         const named = await fetchNamedSystemPrompt(promptName, customerId);
         if (named) {
           effectiveSystemPrompt = named.system_prompt;
-          model = named.model;
+          // Only use database model if it's a valid Claude model
+          if (named.model && named.model.startsWith('claude-')) {
+            model = named.model;
+          } else {
+            model = DEFAULT_MODEL;
+          }
           maxTokens = named.max_tokens;
           temperature = named.temperature;
         }
@@ -410,7 +416,13 @@ serve(async (req) => {
       
       if (config) {
         effectiveSystemPrompt = config.system_prompt || '';
-        model = config.model || DEFAULT_MODEL;
+        // Only use database model if it's set AND starts with "claude-"
+        // This prevents using outdated OpenAI models or deprecated Claude versions
+        if (config.model && config.model.startsWith('claude-')) {
+          model = config.model;
+        } else {
+          model = DEFAULT_MODEL; // Use code default for safety
+        }
         maxTokens = config.max_tokens || DEFAULT_MAX_TOKENS;
         temperature = config.temperature || DEFAULT_TEMPERATURE;
         
