@@ -71,18 +71,6 @@ export function renderCopilotCard(options = {}) {
     
     return `
         <article class="pf-ada" data-copilot="${merged.id}">
-            <div class="pf-ada-header-new">
-                <div class="pf-ada-header-top">
-                    <img class="pf-ada-avatar-header" src="${ADA_IMAGE_URL}" alt="Ada" onerror="this.style.display='none'" />
-                    <div class="pf-ada-title-section">
-                        <h3 class="pf-ada-title-new">Ask Ada</h3>
-                        <span class="pf-ada-beta-tag-new">BETA</span>
-                    </div>
-                </div>
-                <p class="pf-ada-subtext-new">Your AI-powered assistant to help you troubleshoot, answer questions and perform deeper analyses.</p>
-                <p class="pf-ada-powered-new">Powered by Claude</p>
-            </div>
-            
             <div class="pf-ada-search-bar-new">
                 <input 
                     type="text" 
