@@ -306,8 +306,8 @@ async function logConversation(
   try {
     const insertData = {
       session_id: request.sessionId || null,
-      customer_id: request.customerId || null, // Table uses customer_id (not crm_company_id)
-      prompt_name: moduleContext, // Table uses 'prompt_name' not 'module_context'
+      crm_company_id: request.customerId || null, // Links to companies.id in CRM
+      prompt_name: moduleContext, // Module context (payroll-recorder, pto-accrual, etc.)
       user_prompt: request.prompt,
       context: sanitizeStoredContext(request.context),
       ai_response: STORE_AI_RESPONSES ? response : null,
