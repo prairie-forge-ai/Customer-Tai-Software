@@ -33,7 +33,8 @@ async function callAdaApiStandalone(prompt, context, messageHistory) {
             module: currentModule,
             step: currentStep,
             stepName: stepName,
-            companyId: companyId
+            companyId: companyId,
+            rawContext: prairieForgeContext
         });
         
         // Merge step name into context for logging
