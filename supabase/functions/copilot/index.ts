@@ -308,7 +308,7 @@ async function logConversation(
       .from('ada_conversations')
       .insert({
         session_id: request.sessionId || null,
-        customer_id: request.customerId || null,
+        crm_company_id: request.customerId || null, // Renamed from customer_id to crm_company_id
         prompt_name: moduleContext, // Table uses 'prompt_name' not 'module_context'
         user_prompt: request.prompt,
         context: sanitizeStoredContext(request.context),
