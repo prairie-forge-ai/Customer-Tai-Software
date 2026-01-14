@@ -53,6 +53,13 @@ const MODULE_KEY = "payroll-recorder";
 const MODULE_ALIAS_TOKENS = ["payroll", "payroll recorder", "payroll review", "pr"];
 const MODULE_NAME = "Payroll Recorder";
 
+// Make module and step context globally accessible for Ada
+window.PRAIRIE_FORGE_CONTEXT = {
+    module: MODULE_KEY,
+    step: null, // Will be updated when navigating to steps
+    moduleName: MODULE_NAME
+};
+
 // =============================================================================
 // WAREHOUSE API - Uses centralized client
 // =============================================================================
@@ -6254,6 +6261,10 @@ function focusStep(index) {
     pendingScrollIndex = index;
     const view = step.id === 0 ? "config" : "step";
     setState({ focusedIndex: index, activeView: view, activeStepId: step.id });
+    
+    // Update global context for Ada
+    window.PRAIRIE_FORGE_CONTEXT.step = step.id;
+    window.PRAIRIE_FORGE_CONTEXT.stepName = step.title;
     
     // Activate the corresponding Excel sheet for this step
     const sheetName = STEP_SHEET_MAP[step.id];
