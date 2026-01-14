@@ -12,11 +12,11 @@
 /* CSS Variables (Design Tokens) */
 :root {
   /* Colors - Standardized across all modules */
-  --primary-color: #2E30C9;
-  --primary-hover: #2E30C9;
-  --primary-active: #2E30C9;
-  --pf-accent: #2E30C9;
-  --pf-accent-dark: #2E30C9;
+  --primary-color: #2E30CD;
+  --primary-hover: #2E30CD;
+  --primary-active: #2E30CD;
+  --pf-accent: #2E30CD;
+  --pf-accent-dark: #2E30CD;
   --pf-hover-shadow: 0 20px 35px rgba(46, 48, 201, 0.25);
 
   --success-color: #10b981;
@@ -31,7 +31,7 @@
   --warning-bg: rgba(239, 68, 68, 0.1);
   --warning-border: rgba(239, 68, 68, 0.3);
 
-  --info-color: #2E30C9;
+  --info-color: #2E30CD;
   --info-bg: rgba(46, 48, 201, 0.1);
   --info-border: rgba(46, 48, 201, 0.3);
   --info-text: #F5F5F7;
@@ -55,7 +55,7 @@
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(245, 245, 247, 0.18);
   --border-strong: rgba(245, 245, 247, 0.2);
-  --border-focus: #2E30C9;
+  --border-focus: #2E30CD;
   
   --overlay-dark: rgba(0, 0, 0, 0.7);
   
@@ -73,7 +73,7 @@
   --white-90: rgba(255, 255, 255, 0.9);
   
   --pf-bg-gradient-start: #000000;
-  --pf-bg-gradient-end: #2E30C9;
+  --pf-bg-gradient-end: #2E30CD;
 
   /* Glassmorphism */
   --glass-bg: rgba(5, 7, 24, 0.25);
@@ -758,7 +758,7 @@ body {
 .pf-action-toggle.is-active,
 .pf-action-toggle.is-saved,
 .pf-notes-lock.is-locked {
-  background: #2E30C9;
+  background: #2E30CD;
   border-color: rgba(245, 245, 247, 0.48);
   box-shadow: 0 0 14px rgba(46, 48, 201, 0.45);
 }
@@ -2401,7 +2401,7 @@ body {
 }
 
 .pf-quick-modal-item:hover {
-  background: #2E30C9;
+  background: #2E30CD;
   color: #fff;
 }
 
@@ -2417,7 +2417,7 @@ body {
 .pf-quick-modal-item:hover .pf-nav-icon,
 .pf-quick-modal-item:hover .pf-icon {
   opacity: 1;
-  color: #2E30C9;
+  color: #2E30CD;
 }
 
 /* Legacy quick-bar classes (kept for backwards compatibility) */
@@ -3168,7 +3168,7 @@ button:disabled,
    ══════════════════════════════════════════════════════════════════════════ */
 
 .pf-ada {
-  background: linear-gradient(135deg, #2E30C9 0%, #1e20a0 100%);
+  background: linear-gradient(135deg, #2E30CD 0%, #1e20a0 100%);
   border: 1px solid rgba(46, 48, 201, 0.2);
   border-radius: 16px;
   overflow: hidden;
@@ -3250,7 +3250,7 @@ button:disabled,
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #fff;
-  background: #2E30C9;
+  background: #2E30CD;
   border-radius: 4px;
   text-transform: uppercase;
   box-shadow: 
@@ -3341,8 +3341,8 @@ button:disabled,
 }
 
 .pf-ada-bubble--ai {
-  background: #2E30C9;
-  border: 1px solid #2E30C9;
+  background: #2E30CD;
+  border: 1px solid #2E30CD;
   color: #e5e5e5;
   align-self: flex-start;
   padding: 14px 18px;
@@ -3410,7 +3410,7 @@ button:disabled,
 }
 
 .pf-ada-composer:focus-within {
-  border-color: #2E30C9;
+  border-color: #2E30CD;
   box-shadow: 0 0 0 3px rgba(46, 48, 201, 0.2);
 }
 
@@ -3440,7 +3440,7 @@ button:disabled,
   height: 40px;
   border-radius: 8px;
   border: none;
-  background: #2E30C9;
+  background: #2E30CD;
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -3481,7 +3481,7 @@ button:disabled,
 .pf-ada-chip {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid #2E30C9;
+  border: 1px solid #2E30CD;
   background: transparent;
   color: #a5b4fc;
   font-size: 13px;
@@ -3491,8 +3491,8 @@ button:disabled,
 }
 
 .pf-ada-chip:hover {
-  background: #2E30C9;
-  border-color: #2E30C9;
+  background: #2E30CD;
+  border-color: #2E30CD;
   color: #c7d2fe;
 }
 
