@@ -945,12 +945,19 @@ async function init() {
         rootEl = document.getElementById("app");
         loadingEl = document.getElementById("loading");
         
+        // Initialize global context for Ada (homepage by default)
+        window.PRAIRIE_FORGE_CONTEXT.step = null;
+        window.PRAIRIE_FORGE_CONTEXT.stepName = "Homepage";
+        
         // CRITICAL: Ensure SS_PF_Config exists FIRST (matches payroll-recorder exactly)
         await ensureConfigSheet();
         
         // Load installation config from SS_PF_Config (non-blocking, like payroll-recorder)
         // Bootstrap populates SS_PF_Config when user visits Module Selector
         await loadInstallationConfig();
+        
+        // Update company ID in context after config loads
+        window.PRAIRIE_FORGE_CONTEXT.companyId = installationState.crm_company_id || null;
         
         // Log validation status but DON'T block - match payroll-recorder behavior
         if (!installationState.isValid) {

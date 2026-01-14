@@ -2296,9 +2296,16 @@ async function ensureConfigSheet() {
 
 async function init() {
     try {
+        // Initialize global context for Ada (homepage by default)
+        window.PRAIRIE_FORGE_CONTEXT.step = null;
+        window.PRAIRIE_FORGE_CONTEXT.stepName = "Homepage";
+        
         await ensureConfigSheet();
         await ensureTabVisibility();
         await loadConfigurationValues();
+        
+        // Update company ID in context after config loads
+        window.PRAIRIE_FORGE_CONTEXT.companyId = getConfigValue("SS_Company_ID") || null;
         
         // NOTE: Bootstrap config sync is now handled GLOBALLY by module-selector.
         // SS_PF_Config values are already populated when this module loads.

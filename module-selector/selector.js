@@ -668,6 +668,10 @@ async function init() {
     try {
         console.log("ForgeSuite init starting...");
         
+        // Initialize global context for Ada (homepage/selector by default)
+        window.PRAIRIE_FORGE_CONTEXT.step = null;
+        window.PRAIRIE_FORGE_CONTEXT.stepName = "Module Selector";
+        
         // =====================================================================
         // ENSURE SS_PF_Config EXISTS - MUST RUN BEFORE BOOTSTRAP
         // Creates the config sheet and table if they don't exist
