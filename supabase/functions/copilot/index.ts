@@ -49,7 +49,8 @@ const ENABLE_CUSTOMER_SCOPING = Deno.env.get("ENABLE_CUSTOMER_SCOPING") === "tru
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s: string) => s.trim()).filter(Boolean);
 
 const allowedModules = new Set(["payroll-recorder", "pto-accrual", "module-selector", "global"]);
-const allowedFunctions = new Set(["mapping", "analysis", "validation", "homepage", "0", "1", "2", "3", "4"]);
+// Allow numeric step IDs (0-9 for future expansion) and "homepage"
+const allowedFunctions = new Set(["homepage", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]);
 
 function buildCorsHeaders(origin: string | null) {
   const allowAll = ALLOWED_ORIGINS.length === 0;
@@ -76,8 +77,8 @@ function sanitizeModuleKey(input: string | null | undefined) {
 }
 
 function sanitizeFunctionContext(input: string | null | undefined) {
-  const key = String(input || "analysis").trim();
-  return allowedFunctions.has(key) ? key : "analysis";
+  const key = String(input || "homepage").trim();
+  return allowedFunctions.has(key) ? key : "homepage";
 }
 
 function sanitizeStoredContext(context: Record<string, unknown> | undefined) {
