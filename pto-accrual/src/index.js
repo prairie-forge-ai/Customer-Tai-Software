@@ -1,3 +1,4 @@
+import { BRANDING } from "../../Common/constants.js";
 import { applyModuleTabVisibility, showAllSheets, showAndActivateSheet } from "../../Common/tab-visibility.js";
 import { bindInstructionsButton } from "../../Common/instructions.js";
 import { activateHomepageSheet, getHomepageConfig, renderAdaFab, removeAdaFab } from "../../Common/homepage-sheet.js";
