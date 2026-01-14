@@ -2993,34 +2993,52 @@ button:disabled,
 
 .pf-ada-modal__header {
   position: relative;
-  padding: 32px 24px 20px;
+  padding: 48px 24px 24px;
   text-align: center;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
 }
 
+.pf-ada-modal__beta-tag {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: #2E30CD;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
 .pf-ada-modal__avatar {
-  width: 80px;
-  height: 80px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
   border: 3px solid rgba(124, 58, 237, 0.5);
-  margin: 0 auto 16px;
+  margin: 0 auto 20px;
   box-shadow: 0 8px 24px rgba(76, 47, 255, 0.3);
 }
 
 .pf-ada-modal__title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 600;
   color: #fff;
-  margin: 0 0 4px;
+  margin: 0 0 12px;
   font-family: var(--font-family);
 }
 
 .pf-ada-modal__subtitle {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.65);
   margin: 0;
+  line-height: 1.5;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .pf-ada-modal__close {

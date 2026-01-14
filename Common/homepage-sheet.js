@@ -336,15 +336,16 @@ export function showAdaModal() {
     overlay.innerHTML = `
         <div class="pf-ada-modal pf-ada-modal--chat">
             <div class="pf-ada-modal__header">
-                <button class="pf-ada-modal__close" id="ada-modal-close" aria-label="Close">
+                <span class="pf-ada-modal__beta-tag">BETA</span>
+                <button class="pf-ada-modal__close" id="ada-modal-close" title="Close">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
                 <img class="pf-ada-modal__avatar" src="${ADA_IMAGE_URL}" alt="Ada" />
-                <h2 class="pf-ada-modal__title">Ask Ada <span class="pf-ada-beta-tag">BETA</span></h2>
-                <p class="pf-ada-modal__subtitle">${contextConfig.subtext}</p>
+                <h2 class="pf-ada-modal__title">Ask Ada</h2>
+                <p class="pf-ada-modal__subtitle">Your AI-powered assistant to help you troubleshoot, answer questions and perform deeper analyses.</p>
             </div>
             <div class="pf-ada-modal__body">
                 <div class="pf-ada-copilot-container" id="ada-modal-copilot">
