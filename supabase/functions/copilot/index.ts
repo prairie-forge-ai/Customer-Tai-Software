@@ -309,7 +309,7 @@ async function logConversation(
       .insert({
         session_id: request.sessionId || null,
         customer_id: request.customerId || null,
-        module_context: moduleContext,
+        prompt_name: moduleContext, // Table uses 'prompt_name' not 'module_context'
         user_prompt: request.prompt,
         context: sanitizeStoredContext(request.context),
         ai_response: STORE_AI_RESPONSES ? response : null,
