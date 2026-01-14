@@ -4868,26 +4868,7 @@ function renderExpenseReviewStep(detail) {
             ? `<p class="pf-step-note">${escapeHtml(expenseReviewState.lastError)}</p>`
             : "";
     
-    // Render Ada chat interface (replaces old insights panel)
-    const adaInsightsMarkup = renderCopilotCard({
-        id: "payroll-copilot",
-        heading: "Ada",
-        subtext: "Ask questions about payroll data, variances, and insights",
-        welcomeMessage: "What would you like to explore about this payroll period?",
-        placeholder: "Ask about variances, headcount changes, or executive insights...",
-        quickActions: [
-            { id: "diagnostics", label: "Run Diagnostics", prompt: "Run a diagnostic check on the current payroll data. Check for completeness, accuracy issues, and any data quality concerns." },
-            { id: "insights", label: "Generate Insights", prompt: "What are the key insights and notable findings from this payroll period that I should highlight for executive review?" },
-            { id: "variance", label: "Analyze Variances", prompt: "Analyze the significant variances between this period and the prior period. What's driving the changes?" },
-            { id: "headcount", label: "Headcount Impact", prompt: "What changed in headcount that could explain the expense changes?" }
-        ],
-        contextProvider: createExcelContextProvider({
-            dataClean: 'PR_Data_Clean',
-            expenseReview: 'PR_Expense_Review',
-            config: 'SS_PF_Config'
-        }),
-        onPrompt: callAdaApi
-    });
+    // Ada will be available via floating button instead of embedded card
     
     // TASK 3: Debug output - show where the UI total comes from
     const debugTotalsMarkup = renderExpenseReviewDebugPanel();
@@ -4924,7 +4905,6 @@ function renderExpenseReviewStep(detail) {
             ${/* HIDDEN: Debug reconciliation panel - development tool only
             ${debugTotalsMarkup}
             */ ''}
-            ${adaInsightsMarkup}
             ${
                 stepFields
                     ? `

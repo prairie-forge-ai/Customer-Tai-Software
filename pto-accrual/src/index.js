@@ -8483,27 +8483,7 @@ function renderAccrualReviewStep(detail) {
         </article>
     `;
 
-    // Render Ada chat interface for PTO analysis
-    const adaMarkup = renderCopilotCard({
-        id: "pto-copilot",
-        heading: "Ada",
-        subtext: "Ask questions about PTO data, liabilities, and insights",
-        welcomeMessage: "What would you like to explore about PTO accruals?",
-        placeholder: "Ask about PTO balances, accrual rates, or liability trends...",
-        quickActions: [
-            { id: "diagnostics", label: "Run Diagnostics", prompt: "Run a diagnostic check on the PTO data. Check for completeness, missing rates, and data quality issues." },
-            { id: "insights", label: "Generate Insights", prompt: "What are the key insights and findings from this PTO accrual analysis?" },
-            { id: "balances", label: "Balance Analysis", prompt: "Analyze PTO balances by employee and department. Highlight any concerning balances." },
-            { id: "accruals", label: "Accrual Trends", prompt: "Show PTO accrual trends and changes from the prior period." }
-        ],
-        contextProvider: createExcelContextProvider({
-            dataClean: 'PTO_Data_Clean',
-            analysis: 'PTO_Analysis',
-            review: 'PTO_Review',
-            config: 'SS_PF_Config'
-        }),
-        onPrompt: callAdaApi
-    });
+    // Ada will be available via floating button instead of embedded card
     
     return `
         <section class="pf-hero" id="pf-step-hero">
@@ -8529,7 +8509,6 @@ function renderAccrualReviewStep(detail) {
                 </div>
             </article>
             ${summaryCard}
-            ${adaMarkup}
             ${renderInlineNotes({
                 textareaId: "step-notes-2",
                 value: stepFields?.notes || "",
