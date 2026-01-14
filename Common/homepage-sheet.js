@@ -23,7 +23,9 @@ async function callAdaApiStandalone(prompt, context, messageHistory) {
         // Get current module and step context from global state
         const prairieForgeContext = window.PRAIRIE_FORGE_CONTEXT || {};
         const currentModule = prairieForgeContext.module || "general";
-        const currentStep = prairieForgeContext.step !== null ? String(prairieForgeContext.step) : "analysis";
+        const currentStep = prairieForgeContext.step !== null && prairieForgeContext.step !== undefined 
+            ? String(prairieForgeContext.step) 
+            : "homepage"; // Default to "homepage" instead of "analysis" when on homepage
         const stepName = prairieForgeContext.stepName || null;
         const companyId = prairieForgeContext.companyId || null;
         
