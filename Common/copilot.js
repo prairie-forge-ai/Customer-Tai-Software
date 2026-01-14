@@ -77,7 +77,7 @@ export function renderCopilotCard(options = {}) {
                     type="text" 
                     class="pf-ada-input-inline" 
                     id="${merged.id}-prompt" 
-                    placeholder="Ask Ada about ${merged.subtext}..." 
+                    placeholder="Ask Ada" 
                     autocomplete="off"
                 >
                 <button type="button" class="pf-ada-send-inline" id="${merged.id}-ask" title="Send">
@@ -107,9 +107,6 @@ export function renderCopilotCard(options = {}) {
             ` : ''}
             
             <div class="pf-ada-conversation" id="${merged.id}-messages" style="display: none;">
-                <div class="pf-ada-bubble pf-ada-bubble--ai">
-                    <p>${merged.welcomeMessage}</p>
-                </div>
             </div>
             
             <div class="pf-ada-status-bar">
