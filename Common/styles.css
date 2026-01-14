@@ -13,10 +13,10 @@
 :root {
   /* Colors - Standardized across all modules */
   --primary-color: #2E30C9;
-  --primary-hover: #1e20a0;
-  --primary-active: #1a1c8a;
+  --primary-hover: #2E30C9;
+  --primary-active: #2E30C9;
   --pf-accent: #2E30C9;
-  --pf-accent-dark: #1e20a0;
+  --pf-accent-dark: #2E30C9;
   --pf-hover-shadow: 0 20px 35px rgba(46, 48, 201, 0.25);
 
   --success-color: #10b981;
@@ -27,13 +27,13 @@
   --error-bg: rgba(239, 68, 68, 0.1);
   --error-border: rgba(239, 68, 68, 0.3);
 
-  --warning-color: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.1);
-  --warning-border: rgba(245, 158, 11, 0.3);
+  --warning-color: #ef4444;
+  --warning-bg: rgba(239, 68, 68, 0.1);
+  --warning-border: rgba(239, 68, 68, 0.3);
 
-  --info-color: #3b82f6;
-  --info-bg: rgba(59, 130, 246, 0.1);
-  --info-border: rgba(59, 130, 246, 0.3);
+  --info-color: #2E30C9;
+  --info-bg: rgba(46, 48, 201, 0.1);
+  --info-border: rgba(46, 48, 201, 0.3);
   --info-text: #F5F5F7;
 
   /* Neutral Colors - Standardized to match module selector */
