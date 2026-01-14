@@ -787,6 +787,14 @@ body {
   display: block;
 }
 
+/* Ada icon in action toggle button */
+.pf-action-toggle--ada .pf-ada-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 /* Labeled button wrapper */
 .pf-labeled-btn {
   display: flex;

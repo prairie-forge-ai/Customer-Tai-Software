@@ -8513,8 +8513,8 @@ function renderAccrualReviewStep(detail) {
                         "Open Sheet"
                     )}
                     ${renderLabeledButton(
-                        `<button type="button" class="pf-action-toggle pf-clickable" id="review-ada-btn" title="Ask Ada about PTO data">
-                            <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" style="width: 20px; height: 20px; border-radius: 50%;" onerror="this.style.display='none'" />
+                        `<button type="button" class="pf-action-toggle pf-action-toggle--ada pf-clickable" id="review-ada-btn" title="Ask Ada about PTO data">
+                            <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" class="pf-ada-icon" onerror="this.style.display='none'" />
                         </button>`,
                         "Ask Ada"
                     )}

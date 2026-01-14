@@ -4897,8 +4897,8 @@ function renderExpenseReviewStep(detail) {
                         "Refresh"
                     )}
                     ${renderLabeledButton(
-                        `<button type="button" class="pf-action-toggle" id="expense-ada-btn" title="Ask Ada about payroll data">
-                            <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" style="width: 20px; height: 20px; border-radius: 50%;" onerror="this.style.display='none'" />
+                        `<button type="button" class="pf-action-toggle pf-action-toggle--ada" id="expense-ada-btn" title="Ask Ada about payroll data">
+                            <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" class="pf-ada-icon" onerror="this.style.display='none'" />
                         </button>`,
                         "Ask Ada"
                     )}
