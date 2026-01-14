@@ -8540,7 +8540,8 @@ function renderAccrualReviewStep(detail) {
             <article class="pf-step-card pf-step-detail pf-config-card">
                 <div class="pf-ada-card" id="review-ada-btn" title="Ask Ada about PTO data">
                     <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" class="pf-ada-icon" onerror="this.style.display='none'" />
-                    <div class="pf-button-label">Ask Ada</div>
+                    <div class="pf-ada-title">Ask Ada</div>
+                    <div class="pf-ada-subtitle">Your smart assistant to help troubleshoot, review, and analyze</div>
                 </div>
             </article>
             ${renderInlineNotes({
