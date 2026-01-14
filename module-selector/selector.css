@@ -2,7 +2,7 @@
 
 :root {
     --pf-text-secondary: var(--text-primary);
-    --pf-accent: #ff0000;
+    --pf-accent: #2E30C9;
     --pf-surface: var(--glass-bg);
     --pf-surface-strong: var(--glass-bg);
     --pf-border: rgba(245, 245, 247, 0.12);
