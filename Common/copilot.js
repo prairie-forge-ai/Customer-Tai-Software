@@ -71,53 +71,32 @@ export function renderCopilotCard(options = {}) {
     
     return `
         <article class="pf-ada" data-copilot="${merged.id}">
-            <div class="pf-ada-search-bar">
-                <img class="pf-ada-avatar-inline" src="${ADA_IMAGE_URL}" alt="Ada" onerror="this.style.display='none'" />
+            <div class="pf-ada-header-new">
+                <div class="pf-ada-header-top">
+                    <img class="pf-ada-avatar-header" src="${ADA_IMAGE_URL}" alt="Ada" onerror="this.style.display='none'" />
+                    <div class="pf-ada-title-section">
+                        <h3 class="pf-ada-title-new">Ask Ada</h3>
+                        <span class="pf-ada-beta-tag-new">BETA</span>
+                    </div>
+                </div>
+                <p class="pf-ada-subtext-new">Your AI-powered assistant to help you troubleshoot, answer questions and perform deeper analyses.</p>
+                <p class="pf-ada-powered-new">Powered by Claude</p>
+            </div>
+            
+            <div class="pf-ada-search-bar-new">
                 <input 
                     type="text" 
-                    class="pf-ada-input-inline" 
+                    class="pf-ada-input-new" 
                     id="${merged.id}-prompt" 
-                    placeholder="Ask Ada" 
+                    placeholder="What can I help you with" 
                     autocomplete="off"
                 >
-                <button type="button" class="pf-ada-send-inline" id="${merged.id}-ask" title="Send">
+                <button type="button" class="pf-ada-send-new" id="${merged.id}-ask" title="Send">
                     ${SEND_ARROW}
                 </button>
             </div>
             
-            ${quickActionsOptions ? `
-            <div class="pf-ada-suggestions">
-                <button type="button" class="pf-ada-suggestions-toggle" id="${merged.id}-suggestions-toggle">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                        <line x1="12" y1="17" x2="12.01" y2="17"/>
-                    </svg>
-                    <span>Need Inspiration?</span>
-                    <svg class="pf-ada-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"/>
-                    </svg>
-                </button>
-                <div class="pf-ada-suggestions-dropdown" id="${merged.id}-suggestions-dropdown">
-                    <select class="pf-ada-suggestions-select" id="${merged.id}-suggestions-select" size="${Math.min(merged.quickActions?.length || 4, 6)}">
-                        ${quickActionsOptions}
-                    </select>
-                </div>
-            </div>
-            ` : ''}
-            
             <div class="pf-ada-conversation" id="${merged.id}-messages" style="display: none;">
-            </div>
-            
-            <div class="pf-ada-status-bar">
-                <div class="pf-ada-status-indicator">
-                    <span class="pf-ada-status-dot" id="${merged.id}-status-dot"></span>
-                    <span class="pf-ada-status-text" id="${merged.id}-status-text">Ready</span>
-                </div>
-                <div class="pf-ada-powered">
-                    ${CHATGPT_ICON}
-                    <span>GPT-4 Turbo</span>
-                </div>
             </div>
         </article>
     `;
