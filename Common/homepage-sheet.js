@@ -20,7 +20,23 @@ async function callAdaApiStandalone(prompt, context, messageHistory) {
     const COPILOT_URL = `${SUPABASE_URL}/functions/v1/copilot`;
 
     try {
-        console.log("[Ada Popup] Calling copilot API...");
+        // Get current module and step context from global state
+        const prairieForgeContext = window.PRAIRIE_FORGE_CONTEXT || {};
+        const currentModule = prairieForgeContext.module || "general";
+        const currentStep = prairieForgeContext.step !== null ? String(prairieForgeContext.step) : "analysis";
+        const stepName = prairieForgeContext.stepName || null;
+        
+        console.log("[Ada Popup] Calling copilot API with context:", {
+            module: currentModule,
+            step: currentStep,
+            stepName: stepName
+        });
+        
+        // Merge step name into context for logging
+        const enrichedContext = {
+            ...context,
+            stepName: stepName
+        };
 
         const response = await fetch(COPILOT_URL, {
             method: "POST",
@@ -33,9 +49,9 @@ async function callAdaApiStandalone(prompt, context, messageHistory) {
             },
             body: JSON.stringify({
                 prompt: prompt,
-                context: context,
-                module: "general",
-                function: "analysis",
+                context: enrichedContext,
+                module: currentModule,
+                function: currentStep,
                 history: messageHistory?.slice(-10) || []
             })
         });
