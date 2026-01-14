@@ -1,15 +1,17 @@
 /**
  * Ada - Prairie Forge AI Assistant
- * Supabase Edge Function powered by ChatGPT
+ * Supabase Edge Function powered by Claude (Anthropic)
  * 
  * Features:
  * - Fetches system prompts from database (admin-editable)
  * - Logs all conversations for debugging and improvement
  * - Supports multiple prompt personalities
  * 
- * COST ESTIMATES (GPT-4 Turbo):
- * - Typical question: ~$0.02-0.05
- * - 100 questions/day ≈ $2-5/day
+ * COST ESTIMATES (Claude 3.5 Sonnet):
+ * - Input: $3/million tokens (~$0.003 per 1K tokens)
+ * - Output: $15/million tokens (~$0.015 per 1K tokens)
+ * - Typical question: ~$0.01-0.03
+ * - 100 questions/day ≈ $1-3/day (cheaper than GPT-4!)
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -22,13 +24,13 @@ declare const Deno: {
 };
 
 // Configuration
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://jgciqwzwacaesqjaoadc.supabase.co";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 // Default model configuration (can be overridden by database)
-const DEFAULT_MODEL = "gpt-4-turbo-preview";
-const DEFAULT_MAX_TOKENS = 1500;
+const DEFAULT_MODEL = "claude-3-5-sonnet-20241022"; // Latest Claude 3.5 Sonnet
+const DEFAULT_MAX_TOKENS = 2048; // Claude supports up to 8192
 const DEFAULT_TEMPERATURE = 0.7;
 
 // Logging / privacy controls
@@ -346,8 +348,8 @@ serve(async (req) => {
 
   try {
     // Validate API key is configured
-    if (!OPENAI_API_KEY) {
-      console.error("OPENAI_API_KEY not configured");
+    if (!ANTHROPIC_API_KEY) {
+      console.error("ANTHROPIC_API_KEY not configured");
       return new Response(
         JSON.stringify({ 
           error: "Ada is not configured yet. Please contact Prairie Forge support.",
@@ -431,32 +433,34 @@ serve(async (req) => {
       }
     }
 
-    // Build messages for OpenAI
-    const messages = buildMessages(prompt, context, effectiveSystemPrompt, history);
+    // Build messages for Claude (different format than OpenAI)
+    const { system, messages } = buildClaudeMessages(prompt, context, effectiveSystemPrompt, history);
 
-    // Call OpenAI
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Call Anthropic Claude API
+    const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
       },
       body: JSON.stringify({
         model,
-        messages,
         max_tokens: maxTokens,
         temperature,
+        system, // Claude uses separate system parameter
+        messages,
       }),
     });
 
-    if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.json();
-      console.error("OpenAI API error:", errorData);
+    if (!anthropicResponse.ok) {
+      const errorData = await anthropicResponse.json();
+      console.error("Anthropic API error:", errorData);
       
       const latencyMs = Date.now() - startTime;
-      await logConversation(body, null, null, latencyMs, `OpenAI error: ${openaiResponse.status}`, model, moduleKey, functionContext);
+      await logConversation(body, null, null, latencyMs, `Anthropic error: ${anthropicResponse.status}`, model, moduleKey, functionContext);
       
-      if (openaiResponse.status === 429) {
+      if (anthropicResponse.status === 429) {
         return new Response(
           JSON.stringify({ 
             error: "Ada is thinking hard right now. Please try again in a moment!",
@@ -475,15 +479,19 @@ serve(async (req) => {
       );
     }
 
-    const completion = await openaiResponse.json();
-    const responseMessage = completion.choices?.[0]?.message?.content || "I couldn't generate a response. Please try rephrasing your question.";
-    const tokensUsed = completion.usage?.total_tokens || 0;
+    const completion = await anthropicResponse.json();
+    
+    // Claude response format is different from OpenAI
+    const responseMessage = completion.content?.[0]?.text || "I couldn't generate a response. Please try rephrasing your question.";
+    
+    // Calculate total tokens (input + output)
+    const tokensUsed = (completion.usage?.input_tokens || 0) + (completion.usage?.output_tokens || 0);
     const latencyMs = Date.now() - startTime;
 
     // Log successful conversation
     await logConversation(body, responseMessage, tokensUsed, latencyMs, null, model, moduleKey, functionContext);
 
-    console.log(`Ada responded: ${tokensUsed} tokens used, ${latencyMs}ms, module: ${moduleKey || 'none'}, function: ${functionContext}`);
+    console.log(`Ada responded: ${tokensUsed} tokens used (${completion.usage?.input_tokens} in, ${completion.usage?.output_tokens} out), ${latencyMs}ms, module: ${moduleKey || 'none'}, function: ${functionContext}`);
 
     // Return successful response
     return new Response(
@@ -491,6 +499,8 @@ serve(async (req) => {
         message: responseMessage,
         usage: {
           tokens: tokensUsed,
+          inputTokens: completion.usage?.input_tokens || 0,
+          outputTokens: completion.usage?.output_tokens || 0,
           model: model,
           latencyMs: latencyMs,
           module: moduleKey,
@@ -524,16 +534,19 @@ serve(async (req) => {
 });
 
 /**
- * Build the messages array for OpenAI
+ * Build the messages array for Claude
+ * Claude has a different format than OpenAI:
+ * - System prompt is a separate parameter
+ * - Messages alternate between user and assistant
+ * - No "system" role in messages array
  */
-function buildMessages(
+function buildClaudeMessages(
   prompt: string, 
   context: Record<string, unknown> | undefined,
   systemPrompt: string | undefined,
   history: Array<{ role: string; content: string }> | undefined
-): Array<{ role: string; content: string }> {
-  const messages: Array<{ role: string; content: string }> = [];
-
+): { system: string; messages: Array<{ role: "user" | "assistant"; content: string }> } {
+  
   // Ada's default personality (fallback if no database prompt)
   const defaultSystemPrompt = `You are Ada, Prairie Forge's expert financial analyst assistant. You're embedded in an Excel add-in helping accountants and CFOs review payroll data.
 
@@ -560,17 +573,22 @@ Communication style:
 When given spreadsheet context, reference specific numbers from the data.
 Be confident in your analysis but acknowledge when data is limited.`;
 
-  messages.push({
-    role: "system",
-    content: systemPrompt || defaultSystemPrompt
-  });
+  const system = systemPrompt || defaultSystemPrompt;
+  
+  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
 
-  // Add context if provided
+  // Add context as first user message if provided
   if (context && Object.keys(context).length > 0) {
     const contextSummary = formatContextForAI(context);
     messages.push({
-      role: "system",
-      content: `Current spreadsheet data:\n${contextSummary}`
+      role: "user",
+      content: `Here's the current spreadsheet data:\n${contextSummary}`
+    });
+    
+    // Claude requires alternating messages, so add a brief acknowledgment
+    messages.push({
+      role: "assistant",
+      content: "I've reviewed the spreadsheet data. What would you like to know?"
     });
   }
 
@@ -579,7 +597,10 @@ Be confident in your analysis but acknowledge when data is limited.`;
     const recentHistory = history.slice(-8);
     for (const msg of recentHistory) {
       if (msg.role === "user" || msg.role === "assistant") {
-        messages.push({ role: msg.role, content: msg.content });
+        messages.push({ 
+          role: msg.role as "user" | "assistant", 
+          content: msg.content 
+        });
       }
     }
   }
@@ -587,7 +608,7 @@ Be confident in your analysis but acknowledge when data is limited.`;
   // Add current prompt
   messages.push({ role: "user", content: prompt });
 
-  return messages;
+  return { system, messages };
 }
 
 /**
