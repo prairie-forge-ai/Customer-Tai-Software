@@ -4910,13 +4910,15 @@ function renderExpenseReviewStep(detail) {
                         `<button type="button" class="pf-action-toggle" id="expense-refresh-btn" title="Refresh expense data">${REFRESH_ICON_SVG}</button>`,
                         "Refresh"
                     )}
-                    ${renderLabeledButton(
-                        `<button type="button" class="pf-action-toggle pf-action-toggle--ada" id="expense-ada-btn" title="Ask Ada about payroll data">
-                            <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" class="pf-ada-icon" onerror="this.style.display='none'" />
-                        </button>`,
-                        "Ask Ada"
-                    )}
                 </div>
+            </article>
+            
+            <!-- Ada Assistant Card -->
+            <article class="pf-card pf-card--ada-full" id="expense-ada-card">
+                <button type="button" class="pf-ada-full-button" id="expense-ada-btn" title="Ask Ada about payroll data">
+                    <img src="${BRANDING.ADA_IMAGE_URL}" alt="Ada" class="pf-ada-full-avatar" onerror="this.style.display='none'" />
+                    <span class="pf-ada-full-label">Ask Ada</span>
+                </button>
             </article>
             ${/* HIDDEN: Column Classification - internal tool, not customer-facing
             ${renderTaxonomyAdvisoryCard()}
