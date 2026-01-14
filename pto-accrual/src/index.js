@@ -44,6 +44,14 @@ const MODULE_KEY = "pto-accrual";
 const MODULE_ALIAS_TOKENS = ["pto", "pto-accrual", "pto review", "accrual"];
 const MODULE_NAME = "PTO Accrual";
 
+// Make module and step context globally accessible for Ada
+window.PRAIRIE_FORGE_CONTEXT = {
+    module: MODULE_KEY,
+    step: null, // Will be updated when navigating to steps
+    moduleName: MODULE_NAME,
+    companyId: null // Will be updated when config loads
+};
+
 // Supabase configuration
 const SUPABASE_URL = "https://jgciqwzwacaesqjaoadc.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnY2lxd3p3YWNhZXNxamFvYWRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzODgzMTIsImV4cCI6MjA3NTk2NDMxMn0.DsoUTHcm1Uv65t4icaoD0Tzf3ULIU54bFnoYw8hHScE";
@@ -2697,6 +2705,12 @@ function focusStep(index, stepId = null) {
     const resolvedStepId = stepId ?? WORKFLOW_STEPS[index].id;
     const nextView = resolvedStepId === 0 ? "config" : "step";
     setState({ focusedIndex: index, activeView: nextView, activeStepId: resolvedStepId });
+    
+    // Update global context for Ada
+    const step = WORKFLOW_STEPS[index];
+    window.PRAIRIE_FORGE_CONTEXT.step = resolvedStepId;
+    window.PRAIRIE_FORGE_CONTEXT.stepName = step?.title || null;
+    window.PRAIRIE_FORGE_CONTEXT.companyId = installationState.crm_company_id || null;
     
     // Activate the corresponding sheet from STEP_SHEET_MAP
     const sheetName = STEP_SHEET_MAP[resolvedStepId];

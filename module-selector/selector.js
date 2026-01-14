@@ -16,6 +16,14 @@ import { formatSheetHeaders } from "../Common/sheet-formatting.js";
  * 2025 Prairie Forge LLC
  */
 
+// Make module context globally accessible for Ada
+window.PRAIRIE_FORGE_CONTEXT = {
+    module: "module-selector",
+    step: null,
+    moduleName: "Module Selector",
+    companyId: null
+};
+
 // =============================================================================
 // AUTHORIZATION OVERLAY CONTROL
 // =============================================================================
