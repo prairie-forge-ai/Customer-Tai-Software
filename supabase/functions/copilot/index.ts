@@ -304,22 +304,32 @@ async function logConversation(
   if (!supabase) return;
 
   try {
-    await supabase
+    const insertData = {
+      session_id: request.sessionId || null,
+      crm_company_id: request.customerId || null, // Renamed from customer_id to crm_company_id
+      prompt_name: moduleContext, // Table uses 'prompt_name' not 'module_context'
+      user_prompt: request.prompt,
+      context: sanitizeStoredContext(request.context),
+      ai_response: STORE_AI_RESPONSES ? response : null,
+      model: model,
+      tokens_used: tokensUsed,
+      latency_ms: latencyMs,
+      error: error,
+    };
+    
+    console.log('[Ada] Logging conversation with data:', JSON.stringify(insertData, null, 2));
+    
+    const { data, error: insertError } = await supabase
       .from('ada_conversations')
-      .insert({
-        session_id: request.sessionId || null,
-        crm_company_id: request.customerId || null, // Renamed from customer_id to crm_company_id
-        prompt_name: moduleContext, // Table uses 'prompt_name' not 'module_context'
-        user_prompt: request.prompt,
-        context: sanitizeStoredContext(request.context),
-        ai_response: STORE_AI_RESPONSES ? response : null,
-        model: model,
-        tokens_used: tokensUsed,
-        latency_ms: latencyMs,
-        error: error,
-      });
+      .insert(insertData);
+    
+    if (insertError) {
+      console.error('[Ada] Failed to log conversation - Supabase error:', insertError);
+    } else {
+      console.log('[Ada] Successfully logged conversation');
+    }
   } catch (e) {
-    console.error('Failed to log conversation:', e);
+    console.error('[Ada] Failed to log conversation - Exception:', e);
   }
 }
 
