@@ -49,7 +49,7 @@ const ENABLE_CUSTOMER_SCOPING = Deno.env.get("ENABLE_CUSTOMER_SCOPING") === "tru
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s: string) => s.trim()).filter(Boolean);
 
 const allowedModules = new Set(["payroll-recorder", "pto-accrual", "module-selector", "global"]);
-const allowedFunctions = new Set(["mapping", "analysis", "validation"]);
+const allowedFunctions = new Set(["mapping", "analysis", "validation", "homepage", "0", "1", "2", "3", "4"]);
 
 function buildCorsHeaders(origin: string | null) {
   const allowAll = ALLOWED_ORIGINS.length === 0;
