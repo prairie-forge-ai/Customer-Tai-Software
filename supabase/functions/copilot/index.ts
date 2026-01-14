@@ -308,6 +308,9 @@ async function logConversation(
       session_id: request.sessionId || null,
       crm_company_id: request.customerId || null, // Links to companies.id in CRM
       prompt_name: moduleContext, // Module context (payroll-recorder, pto-accrual, etc.)
+      module: moduleContext, // Which module (payroll-recorder, pto-accrual)
+      step: functionContext, // Which step/function (analysis, mapping, validation)
+      step_name: request.context?.stepName || null, // Human-readable step name
       user_prompt: request.prompt,
       context: sanitizeStoredContext(request.context),
       ai_response: STORE_AI_RESPONSES ? response : null,
