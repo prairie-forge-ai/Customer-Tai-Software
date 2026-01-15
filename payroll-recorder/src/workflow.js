@@ -5397,7 +5397,7 @@ function renderFooter() {
                       transition: color 0.2s;
                     " onmouseover="this.style.color='#F5F5F7'" 
                        onmouseout="this.style.color='rgba(255,255,255,0.6)'">
-                      Sign Out
+                      SIGN OUT
                     </a>
                 </div>
             </div>
