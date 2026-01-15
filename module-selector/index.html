@@ -17,29 +17,30 @@
 <body>
     <!-- EMAIL AUTHORIZATION OVERLAY -->
     <div id="authLoadingOverlay" class="auth-overlay">
-        <div class="auth-container">
-            <!-- Loading State -->
-            <div id="authLoadingState" class="auth-state">
+        <!-- Loading State -->
+        <div id="authLoadingState" class="auth-state">
+            <div class="auth-container">
                 <div class="auth-spinner"></div>
                 <div class="auth-text">Initializing add-in...</div>
             </div>
-            
-            <!-- Email Prompt State -->
-            <div id="authEmailState" class="auth-state" style="display: none;">
-                <!-- Value Proposition Card -->
-                <div class="auth-container" style="margin-bottom: 24px;">
-                    <div style="text-align: center; padding: 8px 0;">
-                        <p style="font-size: 16px; line-height: 1.6; color: #F5F5F7; margin-bottom: 12px;">
-                            <strong>Automate key accounting and finance processes in Excel.</strong>
-                        </p>
-                        <p style="font-size: 14px; line-height: 1.5; color: #C9C9D6; margin: 0;">
-                            Streamline what slows you down—whether that's payroll processing, expense tracking, PTO management, or reconciliations. Our tools are built around the way you work.
-                        </p>
-                    </div>
+        </div>
+        
+        <!-- Email Prompt State -->
+        <div id="authEmailState" class="auth-state" style="display: none;">
+            <!-- Value Proposition Card -->
+            <div class="auth-container" style="margin-bottom: 24px;">
+                <div style="text-align: center; padding: 8px 0;">
+                    <p style="font-size: 16px; line-height: 1.6; color: #F5F5F7; margin-bottom: 12px;">
+                        <strong>Automate key accounting and finance processes in Excel.</strong>
+                    </p>
+                    <p style="font-size: 14px; line-height: 1.5; color: #C9C9D6; margin: 0;">
+                        Streamline what slows you down—whether that's payroll processing, expense tracking, PTO management, or reconciliations. Our tools are built around the way you work.
+                    </p>
                 </div>
-                
-                <!-- Access Verification Card -->
-                <div class="auth-container">
+            </div>
+            
+            <!-- Access Verification Card -->
+            <div class="auth-container" style="margin-bottom: 24px;">
                 <div class="auth-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
@@ -80,11 +81,20 @@
                         Visit us at <a href="https://prairieforge.ai" target="_blank">prairieforge.ai</a>
                     </p>
                 </div>
-                </div>
             </div>
             
-            <!-- Error State -->
-            <div id="authErrorState" class="auth-state" style="display: none;">
+            <!-- Footer Card -->
+            <div class="auth-container glass-card brand-card">
+                <div class="brand-text">
+                    <div class="brand-label">prairie.forge</div>
+                    <div class="brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version 1ab166a</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Error State -->
+        <div id="authErrorState" class="auth-state" style="display: none;">
+            <div class="auth-container">
                 <div class="auth-icon auth-icon-error">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
@@ -96,16 +106,6 @@
                 <p class="auth-contact-info">
                     Need assistance? Visit us at <a href="https://prairieforge.ai" target="_blank">prairieforge.ai</a>
                 </p>
-            </div>
-            
-            <!-- Footer -->
-            <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(245, 245, 247, 0.12);">
-                <div style="font-family: 'Inter', sans-serif; font-size: 13px; color: rgba(255, 255, 255, 0.5); font-weight: 500;">
-                    prairie.forge
-                </div>
-                <div style="font-family: 'Inter', sans-serif; font-size: 11px; color: rgba(255, 255, 255, 0.3); margin-top: 4px;">
-                    © Prairie Forge LLC, 2025. All rights reserved.
-                </div>
             </div>
         </div>
     </div>
