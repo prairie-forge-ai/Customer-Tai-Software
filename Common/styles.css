@@ -2988,22 +2988,11 @@ button:disabled,
 }
 
 .pf-ada-modal__background {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 0;
+  display: none;
 }
 
 .pf-ada-modal__background-image {
-  position: absolute;
-  right: -20%;
-  bottom: -10%;
-  width: 80%;
-  height: auto;
-  opacity: 0.08;
-  transform: scale(1.1);
-  filter: grayscale(30%);
+  display: none;
 }
 
 .pf-ada-modal__content {
