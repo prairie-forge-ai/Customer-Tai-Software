@@ -2363,11 +2363,9 @@ function bindInteractions() {
     // Footer Sign Out
     document.getElementById("footerSignOut")?.addEventListener("click", (e) => {
         e.preventDefault();
-        if (confirm("Are you sure you want to sign out?")) {
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = "../module-selector/index.html";
-        }
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "../module-selector/index.html";
     });
     
     document.querySelectorAll("[data-step-card]").forEach((card) => {
