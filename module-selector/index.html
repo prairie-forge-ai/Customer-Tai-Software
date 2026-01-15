@@ -35,6 +35,15 @@
                 <h1 class="auth-title">Access Verification Required</h1>
                 <p class="auth-subtitle">This add-in is restricted to authorized users only</p>
                 
+                <div style="text-align: center; margin: 24px 0; padding: 0 20px;">
+                    <p style="font-size: 16px; line-height: 1.6; color: #F5F5F7; margin-bottom: 12px;">
+                        <strong>Streamline your payroll processing and PTO tracking</strong>
+                    </p>
+                    <p style="font-size: 14px; line-height: 1.5; color: #C9C9D6;">
+                        Automate expense validation, track PTO accruals, and generate journal entries—all without leaving Excel. Built specifically for your organization's workflows.
+                    </p>
+                </div>
+                
                 <div class="auth-info-box">
                     <p><strong>For authorized users:</strong> Enter your work email address to verify access.</p>
                 </div>
@@ -453,8 +462,19 @@
         <section class="glass-card brand-card">
             <div class="brand-text">
                 <div class="brand-label">prairie.forge</div>
-                <div class="brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version ef8af59</div>
+                <div class="brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version 1ab166a</div>
                 <button type="button" class="admin-link" id="adminLink">Admin</button>
+                <div style="margin-top: 12px;">
+                    <a href="#" id="footerSignOut" style="
+                      color: rgba(255, 255, 255, 0.6);
+                      text-decoration: none;
+                      font-size: 12px;
+                      transition: color 0.2s;
+                    " onmouseover="this.style.color='#F5F5F7'" 
+                       onmouseout="this.style.color='rgba(255,255,255,0.6)'">
+                      Sign Out
+                    </a>
+                </div>
             </div>
         </section>
     </div>
@@ -1114,5 +1134,16 @@
     
     <!-- Application script -->
     <script type="module" src="selector.js?v=20251224a"></script>
+    
+    <script>
+    document.getElementById('footerSignOut')?.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (confirm('Are you sure you want to sign out?')) {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '../access-verification/index.html';
+      }
+    });
+    </script>
 </body>
 </html>

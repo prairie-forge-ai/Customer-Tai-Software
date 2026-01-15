@@ -5389,6 +5389,17 @@ function renderFooter() {
             <div class="pf-brand-text">
                 <div class="pf-brand-label">prairie.forge</div>
                 <div class="pf-brand-meta">© Prairie Forge LLC, 2025. All rights reserved. Version ${VERSION}</div>
+                <div style="margin-top: 12px;">
+                    <a href="#" id="footerSignOut" style="
+                      color: rgba(255, 255, 255, 0.6);
+                      text-decoration: none;
+                      font-size: 12px;
+                      transition: color 0.2s;
+                    " onmouseover="this.style.color='#F5F5F7'" 
+                       onmouseout="this.style.color='rgba(255,255,255,0.6)'">
+                      Sign Out
+                    </a>
+                </div>
             </div>
         </footer>
     `;
@@ -5461,6 +5472,16 @@ function bindSharedInteractions() {
     document.getElementById("nav-config")?.addEventListener("click", async () => {
         closeQuickAccess();
         await showAndActivateSheet("SS_PF_Config");
+    });
+    
+    // Footer Sign Out
+    document.getElementById("footerSignOut")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (confirm("Are you sure you want to sign out?")) {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = "../module-selector/index.html";
+        }
     });
     
 }
