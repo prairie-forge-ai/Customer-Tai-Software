@@ -2201,11 +2201,7 @@ body {
 }
 
 .pf-ada-card .pf-ada-icon {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-bottom: 16px;
+    display: none;
 }
 
 .pf-ada-title {
